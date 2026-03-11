@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  createdAt  DateTime @default(now()) @map("created_at")
+  accounts   Account[]
+  snapshots  NetWorthSnapshot[]
+}
+
+model Account {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  institutionName String   @map("institution_name")
+  accountType     String   @map("account_type")
+  balance         Float    @default(0)
+  last4           String?
+  akoyaAccountId  String?  @unique @map("akoya_account_id")
+  akoyaToken      String?  @map("akoya_token")
+  createdAt       DateTime @default(now()) @map("created_at")
+  user            User     @relation(fields: [userId], references: [id])
+  transactions    Transaction[]
+
+  @@map("accounts")
+}
+
+model Transaction {
+  id           String   @id @default(cuid())
+  accountId    String   @map("account_id")
+  merchantName String?  @map("merchant_name")
+  amount       Float
+  category     String?
+  date         DateTime
+  pending      Boolean  @default(false)
+  account      Account  @relation(fields: [accountId], references: [id])
+
+  @@map("transactions")
+}
+
+model NetWorthSnapshot {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  totalAssets     Float    @map("total_assets")
+  totalLiabilities Float   @map("total_liabilities")
+  recordedAt      DateTime @default(now()) @map("recorded_at")
+  user            User     @relation(fields: [userId], references: [id])
+
+  @@map("net_worth_snapshots")
+}
