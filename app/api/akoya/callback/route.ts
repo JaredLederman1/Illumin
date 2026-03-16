@@ -30,10 +30,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { access_token } = await exchangeCodeForToken(code)
+    const { access_token, id_token } = await exchangeCodeForToken(code)
 
     // Fetch accounts from Akoya
-    const accountsResponse = await fetchAkoyaAccounts(connectorId, access_token)
+    const accountsResponse = await fetchAkoyaAccounts(connectorId, access_token, id_token)
     const akoyaAccounts = accountsResponse.accounts ?? []
 
     // For demo: use a placeholder userId; in production, get from session

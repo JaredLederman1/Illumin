@@ -28,7 +28,7 @@ export function getAkoyaAuthUrl(connectorId: string): string {
 
 export async function exchangeCodeForToken(
   code: string
-): Promise<{ access_token: string; refresh_token: string }> {
+): Promise<{ access_token: string; id_token?: string; refresh_token: string }> {
   const credentials = Buffer.from(
     `${process.env.AKOYA_CLIENT_ID}:${process.env.AKOYA_CLIENT_SECRET}`
   ).toString('base64')
@@ -61,19 +61,25 @@ export async function exchangeCodeForToken(
 
 export async function fetchAkoyaAccounts(
   connectorId: string,
-  accessToken: string
+  accessToken: string,
+  idToken?: string
 ) {
   const url = `${AKOYA_SANDBOX_PRODUCTS}/accounts/v2/${connectorId}`
-  console.log('[Akoya] fetchAkoyaAccounts url:', url)
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  })
-  if (!res.ok) {
+
+  // Try access_token first, fall back to id_token (Akoya sometimes requires id_token)
+  const tokens = [accessToken, ...(idToken && idToken !== accessToken ? [idToken] : [])]
+
+  for (const token of tokens) {
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (res.ok) return res.json()
     const body = await res.text()
-    console.error('[Akoya] accounts error:', res.status, res.statusText, body)
-    throw new Error(`Failed to fetch accounts: ${res.status} ${res.statusText} — ${body}`)
+    console.error('[Akoya] accounts error with token type:', res.status, body)
+    if (tokens.indexOf(token) === tokens.length - 1) {
+      throw new Error(`Failed to fetch accounts: ${res.status} ${res.statusText} — ${body}`)
+    }
   }
-  return res.json()
 }
 
 export async function fetchAkoyaTransactions(
