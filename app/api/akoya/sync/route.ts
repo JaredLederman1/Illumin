@@ -16,9 +16,9 @@ export async function POST(request: NextRequest) {
     let synced = 0
 
     for (const account of accounts) {
-      if (!account.akoyaToken || !account.akoyaAccountId) continue
+      if (!account.akoyaToken || !account.akoyaAccountId || !account.akoyaConnectorId) continue
 
-      const connectorId = account.institutionName.toLowerCase().includes('schwab') ? 'schwab' : 'capital-one'
+      const connectorId = account.akoyaConnectorId
 
       try {
         // Refresh balance

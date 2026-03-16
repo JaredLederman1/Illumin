@@ -57,10 +57,12 @@ export async function GET(request: NextRequest) {
           last4: akoyaAccount.accountNumber?.slice(-4) ?? null,
           akoyaAccountId: akoyaAccount.accountId ?? akoyaAccount.id,
           akoyaToken: access_token,
+          akoyaConnectorId: connectorId,
         },
         update: {
           balance: akoyaAccount.currentBalance ?? akoyaAccount.balance ?? 0,
           akoyaToken: access_token,
+          akoyaConnectorId: connectorId,
         },
       })
 
