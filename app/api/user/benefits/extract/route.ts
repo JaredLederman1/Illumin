@@ -147,9 +147,6 @@ export async function POST(request: NextRequest) {
     return err(`AI service error: ${msg}`, 'AI_ERROR', 502)
   }
 
-  // ── DEBUG: log DB URL prefix ─────────────────────────────────────────────────
-  console.log('[DEBUG] DATABASE_URL prefix:', process.env.DATABASE_URL?.slice(0, 30) ?? 'UNDEFINED')
-
   // ── Cross-check & totals ─────────────────────────────────────────────────────
   const crossCheck          = crossCheckBenefits(extracted)
   const { totalContractValue, totalBenefitsValue } = calcTotals(extracted)
@@ -196,9 +193,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ benefits, extracted, crossCheck, totalContractValue, totalBenefitsValue, capturedAnnualValue })
   } catch (e) {
-    const dbMsg = e instanceof Error ? e.message : String(e)
-    const urlStatus = process.env.DATABASE_URL ? `SET(${process.env.DATABASE_URL.slice(0, 12)}...)` : 'UNSET'
-    console.error('[benefits/extract] DB error:', dbMsg, 'DATABASE_URL:', urlStatus)
-    return err(`DB error [URL=${urlStatus}]: ${dbMsg}`, 'DB_ERROR', 500)
+    console.error('[benefits/extract] DB error:', e)
+    return err('Failed to save results to database. Your analysis completed successfully but could not be stored.', 'DB_ERROR', 500)
   }
 }
