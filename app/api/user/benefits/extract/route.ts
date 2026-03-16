@@ -8,11 +8,6 @@ import type { ExtractedBenefits } from '@/lib/benefitsAnalysis'
 export type { ExtractedBenefits } from '@/lib/benefitsAnalysis'
 export type { BenefitStatus }     from '@/lib/benefitsAnalysis'
 
-if (!process.env.ANTHROPIC_API_KEY) {
-  console.error('[benefits/extract] ANTHROPIC_API_KEY is not set')
-}
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 const EXTRACTION_PROMPT = `You are an expert at extracting employment compensation and benefits from offer letters and HR documents.
 
@@ -113,9 +108,7 @@ export async function POST(request: NextRequest) {
   // ── Claude extraction (PDF sent natively — no pdf-parse dependency) ──────────
   let extracted: ExtractedBenefits
   try {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return err('Server misconfiguration: AI service not configured', 'CONFIG_ANTHROPIC', 500)
-    }
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
     const message = await anthropic.messages.create({
       model:      'claude-sonnet-4-6',
       max_tokens: 2048,
