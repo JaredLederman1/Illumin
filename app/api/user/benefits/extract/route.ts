@@ -147,6 +147,9 @@ export async function POST(request: NextRequest) {
     return err(`AI service error: ${msg}`, 'AI_ERROR', 502)
   }
 
+  // ── DEBUG: log DB URL prefix ─────────────────────────────────────────────────
+  console.log('[DEBUG] DATABASE_URL prefix:', process.env.DATABASE_URL?.slice(0, 30) ?? 'UNDEFINED')
+
   // ── Cross-check & totals ─────────────────────────────────────────────────────
   const crossCheck          = crossCheckBenefits(extracted)
   const { totalContractValue, totalBenefitsValue } = calcTotals(extracted)
