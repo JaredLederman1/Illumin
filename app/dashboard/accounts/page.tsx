@@ -197,10 +197,12 @@ function AccountsContent() {
             accounts.map((account) => (
               <AccountCard
                 key={account.id}
+                id={account.id}
                 institutionName={account.institutionName}
                 accountType={account.accountType}
                 balance={account.balance}
                 last4={account.last4}
+                onRemove={(id) => setAccounts(prev => prev.filter(a => a.id !== id))}
               />
             ))
           )}
