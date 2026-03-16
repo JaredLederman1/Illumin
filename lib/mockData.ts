@@ -8,8 +8,8 @@ export const mockAccounts = [
     accountType: 'checking',
     balance: 24850.42,
     last4: '3891',
-    akoyaAccountId: null,
-    akoyaToken: null,
+    plaidAccountId: null,
+    plaidAccessToken: null,
     createdAt: new Date('2024-01-15'),
   },
   {
@@ -19,8 +19,8 @@ export const mockAccounts = [
     accountType: 'brokerage',
     balance: 142680.00,
     last4: '7204',
-    akoyaAccountId: null,
-    akoyaToken: null,
+    plaidAccountId: null,
+    plaidAccessToken: null,
     createdAt: new Date('2024-01-15'),
   },
   {
@@ -30,8 +30,8 @@ export const mockAccounts = [
     accountType: 'credit',
     balance: -4820.55,
     last4: '2293',
-    akoyaAccountId: null,
-    akoyaToken: null,
+    plaidAccountId: null,
+    plaidAccessToken: null,
     createdAt: new Date('2024-01-15'),
   },
   {
@@ -41,8 +41,8 @@ export const mockAccounts = [
     accountType: 'savings',
     balance: 52000.00,
     last4: '6601',
-    akoyaAccountId: null,
-    akoyaToken: null,
+    plaidAccountId: null,
+    plaidAccessToken: null,
     createdAt: new Date('2024-01-15'),
   },
 ]

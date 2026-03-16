@@ -18,7 +18,7 @@ Personal wealth management platform offering institutional-grade financial tools
 | Charts | recharts 3.x |
 | AI | `@anthropic-ai/sdk` 0.78.0 + `@anthropic-ai/claude-agent-sdk` 0.2.x |
 | Email | Resend 6.x |
-| Open banking | Akoya API (sandbox) |
+| Open banking | Plaid API (sandbox), `plaid` + `react-plaid-link` |
 | PDF parsing | pdf-parse 2.x (server-only, listed in `serverExternalPackages`) |
 
 **Fonts:**
@@ -62,11 +62,11 @@ Personal wealth management platform offering institutional-grade financial tools
 │       ├── networth/route.ts       # GET net worth
 │       ├── waitlist/route.ts       # POST email to Resend
 │       ├── agent/route.ts          # POST Claude agent (streaming)
-│       ├── akoya/
-│       │   ├── connect/route.ts    # GET — initiates Akoya OAuth redirect
-│       │   ├── callback/route.ts   # GET — OAuth callback, saves accounts/transactions
-│       │   ├── sync/route.ts       # POST — refreshes balances and transactions
-│       │   └── debug/route.ts      # GET — debug token inspection
+│       ├── plaid/
+│       │   ├── create-link-token/route.ts  # GET — creates Plaid Link token
+│       │   ├── exchange-token/route.ts     # POST — exchanges public token, saves accounts/transactions
+│       │   ├── sync/route.ts               # POST — refreshes balances and transactions
+│       │   └── reset/route.ts              # POST — dev-only, clears all accounts/transactions
 │       └── user/
 │           ├── onboarding/route.ts # POST — STUBBED (logs only, no DB save)
 │           ├── score/route.ts      # GET — financial health score
@@ -88,7 +88,7 @@ Personal wealth management platform offering institutional-grade financial tools
 ├── lib/
 │   ├── supabase.ts                 # Lazy-init Proxy client (must stay this way)
 │   ├── prisma.ts                   # PrismaClient singleton with PrismaPg adapter
-│   ├── akoya.ts                    # Akoya API helpers
+│   ├── plaid.ts                    # Plaid API helpers (createLinkToken, exchangePublicToken, etc.)
 │   ├── benefitsAnalysis.ts         # ExtractedBenefits type, crossCheckBenefits, calcTotals
 │   ├── mockData.ts                 # Full mock dataset (accounts, transactions, etc.)
 │   └── data.ts                     # USE_MOCK_DATA flag (currently false)
@@ -110,7 +110,6 @@ Personal wealth management platform offering institutional-grade financial tools
 - `/auth/login`, `/auth/signup`
 - `/admin/login`
 - `/api/waitlist`
-- `/api/akoya/callback`
 
 All other routes: Supabase server client reads the session cookie. No session → redirect to `/auth/login`.
 
@@ -128,7 +127,7 @@ const { data: { user } } = await supabase.auth.getUser(token)
 ```
 User               id, email, createdAt
 Account            id, userId, institutionName, accountType, balance, last4,
-                   akoyaAccountId, akoyaToken, akoyaConnectorId, createdAt
+                   plaidAccountId, plaidAccessToken, plaidItemId, createdAt
 Transaction        id, accountId, merchantName, amount, category, date, pending
 NetWorthSnapshot   id, userId, totalAssets, totalLiabilities, recordedAt
 OnboardingProfile  id, userId, age, annualIncome, savingsRate, retirementAge,
@@ -141,7 +140,7 @@ EmploymentBenefits id, userId, extractedAt, rawExtraction (Json), has401k,
                    actionItemsDone (Json)
 ```
 
-After schema changes: `npx prisma generate` then `npx prisma migrate dev`.
+After schema changes: `npx prisma generate` then `npx prisma db push` (or `npx prisma migrate dev`).
 
 ---
 
@@ -152,7 +151,7 @@ After schema changes: `npx prisma generate` then `npx prisma migrate dev`.
 | Landing page | Complete | Copy in `LandingClient.tsx`, styles in `landing.module.css` |
 | Auth (login/signup) | Complete | Supabase |
 | Dashboard overview | Complete | Mock data fallback if API fails |
-| Accounts page | Complete | Akoya connect modal, remove account flow |
+| Accounts page | Complete | Plaid Link modal, remove account flow |
 | Transactions page | Complete | Filter by account + category |
 | Cash flow | Complete | Monthly bar chart |
 | Forecast / projections | Complete | |
@@ -161,7 +160,7 @@ After schema changes: `npx prisma generate` then `npx prisma migrate dev`.
 | Onboarding flow | UI complete, API stubbed | `POST /api/user/onboarding` logs only, no DB save |
 | Admin dashboard | Partial | Basic Supabase integration, not fully built |
 | Profile page | Exists | Extent of implementation unclear |
-| Real account data | Complete | Via Akoya OAuth + sync |
+| Real account data | Complete | Via Plaid Link + sync |
 | Mock data fallback | Complete | `lib/data.ts` `USE_MOCK_DATA` flag |
 
 ---
@@ -169,7 +168,6 @@ After schema changes: `npx prisma generate` then `npx prisma migrate dev`.
 ## Known Issues / TODOs
 
 - **`POST /api/user/onboarding`** does not persist to the database. It only logs the payload. The `OnboardingProfile` model exists in the schema but the route needs a DB save implemented.
-- **Akoya callback** hardcodes `userId = 'user_demo'` (line ~47 in `callback/route.ts`). In production this must read from the session cookie.
 - **`EmploymentBenefits` DB schema** is missing newer fields added to `ExtractedBenefits` in `lib/benefitsAnalysis.ts` (e.g., `rsuGrantValue`, `stockOptionShares`, `paidSickLeaveDays`). These are stored in `rawExtraction` JSON but not as individual columns. A migration is needed to add them as columns if individual querying is required.
 
 ---
@@ -209,9 +207,9 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 DATABASE_URL=                    # postgresql://... (standard URL)
-AKOYA_CLIENT_ID=
-AKOYA_CLIENT_SECRET=
-AKOYA_REDIRECT_URI=              # http://localhost:3000/api/akoya/callback
+PLAID_CLIENT_ID=
+PLAID_SECRET=
+PLAID_ENV=sandbox
 ANTHROPIC_API_KEY=               # For benefits PDF extraction
 RESEND_API_KEY=                  # For waitlist
 RESEND_AUDIENCE_ID=              # Resend contact list ID
@@ -234,8 +232,9 @@ Motion: 150ms ease hovers, 300-400ms enter (opacity + translateY), 30ms row stag
 
 ---
 
-## Akoya Sandbox
+## Plaid Sandbox
 
-- IDP: `https://sandbox-idp.ddp.akoya.com`
-- Products: `https://sandbox-products.ddp.akoya.com`
-- Test connector: `mikomo` (Mikomo Bank sandbox), `schwab`, `capital-one`
+- Environment: `sandbox` (configured via `PLAID_ENV=sandbox`)
+- Test credentials: username `user_good`, password `pass_good`
+- Sandbox institutions available in Plaid Link automatically
+- `lib/plaid.ts` exports: `plaidClient`, `createLinkToken`, `exchangePublicToken`, `getAccounts`, `getTransactions`, `syncAccountBalances`

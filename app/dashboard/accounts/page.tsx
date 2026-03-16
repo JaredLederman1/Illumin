@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useState, useEffect, useRef, Suspense, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { usePlaidLink } from 'react-plaid-link'
 import AccountCard from '@/components/ui/AccountCard'
 import { fetchAccounts } from '@/lib/data'
 
@@ -14,11 +14,16 @@ interface Account {
   last4: string | null
 }
 
-const CONNECTORS = [
-  { id: 'mikomo',      label: 'Mikomo Bank (Sandbox)' },
-  { id: 'schwab',      label: 'Charles Schwab' },
-  { id: 'capital-one', label: 'Capital One' },
-]
+interface PlaidOnSuccessMetadata {
+  institution: { name: string; institution_id: string } | null
+  accounts: Array<{
+    id: string
+    name: string
+    mask: string | null
+    type: string
+    subtype: string | null
+  }>
+}
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
@@ -43,7 +48,6 @@ function InstitutionGroup({
 
   return (
     <div style={{ border: '1px solid rgba(184,145,58,0.15)', borderRadius: '2px', overflow: 'hidden' }}>
-      {/* Institution header row */}
       <button
         onClick={() => setOpen(o => !o)}
         style={{
@@ -84,7 +88,6 @@ function InstitutionGroup({
         </div>
       </button>
 
-      {/* Account rows */}
       <AnimatePresence initial={false}>
         {open && (
           <motion.div
@@ -111,19 +114,83 @@ function InstitutionGroup({
   )
 }
 
+function ConnectButton({
+  onSuccess,
+}: {
+  onSuccess: (accounts: Account[]) => void
+}) {
+  const [linkToken, setLinkToken] = useState<string | null>(null)
+  const [connecting, setConnecting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/plaid/create-link-token')
+      .then(r => r.json())
+      .then(data => {
+        if (data.linkToken) setLinkToken(data.linkToken)
+        else setError('Could not initialize connection. Check Plaid credentials.')
+      })
+      .catch(() => setError('Could not initialize connection.'))
+  }, [])
+
+  const handlePlaidSuccess = useCallback(
+    async (publicToken: string, metadata: PlaidOnSuccessMetadata) => {
+      setConnecting(true)
+      setError(null)
+      try {
+        const res = await fetch('/api/plaid/exchange-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            publicToken,
+            institutionName: metadata.institution?.name ?? 'Connected Institution',
+            accounts: metadata.accounts,
+          }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error ?? 'Exchange failed')
+        onSuccess(data.accounts ?? [])
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Connection failed')
+      } finally {
+        setConnecting(false)
+      }
+    },
+    [onSuccess]
+  )
+
+  const { open, ready } = usePlaidLink({
+    token: linkToken ?? '',
+    onSuccess: handlePlaidSuccess,
+  })
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+      <button
+        onClick={() => open()}
+        disabled={!ready || connecting}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 14px',
+          backgroundColor: 'transparent', border: '1px solid rgba(184,145,58,0.35)', borderRadius: '2px',
+          color: '#B8913A', fontSize: '11px', fontFamily: 'var(--font-mono)', letterSpacing: '0.06em',
+          cursor: (!ready || connecting) ? 'not-allowed' : 'pointer',
+          opacity: (!ready || connecting) ? 0.6 : 1,
+        }}
+      >
+        {connecting ? 'Connecting...' : '+ Connect Account'}
+      </button>
+      {error && (
+        <p style={{ fontSize: '11px', color: '#8B2635', fontFamily: 'var(--font-mono)' }}>{error}</p>
+      )}
+    </div>
+  )
+}
+
 function AccountsContent() {
-  const searchParams = useSearchParams()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(true)
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-  const [connecting, setConnecting] = useState(false)
   const [resetting, setResetting] = useState(false)
-  const [pendingConnector, setPendingConnector] = useState<{ id: string; label: string } | null>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-
-  const success = searchParams.get('success')
-  const error = searchParams.get('error')
-  const errorDesc = searchParams.get('desc')
+  const [banner, setBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   useEffect(() => {
     fetchAccounts()
@@ -132,38 +199,36 @@ function AccountsContent() {
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
   const handleRemove = (id: string) => setAccounts(prev => prev.filter(a => a.id !== id))
+
+  const handleConnectSuccess = (newAccounts: Account[]) => {
+    setAccounts(prev => {
+      const existingIds = new Set(prev.map(a => a.id))
+      const merged = [...prev, ...newAccounts.filter(a => !existingIds.has(a.id))]
+      return merged
+    })
+    setBanner({ type: 'success', message: `${newAccounts.length} account${newAccounts.length !== 1 ? 's' : ''} connected successfully.` })
+  }
 
   const handleReset = async () => {
     if (!confirm('Delete all accounts and transactions so you can re-connect?')) return
     setResetting(true)
     try {
-      const res = await fetch('/api/akoya/reset', { method: 'POST' })
+      const res = await fetch('/api/plaid/reset', { method: 'POST' })
       const data = await res.json()
       if (data.success) {
         setAccounts([])
-        alert(`Reset complete: removed ${data.deletedAccounts} account(s) and ${data.deletedTransactions} transaction(s).`)
+        setBanner({ type: 'success', message: `Reset complete: removed ${data.deletedAccounts} account(s) and ${data.deletedTransactions} transaction(s).` })
       } else {
-        alert('Reset failed: ' + (data.error ?? 'unknown error'))
+        setBanner({ type: 'error', message: 'Reset failed: ' + (data.error ?? 'unknown error') })
       }
     } catch {
-      alert('Reset request failed')
+      setBanner({ type: 'error', message: 'Reset request failed' })
     } finally {
       setResetting(false)
     }
   }
 
-  // Group accounts by institution
   const grouped = accounts.reduce<Record<string, Account[]>>((acc, a) => {
     if (!acc[a.institutionName]) acc[a.institutionName] = []
     acc[a.institutionName].push(a)
@@ -178,18 +243,23 @@ function AccountsContent() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {success === 'connected' && (
-        <div style={{ padding: '13px 18px', backgroundColor: 'rgba(45,106,79,0.06)', border: '1px solid rgba(45,106,79,0.2)', borderRadius: '2px', color: '#2D6A4F', fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
-          Account connected successfully. Your data has been synced.
-        </div>
-      )}
-      {error && (
-        <div style={{ padding: '13px 18px', backgroundColor: 'rgba(139,38,53,0.06)', border: '1px solid rgba(139,38,53,0.2)', borderRadius: '2px', color: '#8B2635', fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
-          {errorDesc
-            ? `Connection failed: ${decodeURIComponent(errorDesc)}`
-            : error === 'not_configured'
-              ? 'Akoya credentials not configured. Restart the dev server after setting .env.local.'
-              : 'Connection failed. Please try again.'}
+      {banner && (
+        <div style={{
+          padding: '13px 18px',
+          backgroundColor: banner.type === 'success' ? 'rgba(45,106,79,0.06)' : 'rgba(139,38,53,0.06)',
+          border: `1px solid ${banner.type === 'success' ? 'rgba(45,106,79,0.2)' : 'rgba(139,38,53,0.2)'}`,
+          borderRadius: '2px',
+          color: banner.type === 'success' ? '#2D6A4F' : '#8B2635',
+          fontFamily: 'var(--font-mono)', fontSize: '12px',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          {banner.message}
+          <button
+            onClick={() => setBanner(null)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontSize: '14px', lineHeight: 1, opacity: 0.6, padding: '0 0 0 12px' }}
+          >
+            x
+          </button>
         </div>
       )}
 
@@ -226,55 +296,16 @@ function AccountsContent() {
               onMouseEnter={e => !resetting && (e.currentTarget.style.backgroundColor = 'rgba(139,38,53,0.05)')}
               onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
             >
-              {resetting ? 'Resetting…' : 'Reset [dev]'}
+              {resetting ? 'Resetting...' : 'Reset [dev]'}
             </button>
 
-          <div ref={dropdownRef} style={{ position: 'relative' }}>
-            <button
-              onClick={() => setDropdownOpen(o => !o)}
-              disabled={connecting}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 14px',
-                backgroundColor: 'transparent', border: '1px solid rgba(184,145,58,0.35)', borderRadius: '2px',
-                color: '#B8913A', fontSize: '11px', fontFamily: 'var(--font-mono)', letterSpacing: '0.06em',
-                cursor: connecting ? 'not-allowed' : 'pointer', opacity: connecting ? 0.6 : 1,
-              }}
-            >
-              {connecting ? 'Connecting…' : '+ Connect Institution'}
-              <span style={{ fontSize: '9px', opacity: 0.6 }}>{dropdownOpen ? '▲' : '▼'}</span>
-            </button>
-
-            {dropdownOpen && (
-              <div style={{
-                position: 'absolute', top: 'calc(100% + 6px)', right: 0, minWidth: '210px',
-                backgroundColor: '#FFFFFF', border: '1px solid rgba(184,145,58,0.25)',
-                borderRadius: '2px', overflow: 'hidden', zIndex: 50, boxShadow: '0 8px 24px rgba(26,23,20,0.10)',
-              }}>
-                {CONNECTORS.map((c, i) => (
-                  <button
-                    key={c.id}
-                    onClick={() => { setDropdownOpen(false); setPendingConnector(c) }}
-                    style={{
-                      display: 'block', width: '100%', textAlign: 'left', padding: '11px 16px',
-                      backgroundColor: 'transparent', border: 'none',
-                      borderTop: i === 0 ? 'none' : '1px solid rgba(184,145,58,0.1)',
-                      color: '#1A1714', fontSize: '12px', fontFamily: 'var(--font-mono)', cursor: 'pointer',
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(184,145,58,0.05)')}
-                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+            <ConnectButton onSuccess={handleConnectSuccess} />
           </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {loading ? (
-            <p style={{ color: '#A89880', fontFamily: 'var(--font-mono)', fontSize: '12px', padding: '20px 0' }}>Loading accounts…</p>
+            <p style={{ color: '#A89880', fontFamily: 'var(--font-mono)', fontSize: '12px', padding: '20px 0' }}>Loading accounts...</p>
           ) : Object.keys(grouped).length === 0 ? (
             <p style={{ color: '#A89880', fontFamily: 'var(--font-mono)', fontSize: '12px', padding: '20px 0' }}>No accounts connected yet.</p>
           ) : (
@@ -289,69 +320,6 @@ function AccountsContent() {
           )}
         </div>
       </div>
-
-      {/* Redirect confirmation modal */}
-      <AnimatePresence>
-        {pendingConnector && (
-          <motion.div
-            key="redirect-overlay"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            onClick={() => setPendingConnector(null)}
-            style={{
-              position: 'fixed', inset: 0, backgroundColor: 'rgba(8,11,15,0.55)',
-              backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', zIndex: 200,
-            }}
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 12, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.97 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              onClick={e => e.stopPropagation()}
-              style={{
-                backgroundColor: '#FFFFFF', border: '1px solid rgba(184,145,58,0.2)',
-                borderRadius: '3px', padding: '32px 36px', maxWidth: '420px', width: '100%', margin: '0 20px',
-              }}
-            >
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: '#B8913A', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '14px' }}>
-                Secure redirect
-              </p>
-              <p style={{ fontFamily: 'var(--font-serif)', fontSize: '20px', fontWeight: 400, color: '#1A1714', marginBottom: '12px', lineHeight: 1.3 }}>
-                You&apos;re leaving Illumin
-              </p>
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#4A5568', lineHeight: 1.7, marginBottom: '28px' }}>
-                You&apos;ll be redirected to <span style={{ color: '#1A1714', fontWeight: 500 }}>{pendingConnector.label}</span> to securely authorize Illumin to read your account data. No credentials are shared with Illumin.
-              </p>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  onClick={() => { setConnecting(true); setPendingConnector(null); window.location.href = `/api/akoya/connect?connectorId=${pendingConnector.id}` }}
-                  style={{
-                    flex: 1, padding: '11px 0', backgroundColor: '#B8913A', border: 'none', borderRadius: '2px',
-                    color: '#FFFFFF', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.06em', cursor: 'pointer',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.opacity = '0.88')}
-                  onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
-                >
-                  Continue to {pendingConnector.label}
-                </button>
-                <button
-                  onClick={() => setPendingConnector(null)}
-                  style={{
-                    padding: '11px 18px', backgroundColor: 'transparent', border: '1px solid rgba(184,145,58,0.25)',
-                    borderRadius: '2px', color: '#8A95A3', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.06em', cursor: 'pointer',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.color = '#1A1714')}
-                  onMouseLeave={e => (e.currentTarget.style.color = '#8A95A3')}
-                >
-                  Cancel
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   )
 }

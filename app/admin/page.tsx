@@ -169,7 +169,7 @@ export default function AdminPage() {
         {/* Placeholder panels */}
         {[
           { title: 'Users', note: 'User management coming soon' },
-          { title: 'Integrations', note: 'Akoya connection status and token management' },
+          { title: 'Integrations', note: 'Plaid connection status and token management' },
           { title: 'System', note: 'Database health and environment status' },
         ].map(panel => (
           <div
