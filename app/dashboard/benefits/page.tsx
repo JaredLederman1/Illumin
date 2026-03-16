@@ -275,8 +275,26 @@ export default function BenefitsPage() {
                   e.baseSalary && { label: 'Base salary', value: fmt(e.baseSalary), sub: 'annual' },
                   e.annualBonusTargetPct && e.baseSalary && { label: 'Bonus target', value: fmt(e.baseSalary * e.annualBonusTargetPct), sub: `${(e.annualBonusTargetPct * 100).toFixed(0)}% of base` },
                   e.signingBonus && { label: 'Signing bonus', value: fmt(e.signingBonus), sub: 'one-time' },
-                  e.hasRSUs && e.rsuTotalShares && { label: 'RSU grant', value: `${e.rsuTotalShares.toLocaleString()} shares`, sub: `${e.rsuVestYears ?? 4}-yr vest${e.rsuCliffYears ? ` · ${e.rsuCliffYears}-yr cliff` : ''}` },
+                  e.hasStockOptions && e.stockOptionShares && {
+                    label: `Stock options${e.stockOptionType ? ` (${e.stockOptionType})` : ''}`,
+                    value: `${e.stockOptionShares.toLocaleString()} options`,
+                    sub: [
+                      `${e.stockOptionVestYears ?? 4}-yr vest`,
+                      e.stockOptionCliffYears ? `${e.stockOptionCliffYears}-yr cliff` : null,
+                      e.stockOptionStrikePrice ? `strike ${fmt(e.stockOptionStrikePrice)}` : null,
+                    ].filter(Boolean).join(' · '),
+                  },
+                  e.hasRSUs && (e.rsuTotalShares || e.rsuGrantValue) && {
+                    label: 'RSU grant',
+                    value: e.rsuGrantValue ? fmt(e.rsuGrantValue) : `${e.rsuTotalShares!.toLocaleString()} shares`,
+                    sub: `${e.rsuVestYears ?? 4}-yr vest${e.rsuCliffYears ? ` · ${e.rsuCliffYears}-yr cliff` : ''}`,
+                  },
                   e.ptoDays && { label: 'PTO', value: `${e.ptoDays} days`, sub: 'annual' },
+                  (e.paidSickLeaveUnlimited || e.paidSickLeaveDays) && {
+                    label: 'Sick leave',
+                    value: e.paidSickLeaveUnlimited ? 'Unlimited' : `${e.paidSickLeaveDays} days`,
+                    sub: 'annual',
+                  },
                   e.hasSeverance && e.severanceMonths && { label: 'Severance', value: `${e.severanceMonths} months`, sub: 'qualifying separation' },
                 ].filter(Boolean).map((stat, i) => stat && (
                   <div key={stat.label}>

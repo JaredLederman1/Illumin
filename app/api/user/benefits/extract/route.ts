@@ -26,9 +26,16 @@ Extract ALL of the following from the provided document and return ONLY valid JS
   "hasFSA": boolean,
   "fsaLimit": number | null,
   "hasRSUs": boolean,
+  "rsuGrantValue": number | null,
   "rsuTotalShares": number | null,
   "rsuVestYears": number | null,
   "rsuCliffYears": number | null,
+  "hasStockOptions": boolean,
+  "stockOptionShares": number | null,
+  "stockOptionStrikePrice": number | null,
+  "stockOptionVestYears": number | null,
+  "stockOptionCliffYears": number | null,
+  "stockOptionType": "ISO" | "NSO" | null,
   "hasESPP": boolean,
   "esppDiscount": number | null,
   "hasCommuterBenefits": boolean,
@@ -38,6 +45,8 @@ Extract ALL of the following from the provided document and return ONLY valid JS
   "homeOfficeStipend": number | null,
   "professionalDevBudget": number | null,
   "ptoDays": number | null,
+  "paidSickLeaveDays": number | null,
+  "paidSickLeaveUnlimited": boolean,
   "hasSeverance": boolean,
   "severanceMonths": number | null,
   "hasLifeInsurance": boolean,
@@ -48,6 +57,9 @@ Rules:
 - matchRate: fraction, e.g. 0.5 for "50% match"
 - matchCap: fraction of salary, e.g. 0.06 for "up to 6% of salary"
 - annualBonusTargetPct: fraction, e.g. 0.15 for "15% bonus target"
+- Stock options: set hasStockOptions=true whenever stock options, ISOs, NSOs, incentive stock options, or non-qualified stock options are mentioned. Extract share count, strike/exercise price, vest schedule, and type (ISO or NSO). Stock options are DISTINCT from RSUs — do not conflate them.
+- RSUs: set hasRSUs=true whenever RSUs, restricted stock units, or equity grants are mentioned. Set rsuGrantValue to the total dollar value if stated (e.g. "$200,000 in RSUs" -> 200000). Set rsuTotalShares only if a share count is explicitly given. Always extract BOTH if both are mentioned.
+- paidSickLeaveDays: number of sick days if a specific count is mentioned. Set paidSickLeaveUnlimited=true if the policy is described as unlimited.
 - Use null for numbers not mentioned, false for booleans not mentioned`
 
 function err(message: string, code: string, status: number) {

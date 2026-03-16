@@ -15,9 +15,16 @@ export interface ExtractedBenefits {
   hasFSA: boolean
   fsaLimit: number | null
   hasRSUs: boolean
+  rsuGrantValue: number | null
   rsuTotalShares: number | null
   rsuVestYears: number | null
   rsuCliffYears: number | null
+  hasStockOptions: boolean
+  stockOptionShares: number | null
+  stockOptionStrikePrice: number | null
+  stockOptionVestYears: number | null
+  stockOptionCliffYears: number | null
+  stockOptionType: 'ISO' | 'NSO' | null
   hasESPP: boolean
   esppDiscount: number | null
   hasCommuterBenefits: boolean
@@ -27,6 +34,8 @@ export interface ExtractedBenefits {
   homeOfficeStipend: number | null
   professionalDevBudget: number | null
   ptoDays: number | null
+  paidSickLeaveDays: number | null
+  paidSickLeaveUnlimited: boolean
   hasSeverance: boolean
   severanceMonths: number | null
   hasLifeInsurance: boolean
@@ -192,15 +201,43 @@ export function crossCheckBenefits(e: ExtractedBenefits): BenefitStatus[] {
   }
 
   // RSUs
-  if (e.hasRSUs && e.rsuTotalShares) {
-    const annualShares = Math.round(e.rsuTotalShares / (e.rsuVestYears ?? 4))
+  if (e.hasRSUs && (e.rsuTotalShares || e.rsuGrantValue)) {
+    const vestYears = e.rsuVestYears ?? 4
+    const annualValue = e.rsuGrantValue ? Math.round(e.rsuGrantValue / vestYears) : null
+    const grantDisplay = e.rsuGrantValue
+      ? `${fmt(e.rsuGrantValue)} RSU grant`
+      : `${e.rsuTotalShares!.toLocaleString()} RSU shares`
+    const annualDisplay = e.rsuGrantValue
+      ? ` (~${fmt(annualValue!)} vesting/yr)`
+      : e.rsuTotalShares
+        ? ` (~${Math.round(e.rsuTotalShares / vestYears).toLocaleString()} shares/yr)`
+        : ''
     results.push({
       label: 'RSU Equity Grant',
-      annualValue: null,
+      annualValue,
       captured: true,
-      evidence: `${e.rsuTotalShares.toLocaleString()} shares vesting over ${e.rsuVestYears ?? 4} years (~${annualShares.toLocaleString()} shares/yr)${e.rsuCliffYears ? ` with a ${e.rsuCliffYears}-year cliff` : ''}. Vesting is automatic after grant acceptance.`,
+      evidence: `${grantDisplay} vesting over ${vestYears} years${annualDisplay}${e.rsuCliffYears ? ` with a ${e.rsuCliffYears}-year cliff` : ''}. Vesting is automatic after grant acceptance.`,
       urgency: 'info',
       action: 'Confirm grant agreement is signed. Plan your tax strategy for vesting events — RSUs are taxed as ordinary income at vest.',
+    })
+  }
+
+  // Stock options
+  if (e.hasStockOptions && e.stockOptionShares) {
+    const vestYears = e.stockOptionVestYears ?? 4
+    const annualShares = Math.round(e.stockOptionShares / vestYears)
+    const typeLabel = e.stockOptionType ? ` (${e.stockOptionType})` : ''
+    const strikeNote = e.stockOptionStrikePrice ? ` at a strike price of ${fmt(e.stockOptionStrikePrice)}/share` : ''
+    const cliffNote = e.stockOptionCliffYears ? ` with a ${e.stockOptionCliffYears}-year cliff` : ''
+    results.push({
+      label: `Stock Options${typeLabel}`,
+      annualValue: null,
+      captured: null,
+      evidence: `${e.stockOptionShares.toLocaleString()} options vesting over ${vestYears} years (~${annualShares.toLocaleString()} options/yr)${strikeNote}${cliffNote}. Value depends on future share price above strike.`,
+      urgency: 'info',
+      action: e.stockOptionType === 'ISO'
+        ? 'Sign the grant agreement and understand the 90-day exercise window upon departure. ISOs have favorable tax treatment if held 1+ year after exercise and 2+ years after grant.'
+        : 'Sign the grant agreement. NSOs are taxed as ordinary income at exercise on the spread between strike and FMV.',
     })
   }
 
@@ -237,6 +274,20 @@ export function crossCheckBenefits(e: ExtractedBenefits): BenefitStatus[] {
       evidence: 'Typically auto-enrolled. Confirm coverage percentages with HR.',
       urgency: 'info',
       action: 'Confirm STD/LTD coverage levels and elimination periods with HR.',
+    })
+  }
+
+  // Paid sick leave
+  if (e.paidSickLeaveUnlimited || e.paidSickLeaveDays) {
+    results.push({
+      label: 'Paid Sick Leave',
+      annualValue: null,
+      captured: null,
+      evidence: e.paidSickLeaveUnlimited
+        ? 'Unlimited paid sick leave per company policy.'
+        : `${e.paidSickLeaveDays} days of paid sick leave per year.`,
+      urgency: 'info',
+      action: 'Confirm sick leave accrual or carry-over rules with HR.',
     })
   }
 

@@ -183,29 +183,24 @@ export default function LandingClient() {
 
       {/* ── PROBLEM ─────────────────────────────────────────── */}
       <motion.section
-        className={styles.section}
+        className={`${styles.section} ${styles.centeredSection}`}
         variants={inView}
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.1 }}
       >
         <p className={styles.sectionEyebrow}>The problem</p>
-        <h2 className={styles.sectionHeadline}>Wealth management, gated. Just not for you.</h2>
+        <h2 className={styles.sectionHeadline}>Wealth Management For All,<br /><em>Not Gust Millionaires.</em></h2>
         <p className={styles.sectionSub}>
           Private banks and RIAs offer sophisticated financial planning: portfolio construction, tax optimization,
-          wealth projections, to clients with $1M+ in assets. Everyone else gets a budgeting app. Illumin closes that gap.
+          wealth projections, exclusively to clients with millions in assets. Everyone else gets a budgeting app. Illumin closes that gap.
         </p>
         <div className={styles.problemGrid}>
+          <div className={styles.problemRowHeader}><span className={styles.problemRowHeaderText}>Today</span></div>
           <div className={styles.problemCell}>
-            <p className={styles.problemCellLabel}>What private wealth management offers</p>
+            <p className={styles.problemCellLabel}>Private wealth management</p>
             <p className={styles.problemCellText}>
               Portfolio construction, tax planning, wealth projections. <strong>Financial infrastructure that actually moves the needle.</strong>
-            </p>
-          </div>
-          <div className={styles.problemCell}>
-            <p className={styles.problemCellLabel}>Who gets access</p>
-            <p className={styles.problemCellText}>
-              Clients with <strong>$1M+ in investable assets.</strong> A dedicated advisor. A 1&ndash;2% AUM fee, annually.
             </p>
           </div>
           <div className={styles.problemCell}>
@@ -214,10 +209,17 @@ export default function LandingClient() {
               Budgeting apps. Spending categories. <strong>Transaction lists.</strong> Tools designed for awareness, not optimization.
             </p>
           </div>
+          <div className={styles.problemRowHeader}><span className={styles.problemRowHeaderText}>With Illumin</span></div>
           <div className={styles.problemCell}>
-            <p className={styles.problemCellLabel}>What Illumin gives you</p>
+            <p className={styles.problemCellLabel}>The platform</p>
             <p className={styles.problemCellText}>
-              The full platform. Net worth, investments, cash flow, opportunity cost, and a health score. <strong>No advisor required. No minimum.</strong>
+              Net worth tracking, portfolio analysis, cash flow intelligence, opportunity cost modeling, wealth trajectory projections, and a financial health score. <strong>A complete suite that outpaces what most RIAs offer their clients.</strong>
+            </p>
+          </div>
+          <div className={styles.problemCell}>
+            <p className={styles.problemCellLabel}>What changes</p>
+            <p className={styles.problemCellText}>
+              <strong>No minimums. No fees. No advisor required.</strong> Access that was kept from you, now yours by default.
             </p>
           </div>
         </div>

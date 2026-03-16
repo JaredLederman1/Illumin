@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 import AccountCard from '@/components/ui/AccountCard'
 import { mockAccounts, fetchAccounts } from '@/lib/data'
 
@@ -29,6 +30,7 @@ function AccountsContent() {
   const [loading, setLoading] = useState(true)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [connecting, setConnecting] = useState(false)
+  const [pendingConnector, setPendingConnector] = useState<{ id: string; label: string } | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const success = searchParams.get('success')
@@ -52,10 +54,16 @@ function AccountsContent() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const handleConnect = (connectorId: string) => {
-    setConnecting(true)
+  const handleSelectConnector = (connector: { id: string; label: string }) => {
     setDropdownOpen(false)
-    window.location.href = `/api/akoya/connect?connectorId=${connectorId}`
+    setPendingConnector(connector)
+  }
+
+  const handleConfirmConnect = () => {
+    if (!pendingConnector) return
+    setConnecting(true)
+    setPendingConnector(null)
+    window.location.href = `/api/akoya/connect?connectorId=${pendingConnector.id}`
   }
 
   const totalAssets = accounts.filter(a => a.balance > 0).reduce((s, a) => s + a.balance, 0)
@@ -156,7 +164,7 @@ function AccountsContent() {
                 {CONNECTORS.map((c, i) => (
                   <button
                     key={c.id}
-                    onClick={() => handleConnect(c.id)}
+                    onClick={() => handleSelectConnector(c)}
                     style={{
                       display: 'block',
                       width: '100%',
@@ -198,6 +206,98 @@ function AccountsContent() {
           )}
         </div>
       </div>
+
+      {/* Redirect confirmation modal */}
+      <AnimatePresence>
+        {pendingConnector && (
+          <motion.div
+            key="redirect-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            onClick={() => setPendingConnector(null)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(8,11,15,0.55)',
+              backdropFilter: 'blur(3px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 200,
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 12, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.97 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              onClick={e => e.stopPropagation()}
+              style={{
+                backgroundColor: '#FFFFFF',
+                border: '1px solid rgba(184,145,58,0.2)',
+                borderRadius: '3px',
+                padding: '32px 36px',
+                maxWidth: '420px',
+                width: '100%',
+                margin: '0 20px',
+              }}
+            >
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: '#B8913A', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '14px' }}>
+                Secure redirect
+              </p>
+              <p style={{ fontFamily: 'var(--font-serif)', fontSize: '20px', fontWeight: 400, color: '#1A1714', marginBottom: '12px', lineHeight: 1.3 }}>
+                You&apos;re leaving Illumin
+              </p>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#4A5568', lineHeight: 1.7, marginBottom: '28px' }}>
+                You&apos;ll be redirected to <span style={{ color: '#1A1714', fontWeight: 500 }}>{pendingConnector.label}</span> to securely authorize Illumin to read your account data. No credentials are shared with Illumin.
+              </p>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={handleConfirmConnect}
+                  style={{
+                    flex: 1,
+                    padding: '11px 0',
+                    backgroundColor: '#B8913A',
+                    border: 'none',
+                    borderRadius: '2px',
+                    color: '#FFFFFF',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '11px',
+                    letterSpacing: '0.06em',
+                    cursor: 'pointer',
+                    transition: 'opacity 150ms ease',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = '0.88')}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+                >
+                  Continue to {pendingConnector.label}
+                </button>
+                <button
+                  onClick={() => setPendingConnector(null)}
+                  style={{
+                    padding: '11px 18px',
+                    backgroundColor: 'transparent',
+                    border: '1px solid rgba(184,145,58,0.25)',
+                    borderRadius: '2px',
+                    color: '#8A95A3',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '11px',
+                    letterSpacing: '0.06em',
+                    cursor: 'pointer',
+                    transition: 'color 150ms ease',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.color = '#1A1714')}
+                  onMouseLeave={e => (e.currentTarget.style.color = '#8A95A3')}
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
