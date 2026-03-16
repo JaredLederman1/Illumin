@@ -58,13 +58,16 @@ export async function fetchAkoyaAccounts(
   connectorId: string,
   accessToken: string
 ) {
-  const res = await fetch(
-    `${AKOYA_SANDBOX_PRODUCTS}/accounts/v2/${connectorId}`,
-    {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    }
-  )
-  if (!res.ok) throw new Error(`Failed to fetch accounts: ${res.statusText}`)
+  const url = `${AKOYA_SANDBOX_PRODUCTS}/accounts/v2/${connectorId}`
+  console.log('[Akoya] fetchAkoyaAccounts url:', url)
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  if (!res.ok) {
+    const body = await res.text()
+    console.error('[Akoya] accounts error:', res.status, res.statusText, body)
+    throw new Error(`Failed to fetch accounts: ${res.status} ${res.statusText} — ${body}`)
+  }
   return res.json()
 }
 
