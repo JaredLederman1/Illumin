@@ -51,7 +51,12 @@ export async function exchangeCodeForToken(
     throw new Error(`Token exchange failed: ${err}`)
   }
 
-  return res.json()
+  const tokenData = await res.json()
+  console.log('[Akoya] token response keys:', Object.keys(tokenData))
+  console.log('[Akoya] token_type:', tokenData.token_type)
+  console.log('[Akoya] scope:', tokenData.scope)
+  console.log('[Akoya] access_token prefix:', tokenData.access_token?.slice(0, 40))
+  return tokenData
 }
 
 export async function fetchAkoyaAccounts(
