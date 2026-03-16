@@ -119,7 +119,7 @@ export default function LandingClient() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: 'easeOut', delay: 0.35 }}
         >
-          You can&apos;t fix<br /><em>what you can&apos;t see.</em>
+          Your Personal<br /><em>Wealth Management.</em>
         </motion.h1>
 
         <motion.div
