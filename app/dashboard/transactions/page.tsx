@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import TransactionRow from '@/components/ui/TransactionRow'
-import { mockTransactions, mockAccounts } from '@/lib/data'
+import Link from 'next/link'
 
 const CATEGORIES = ['All', 'Income', 'Groceries', 'Dining', 'Entertainment', 'Transport', 'Utilities', 'Shopping', 'Health', 'Travel']
 const PAGE_SIZE = 10
@@ -40,8 +40,10 @@ export default function TransactionsPage() {
   const [category,      setCategory]      = useState('All')
   const [accountFilter, setAccountFilter] = useState('All')
   const [page,          setPage]          = useState(1)
-  const [accounts,      setAccounts]      = useState<Account[]>(mockAccounts)
-  const [transactions,  setTransactions]  = useState<Transaction[]>(mockTransactions as Transaction[])
+  const [loading,       setLoading]       = useState(true)
+  const [accounts,      setAccounts]      = useState<Account[]>([])
+  const [transactions,  setTransactions]  = useState<Transaction[]>([])
+  const [loadedReal,    setLoadedReal]    = useState(false)
 
   useEffect(() => {
     fetch('/api/accounts')
@@ -52,8 +54,14 @@ export default function TransactionsPage() {
     // Fetch a generous batch; client-side filtering handles search, category, and account
     fetch('/api/transactions?limit=500')
       .then(r => r.json())
-      .then(d => { if (d.transactions?.length) setTransactions(d.transactions) })
+      .then(d => {
+        if (Array.isArray(d.transactions)) {
+          setTransactions(d.transactions)
+          setLoadedReal(true)
+        }
+      })
       .catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
 
   const filtered = useMemo(() => {
@@ -67,6 +75,36 @@ export default function TransactionsPage() {
 
   const paginated   = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
   const totalPages  = Math.ceil(filtered.length / PAGE_SIZE)
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '320px' }}>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#A89880', letterSpacing: '0.06em' }}>Loading…</p>
+      </div>
+    )
+  }
+
+  if (loadedReal && transactions.length === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', gap: '20px', textAlign: 'center' }}
+      >
+        <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: '1px solid rgba(184,145,58,0.25)', backgroundColor: 'rgba(184,145,58,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+          ◈
+        </div>
+        <div>
+          <p style={{ fontFamily: 'var(--font-serif)', fontSize: '22px', fontWeight: 400, color: '#1A1714', marginBottom: '8px' }}>No transactions yet</p>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#A89880', lineHeight: 1.7 }}>Connect a bank account to import your transaction history.</p>
+        </div>
+        <Link href="/dashboard/accounts" style={{ padding: '10px 24px', backgroundColor: '#B8913A', border: 'none', borderRadius: '2px', color: '#FFFFFF', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', textDecoration: 'none', display: 'inline-block' }}>
+          Connect an Account
+        </Link>
+      </motion.div>
+    )
+  }
 
   const pageBtn = (active: boolean) => ({
     padding: '6px 14px',
@@ -123,7 +161,7 @@ export default function TransactionsPage() {
       }}>
         {paginated.length === 0 ? (
           <p style={{ fontSize: '13px', color: '#A89880', fontFamily: 'var(--font-mono)', textAlign: 'center', padding: '40px 0' }}>
-            No transactions found
+            {loadedReal ? 'No transactions found. Connect an account to import your transactions.' : 'No transactions found'}
           </p>
         ) : (
           <motion.div

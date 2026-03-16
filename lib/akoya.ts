@@ -114,19 +114,65 @@ export async function fetchAkoyaTransactions(
   accountId: string,
   accessToken: string
 ) {
-  const startDate = new Date()
-  startDate.setMonth(startDate.getMonth() - 6)
-  const params = new URLSearchParams({
-    startDate: startDate.toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
-  })
-
+  // No date filter: sandbox data is from 2019-2020, a 6-month window from today returns nothing
   const res = await fetch(
-    `${AKOYA_SANDBOX_PRODUCTS}/transactions/v2/${connectorId}/${accountId}?${params}`,
+    `${AKOYA_SANDBOX_PRODUCTS}/transactions/v2/${connectorId}/${accountId}`,
     {
       headers: { Authorization: `Bearer ${accessToken}` },
     }
   )
   if (!res.ok) throw new Error(`Failed to fetch transactions: ${res.statusText}`)
   return res.json()
+}
+
+const FDX_ACCOUNT_KEYS = ['depositAccount', 'investmentAccount', 'loanAccount', 'lineOfCredit', 'insuranceAccount', 'annuityAccount'] as const
+
+/**
+ * Normalize the accounts response into a flat array of raw account objects.
+ * Handles both FDX array format ([{ depositAccount: {...} }]) and typed-object
+ * format ({ investmentAccount: [...] }).
+ */
+export function normalizeAkoyaAccounts(accountsResponse: Record<string, unknown>): Record<string, unknown>[] {
+  const accounts = accountsResponse.accounts
+  if (Array.isArray(accounts)) {
+    return accounts.map((entry: Record<string, unknown>) => {
+      const key = FDX_ACCOUNT_KEYS.find(k => entry[k])
+      return key ? (entry[key] as Record<string, unknown>) : entry
+    })
+  }
+  if (accounts && typeof accounts === 'object') {
+    // Older Akoya format: { investmentAccount: [...], depositAccount: [...], ... }
+    const result: Record<string, unknown>[] = []
+    for (const key of FDX_ACCOUNT_KEYS) {
+      const typed = (accounts as Record<string, unknown>)[key]
+      if (Array.isArray(typed)) result.push(...typed)
+    }
+    return result
+  }
+  return []
+}
+
+/**
+ * Parse an Akoya transaction timestamp.
+ * The Mikomo sandbox returns Unix epoch SECONDS (e.g. 1569816000) as a number,
+ * not milliseconds. If the value is a number < 1e10 treat it as seconds.
+ */
+export function parseAkoyaDate(val: unknown): Date | null {
+  if (val == null) return null
+  let ms: number
+  if (typeof val === 'number') {
+    ms = val < 1e10 ? val * 1000 : val   // seconds -> ms
+  } else {
+    ms = new Date(val as string).getTime()
+  }
+  if (isNaN(ms)) return null
+  return new Date(ms)
+}
+
+/**
+ * Extract transactions that Akoya embeds directly inside an account object.
+ * Investment accounts in particular return their transactions this way.
+ */
+export function extractEmbeddedTransactions(account: Record<string, unknown>): Record<string, unknown>[] {
+  return Array.isArray(account.transactions) ? account.transactions as Record<string, unknown>[] : []
 }

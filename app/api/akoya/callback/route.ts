@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
-import { exchangeCodeForToken, fetchAkoyaAccounts, fetchAkoyaTransactions } from '@/lib/akoya'
+import { exchangeCodeForToken, fetchAkoyaAccounts, fetchAkoyaTransactions, normalizeAkoyaAccounts, parseAkoyaDate, extractEmbeddedTransactions } from '@/lib/akoya'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
@@ -51,17 +51,10 @@ export async function GET(request: NextRequest) {
 
     // Fetch accounts from Akoya
     const accountsResponse = await fetchAkoyaAccounts(connectorId, access_token, id_token)
-    console.log('[Akoya callback] raw accountsResponse:', JSON.stringify(accountsResponse, null, 2))
+    console.log('[Akoya callback] raw accountsResponse keys:', Object.keys(accountsResponse ?? {}))
 
-    // FDX wraps each account in a typed key e.g. { depositAccount: {...} } or { investmentAccount: {...} }
-    // Unwrap to get the raw account object
-    const FDX_ACCOUNT_KEYS = ['depositAccount', 'investmentAccount', 'loanAccount', 'lineOfCredit', 'insuranceAccount', 'annuityAccount']
-    const akoyaAccounts = (accountsResponse.accounts ?? []).map((entry: Record<string, unknown>) => {
-      const key = FDX_ACCOUNT_KEYS.find(k => entry[k])
-      const unwrapped = key ? (entry[key] as Record<string, unknown>) : entry
-      console.log('[Akoya callback] entry keys:', Object.keys(entry), '| unwrap key:', key ?? 'none', '| unwrapped keys:', Object.keys(unwrapped))
-      return unwrapped
-    })
+    const akoyaAccounts = normalizeAkoyaAccounts(accountsResponse)
+    console.log('[Akoya callback] normalized account count:', akoyaAccounts.length)
 
     // Ensure user record exists and resolve internal userId
     const dbUser = await prisma.user.upsert({
@@ -81,53 +74,78 @@ export async function GET(request: NextRequest) {
         balance: akoyaAccount.balance,
         allKeys: Object.keys(akoyaAccount),
       })
+      const acctId = String(akoyaAccount.accountId ?? akoyaAccount.id ?? '')
+      const acctType = String(akoyaAccount.accountType ?? 'checking')
+      const balance = Number(akoyaAccount.currentBalance ?? akoyaAccount.currentValue ?? akoyaAccount.principalBalance ?? akoyaAccount.balance ?? 0)
+      const last4 = typeof akoyaAccount.accountNumber === 'string' ? akoyaAccount.accountNumber.slice(-4) : null
+      const institutionName = connectorId === 'schwab' ? 'Charles Schwab' : connectorId === 'capital-one' ? 'Capital One' : 'Mikomo Bank'
+
       const account = await prisma.account.upsert({
-        where: { akoyaAccountId: akoyaAccount.accountId ?? akoyaAccount.id },
+        where: { akoyaAccountId: acctId },
         create: {
           userId,
-          institutionName: connectorId === 'schwab' ? 'Charles Schwab' : connectorId === 'capital-one' ? 'Capital One' : 'Mikomo Bank',
-          accountType: akoyaAccount.accountType ?? 'checking',
-          balance: akoyaAccount.currentBalance ?? akoyaAccount.currentValue ?? akoyaAccount.principalBalance ?? akoyaAccount.balance ?? 0,
-          last4: akoyaAccount.accountNumber?.slice(-4) ?? null,
-          akoyaAccountId: akoyaAccount.accountId ?? akoyaAccount.id,
+          institutionName,
+          accountType: acctType,
+          balance,
+          last4,
+          akoyaAccountId: acctId,
           akoyaToken: access_token,
           akoyaRefreshToken: refresh_token ?? null,
           akoyaConnectorId: connectorId,
         },
         update: {
-          balance: akoyaAccount.currentBalance ?? akoyaAccount.currentValue ?? akoyaAccount.principalBalance ?? akoyaAccount.balance ?? 0,
+          balance,
           akoyaToken: access_token,
           akoyaRefreshToken: refresh_token ?? null,
           akoyaConnectorId: connectorId,
         },
       })
 
-      // Fetch and save transactions
-      try {
-        const txResponse = await fetchAkoyaTransactions(connectorId, account.akoyaAccountId!, access_token)
-        const txList = txResponse.transactions ?? []
+      // Collect transactions: prefer embedded (investment accounts return them in
+      // the account object itself), fall back to the separate transactions endpoint
+      let txList: Record<string, unknown>[] = extractEmbeddedTransactions(akoyaAccount)
+      if (txList.length === 0) {
+        try {
+          const txResponse = await fetchAkoyaTransactions(connectorId, account.akoyaAccountId!, access_token)
+          txList = txResponse.transactions ?? []
+        } catch (txErr) {
+          console.error(`[Akoya callback] transactions endpoint failed for ${account.akoyaAccountId}:`, txErr)
+        }
+      }
+      console.log(`[Akoya callback] ${txList.length} transactions for account ${account.akoyaAccountId}`)
 
-        for (const tx of txList) {
+      let savedCount = 0
+      for (const tx of txList) {
+        const txId = tx.transactionId ?? tx.id
+        if (!txId) continue
+        const parsedDate = parseAkoyaDate(tx.postedTimestamp ?? tx.transactionTimestamp ?? tx.date)
+        if (!parsedDate) {
+          console.warn('[Akoya callback] skipping tx with unparseable date:', { txId, ts: tx.transactionTimestamp })
+          continue
+        }
+        try {
           await prisma.transaction.upsert({
-            where: { id: tx.transactionId ?? tx.id },
+            where: { id: String(txId) },
             create: {
-              id: tx.transactionId ?? tx.id,
+              id: String(txId),
               accountId: account.id,
-              merchantName: tx.merchant?.name ?? tx.description ?? null,
-              amount: tx.amount ?? 0,
-              category: tx.category ?? null,
-              date: new Date(tx.transactionTimestamp ?? tx.date),
+              merchantName: (tx.merchant as Record<string, unknown>)?.name as string ?? tx.description as string ?? null,
+              amount: tx.amount as number ?? 0,
+              category: tx.category as string ?? null,
+              date: parsedDate,
               pending: tx.status === 'PENDING',
             },
             update: {
-              amount: tx.amount ?? 0,
+              amount: tx.amount as number ?? 0,
               pending: tx.status === 'PENDING',
             },
           })
+          savedCount++
+        } catch (upsertErr) {
+          console.error('[Akoya callback] upsert failed for tx', txId, upsertErr)
         }
-      } catch (txErr) {
-        console.error(`Failed to fetch transactions for account ${account.id}:`, txErr)
       }
+      console.log(`[Akoya callback] saved ${savedCount}/${txList.length} transactions for ${account.akoyaAccountId}`)
     }
 
     return NextResponse.redirect(new URL('/dashboard/accounts?success=connected', request.url))

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { fetchAkoyaAccounts, fetchAkoyaTransactions, refreshAkoyaToken } from '@/lib/akoya'
+import { fetchAkoyaAccounts, fetchAkoyaTransactions, refreshAkoyaToken, normalizeAkoyaAccounts, parseAkoyaDate, extractEmbeddedTransactions } from '@/lib/akoya'
 import { prisma } from '@/lib/prisma'
 
 export async function POST(request: NextRequest) {
@@ -14,8 +14,6 @@ export async function POST(request: NextRequest) {
     }
 
     let synced = 0
-
-    const FDX_ACCOUNT_KEYS = ['depositAccount', 'investmentAccount', 'loanAccount', 'lineOfCredit', 'insuranceAccount', 'annuityAccount']
 
     for (const account of accounts) {
       if (!account.akoyaToken || !account.akoyaAccountId || !account.akoyaConnectorId) continue
@@ -46,11 +44,7 @@ export async function POST(request: NextRequest) {
 
         // Refresh balance
         const accountsResponse = await fetchAkoyaAccounts(connectorId, activeToken)
-        // FDX wraps each account in a typed key, e.g. { depositAccount: {...} } — unwrap first
-        const akoyaAccounts = (accountsResponse.accounts ?? []).map((entry: Record<string, unknown>) => {
-          const key = FDX_ACCOUNT_KEYS.find(k => entry[k])
-          return key ? (entry[key] as Record<string, unknown>) : entry
-        })
+        const akoyaAccounts = normalizeAkoyaAccounts(accountsResponse)
         const matching = akoyaAccounts.find((a: Record<string, unknown>) => (a.accountId ?? a.id) === account.akoyaAccountId)
 
         if (matching) {
@@ -62,28 +56,47 @@ export async function POST(request: NextRequest) {
           })
         }
 
-        // Sync transactions
-        const txResponse = await fetchAkoyaTransactions(connectorId, account.akoyaAccountId, activeToken)
-        const txList = txResponse.transactions ?? []
-
-        for (const tx of txList) {
-          await prisma.transaction.upsert({
-            where: { id: tx.transactionId ?? tx.id },
-            create: {
-              id: tx.transactionId ?? tx.id,
-              accountId: account.id,
-              merchantName: tx.merchant?.name ?? tx.description ?? null,
-              amount: tx.amount ?? 0,
-              category: tx.category ?? null,
-              date: new Date(tx.transactionTimestamp ?? tx.date),
-              pending: tx.status === 'PENDING',
-            },
-            update: {
-              amount: tx.amount ?? 0,
-              pending: tx.status === 'PENDING',
-            },
-          })
+        // Collect transactions: prefer embedded, fall back to separate endpoint
+        let txList: Record<string, unknown>[] = matching ? extractEmbeddedTransactions(matching) : []
+        if (txList.length === 0) {
+          try {
+            const txResponse = await fetchAkoyaTransactions(connectorId, account.akoyaAccountId, activeToken)
+            txList = txResponse.transactions ?? []
+          } catch (txErr) {
+            console.error(`[Akoya sync] transactions endpoint failed for ${account.akoyaAccountId}:`, txErr)
+          }
         }
+        console.log(`[Akoya sync] ${txList.length} transactions for account ${account.akoyaAccountId}`)
+
+        let savedCount = 0
+        for (const tx of txList) {
+          const txId = tx.transactionId ?? tx.id
+          if (!txId) continue
+          const parsedDate = parseAkoyaDate(tx.postedTimestamp ?? tx.transactionTimestamp ?? tx.date)
+          if (!parsedDate) continue
+          try {
+            await prisma.transaction.upsert({
+              where: { id: String(txId) },
+              create: {
+                id: String(txId),
+                accountId: account.id,
+                merchantName: (tx.merchant as Record<string, unknown>)?.name as string ?? tx.description as string ?? null,
+                amount: tx.amount as number ?? 0,
+                category: tx.category as string ?? null,
+                date: parsedDate,
+                pending: tx.status === 'PENDING',
+              },
+              update: {
+                amount: tx.amount as number ?? 0,
+                pending: tx.status === 'PENDING',
+              },
+            })
+            savedCount++
+          } catch (upsertErr) {
+            console.error('[Akoya sync] upsert failed for tx', txId, upsertErr)
+          }
+        }
+        console.log(`[Akoya sync] saved ${savedCount}/${txList.length} transactions for ${account.akoyaAccountId}`)
 
         synced++
       } catch (err) {

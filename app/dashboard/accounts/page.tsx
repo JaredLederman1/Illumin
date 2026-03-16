@@ -117,6 +117,7 @@ function AccountsContent() {
   const [loading, setLoading] = useState(true)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [connecting, setConnecting] = useState(false)
+  const [resetting, setResetting] = useState(false)
   const [pendingConnector, setPendingConnector] = useState<{ id: string; label: string } | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -142,6 +143,25 @@ function AccountsContent() {
   }, [])
 
   const handleRemove = (id: string) => setAccounts(prev => prev.filter(a => a.id !== id))
+
+  const handleReset = async () => {
+    if (!confirm('Delete all accounts and transactions so you can re-connect?')) return
+    setResetting(true)
+    try {
+      const res = await fetch('/api/akoya/reset', { method: 'POST' })
+      const data = await res.json()
+      if (data.success) {
+        setAccounts([])
+        alert(`Reset complete: removed ${data.deletedAccounts} account(s) and ${data.deletedTransactions} transaction(s).`)
+      } else {
+        alert('Reset failed: ' + (data.error ?? 'unknown error'))
+      }
+    } catch {
+      alert('Reset request failed')
+    } finally {
+      setResetting(false)
+    }
+  }
 
   // Group accounts by institution
   const grouped = accounts.reduce<Record<string, Account[]>>((acc, a) => {
@@ -192,6 +212,23 @@ function AccountsContent() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px' }}>
           <p style={labelStyle}>Connected Accounts</p>
 
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              onClick={handleReset}
+              disabled={resetting}
+              title="Dev only: delete all accounts and transactions to re-connect"
+              style={{
+                padding: '8px 12px', backgroundColor: 'transparent',
+                border: '1px solid rgba(139,38,53,0.3)', borderRadius: '2px',
+                color: '#8B2635', fontSize: '11px', fontFamily: 'var(--font-mono)', letterSpacing: '0.04em',
+                cursor: resetting ? 'not-allowed' : 'pointer', opacity: resetting ? 0.5 : 1,
+              }}
+              onMouseEnter={e => !resetting && (e.currentTarget.style.backgroundColor = 'rgba(139,38,53,0.05)')}
+              onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+            >
+              {resetting ? 'Resetting…' : 'Reset [dev]'}
+            </button>
+
           <div ref={dropdownRef} style={{ position: 'relative' }}>
             <button
               onClick={() => setDropdownOpen(o => !o)}
@@ -231,6 +268,7 @@ function AccountsContent() {
                 ))}
               </div>
             )}
+          </div>
           </div>
         </div>
 

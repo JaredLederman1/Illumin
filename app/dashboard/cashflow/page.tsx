@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import Link from 'next/link'
 import BarChart from '@/components/ui/BarChart'
-import { mockMonthlyData } from '@/lib/data'
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
@@ -33,15 +33,49 @@ interface MonthlyData {
   savings: number
 }
 
+function EmptyState() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: 'easeOut' }}
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', gap: '20px', textAlign: 'center' }}
+    >
+      <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: '1px solid rgba(184,145,58,0.25)', backgroundColor: 'rgba(184,145,58,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+        ◈
+      </div>
+      <div>
+        <p style={{ fontFamily: 'var(--font-serif)', fontSize: '22px', fontWeight: 400, color: '#1A1714', marginBottom: '8px' }}>No cash flow data</p>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#A89880', lineHeight: 1.7 }}>Connect a bank account to see your income, expenses, and savings trends.</p>
+      </div>
+      <Link href="/dashboard/accounts" style={{ padding: '10px 24px', backgroundColor: '#B8913A', border: 'none', borderRadius: '2px', color: '#FFFFFF', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', textDecoration: 'none', display: 'inline-block' }}>
+        Connect an Account
+      </Link>
+    </motion.div>
+  )
+}
+
 export default function CashFlowPage() {
-  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>(mockMonthlyData)
+  const [loading, setLoading]     = useState(true)
+  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([])
 
   useEffect(() => {
     fetch('/api/cashflow')
       .then(r => r.json())
       .then(d => { if (d.months?.length) setMonthlyData(d.months) })
       .catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '320px' }}>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#A89880', letterSpacing: '0.06em' }}>Loading…</p>
+      </div>
+    )
+  }
+
+  if (monthlyData.length === 0) return <EmptyState />
 
   const recent = monthlyData.slice(-3)
 
@@ -102,17 +136,7 @@ export default function CashFlowPage() {
             <thead>
               <tr>
                 {['Month', 'Income', 'Expenses', 'Net Savings', 'Rate'].map(h => (
-                  <th key={h} style={{
-                    padding: '8px 16px 12px',
-                    textAlign: 'left',
-                    fontSize: '10px',
-                    color: '#A89880',
-                    fontFamily: 'var(--font-mono)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.12em',
-                    fontWeight: 400,
-                    borderBottom: '1px solid rgba(184,145,58,0.2)',
-                  }}>
+                  <th key={h} style={{ padding: '8px 16px 12px', textAlign: 'left', fontSize: '10px', color: '#A89880', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 400, borderBottom: '1px solid rgba(184,145,58,0.2)' }}>
                     {h}
                   </th>
                 ))}

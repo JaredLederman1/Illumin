@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import Link from 'next/link'
 import NetWorthCard from '@/components/ui/NetWorthCard'
 import DonutChart from '@/components/ui/DonutChart'
 import BarChart from '@/components/ui/BarChart'
 import TransactionRow from '@/components/ui/TransactionRow'
-import { mockNetWorth, mockTransactions, mockSpendingByCategory, mockMonthlyData } from '@/lib/data'
 
 const card = {
   backgroundColor: '#FFFFFF',
@@ -54,44 +54,94 @@ interface MonthlyData {
 }
 
 export default function DashboardPage() {
-  const [netWorth, setNetWorth] = useState<NetWorthState>({
-    current: mockNetWorth.current,
-    lastMonth: mockNetWorth.lastMonth,
-    totalAssets: mockNetWorth.totalAssets,
-    totalLiabilities: mockNetWorth.totalLiabilities,
-  })
-  const [transactions, setTransactions]       = useState<Transaction[]>(mockTransactions.slice(0, 10) as Transaction[])
-  const [monthlyData, setMonthlyData]         = useState<MonthlyData[]>(mockMonthlyData)
-  const [spendingByCategory, setSpending]     = useState<SpendingCategory[]>(mockSpendingByCategory)
+  const [loading, setLoading]                 = useState(true)
+  const [netWorth, setNetWorth]               = useState<NetWorthState | null>(null)
+  const [transactions, setTransactions]       = useState<Transaction[]>([])
+  const [monthlyData, setMonthlyData]         = useState<MonthlyData[]>([])
+  const [spendingByCategory, setSpending]     = useState<SpendingCategory[]>([])
 
   useEffect(() => {
-    fetch('/api/networth')
-      .then(r => r.json())
-      .then(d => {
-        if (d.netWorth !== undefined) {
-          setNetWorth({
-            current: d.netWorth,
-            lastMonth: d.previousNetWorth ?? d.netWorth,
-            totalAssets: d.totalAssets,
-            totalLiabilities: d.totalLiabilities,
-          })
-        }
-      })
-      .catch(() => {})
-
-    fetch('/api/transactions?limit=10')
-      .then(r => r.json())
-      .then(d => { if (d.transactions?.length) setTransactions(d.transactions) })
-      .catch(() => {})
-
-    fetch('/api/cashflow')
-      .then(r => r.json())
-      .then(d => {
-        if (d.months?.length)           setMonthlyData(d.months)
-        if (d.spendingByCategory?.length) setSpending(d.spendingByCategory)
-      })
-      .catch(() => {})
+    Promise.all([
+      fetch('/api/networth').then(r => r.json()).catch(() => null),
+      fetch('/api/transactions?limit=10').then(r => r.json()).catch(() => null),
+      fetch('/api/cashflow').then(r => r.json()).catch(() => null),
+    ]).then(([nw, tx, cf]) => {
+      if (nw?.netWorth !== undefined) {
+        setNetWorth({
+          current:          nw.netWorth,
+          lastMonth:        nw.previousNetWorth ?? nw.netWorth,
+          totalAssets:      nw.totalAssets,
+          totalLiabilities: nw.totalLiabilities,
+        })
+      }
+      if (Array.isArray(tx?.transactions) && tx.transactions.length > 0) {
+        setTransactions(tx.transactions)
+      }
+      if (cf?.months?.length)              setMonthlyData(cf.months)
+      if (cf?.spendingByCategory?.length)  setSpending(cf.spendingByCategory)
+    }).finally(() => setLoading(false))
   }, [])
+
+  const hasData = netWorth !== null && (netWorth.totalAssets > 0 || netWorth.totalLiabilities > 0)
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '320px' }}>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#A89880', letterSpacing: '0.06em' }}>
+          Loading…
+        </p>
+      </div>
+    )
+  }
+
+  if (!hasData) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+        style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          minHeight: '400px', gap: '20px', textAlign: 'center',
+        }}
+      >
+        <div style={{
+          width: '48px', height: '48px', borderRadius: '50%',
+          border: '1px solid rgba(184,145,58,0.25)',
+          backgroundColor: 'rgba(184,145,58,0.06)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '20px',
+        }}>
+          ◈
+        </div>
+        <div>
+          <p style={{ fontFamily: 'var(--font-serif)', fontSize: '22px', fontWeight: 400, color: '#1A1714', marginBottom: '8px' }}>
+            No data yet
+          </p>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#A89880', lineHeight: 1.7 }}>
+            Connect a bank account to see your net worth, spending, and transactions here.
+          </p>
+        </div>
+        <Link
+          href="/dashboard/accounts"
+          style={{
+            padding: '10px 24px',
+            backgroundColor: '#B8913A',
+            border: 'none',
+            borderRadius: '2px',
+            color: '#FFFFFF',
+            fontFamily: 'var(--font-mono)',
+            fontSize: '11px',
+            letterSpacing: '0.08em',
+            textDecoration: 'none',
+            display: 'inline-block',
+          }}
+        >
+          Connect an Account
+        </Link>
+      </motion.div>
+    )
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -126,30 +176,32 @@ export default function DashboardPage() {
       </motion.div>
 
       {/* Recent transactions */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: 'easeOut', delay: 0.16 }}
-        style={card}
-      >
-        <p style={label}>Recent Transactions</p>
+      {transactions.length > 0 && (
         <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={{ visible: { transition: { staggerChildren: 0.03 } } }}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: 'easeOut', delay: 0.16 }}
+          style={card}
         >
-          {transactions.map((tx) => (
-            <TransactionRow
-              key={tx.id}
-              merchantName={tx.merchantName}
-              amount={tx.amount}
-              category={tx.category}
-              date={tx.date}
-              pending={tx.pending}
-            />
-          ))}
+          <p style={label}>Recent Transactions</p>
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={{ visible: { transition: { staggerChildren: 0.03 } } }}
+          >
+            {transactions.map((tx) => (
+              <TransactionRow
+                key={tx.id}
+                merchantName={tx.merchantName}
+                amount={tx.amount}
+                category={tx.category}
+                date={tx.date}
+                pending={tx.pending}
+              />
+            ))}
+          </motion.div>
         </motion.div>
-      </motion.div>
+      )}
     </div>
   )
 }
