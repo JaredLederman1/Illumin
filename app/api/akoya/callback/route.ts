@@ -34,7 +34,14 @@ export async function GET(request: NextRequest) {
 
     // Fetch accounts from Akoya
     const accountsResponse = await fetchAkoyaAccounts(connectorId, access_token, id_token)
-    const akoyaAccounts = accountsResponse.accounts ?? []
+
+    // FDX wraps each account in a typed key e.g. { depositAccount: {...} } or { investmentAccount: {...} }
+    // Unwrap to get the raw account object
+    const FDX_ACCOUNT_KEYS = ['depositAccount', 'investmentAccount', 'loanAccount', 'lineOfCredit', 'insuranceAccount', 'annuityAccount']
+    const akoyaAccounts = (accountsResponse.accounts ?? []).map((entry: Record<string, unknown>) => {
+      const key = FDX_ACCOUNT_KEYS.find(k => entry[k])
+      return key ? (entry[key] as Record<string, unknown>) : entry
+    })
 
     // For demo: use a placeholder userId; in production, get from session
     const userId = 'user_demo'
