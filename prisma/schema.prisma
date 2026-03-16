@@ -24,8 +24,9 @@ model Account {
   balance         Float         @default(0)
   last4           String?
   akoyaAccountId  String?       @unique @map("akoya_account_id")
-  akoyaToken      String?       @map("akoya_token")
-  akoyaConnectorId String?      @map("akoya_connector_id")
+  akoyaToken        String?       @map("akoya_token")
+  akoyaRefreshToken String?       @map("akoya_refresh_token")
+  akoyaConnectorId  String?       @map("akoya_connector_id")
   createdAt       DateTime      @default(now()) @map("created_at")
   user            User          @relation(fields: [userId], references: [id])
   transactions    Transaction[]

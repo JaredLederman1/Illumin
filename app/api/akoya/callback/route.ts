@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { access_token, id_token } = await exchangeCodeForToken(code)
+    const { access_token, id_token, refresh_token } = await exchangeCodeForToken(code)
 
     // Resolve authenticated user from session cookie
     const supabase = createServerClient(
@@ -75,15 +75,17 @@ export async function GET(request: NextRequest) {
           userId,
           institutionName: connectorId === 'schwab' ? 'Charles Schwab' : connectorId === 'capital-one' ? 'Capital One' : 'Mikomo Bank',
           accountType: akoyaAccount.accountType ?? 'checking',
-          balance: akoyaAccount.currentBalance ?? akoyaAccount.balance ?? 0,
+          balance: akoyaAccount.currentBalance ?? akoyaAccount.currentValue ?? akoyaAccount.principalBalance ?? akoyaAccount.balance ?? 0,
           last4: akoyaAccount.accountNumber?.slice(-4) ?? null,
           akoyaAccountId: akoyaAccount.accountId ?? akoyaAccount.id,
           akoyaToken: access_token,
+          akoyaRefreshToken: refresh_token ?? null,
           akoyaConnectorId: connectorId,
         },
         update: {
-          balance: akoyaAccount.currentBalance ?? akoyaAccount.balance ?? 0,
+          balance: akoyaAccount.currentBalance ?? akoyaAccount.currentValue ?? akoyaAccount.principalBalance ?? akoyaAccount.balance ?? 0,
           akoyaToken: access_token,
+          akoyaRefreshToken: refresh_token ?? null,
           akoyaConnectorId: connectorId,
         },
       })

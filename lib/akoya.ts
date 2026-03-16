@@ -59,6 +59,33 @@ export async function exchangeCodeForToken(
   return tokenData
 }
 
+export async function refreshAkoyaToken(
+  refreshToken: string
+): Promise<{ access_token: string; refresh_token: string }> {
+  const credentials = Buffer.from(
+    `${process.env.AKOYA_CLIENT_ID}:${process.env.AKOYA_CLIENT_SECRET}`
+  ).toString('base64')
+
+  const res = await fetch(`${AKOYA_SANDBOX_IDP}/token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Authorization: `Basic ${credentials}`,
+    },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+    }),
+  })
+
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`Token refresh failed: ${err}`)
+  }
+
+  return res.json()
+}
+
 export async function fetchAkoyaAccounts(
   connectorId: string,
   accessToken: string,

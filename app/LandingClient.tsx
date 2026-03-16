@@ -125,7 +125,7 @@ export default function LandingClient() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: 'easeOut', delay: 0.35 }}
         >
-          The 1%&apos;s Playbook,<br /><em>Now for Everyone.</em>
+          The 1%&apos;s Playbook,<br /><em>Now for Everyone</em>
         </motion.h1>
 
         <motion.div
@@ -170,8 +170,10 @@ export default function LandingClient() {
           <div className={styles.statLabel}>Avg. annual cost of not optimizing</div>
         </div>
         <div className={styles.stat}>
-          <div className={styles.statNumber}>6 tools</div>
-          <div className={styles.statLabel}>Wealth management modules, one platform</div>
+          <div className={styles.statNumber}>Professional Grade</div>
+          <div className={styles.statLabel}>Integrated wealth management
+            
+          </div>
         </div>
         <div className={styles.stat}>
           <div className={styles.statNumber}>0%</div>
@@ -190,7 +192,7 @@ export default function LandingClient() {
         viewport={{ once: true, amount: 0.1 }}
       >
         <p className={styles.sectionEyebrow}>The problem</p>
-        <h2 className={styles.sectionHeadline}>Wealth Management For All,<br /><em>Not Gust Millionaires.</em></h2>
+        <h2 className={styles.sectionHeadline}>Wealth Management For All,<br /><em>Not Just Millionaires.</em></h2>
         <p className={styles.sectionSub}>
           Private banks and RIAs offer sophisticated financial planning: portfolio construction, tax optimization,
           wealth projections, exclusively to clients with millions in assets. Everyone else gets a budgeting app. Illumin closes that gap.
@@ -242,7 +244,7 @@ export default function LandingClient() {
 
       {/* ── FEATURES ────────────────────────────────────────── */}
       <motion.section
-        className={styles.section}
+        className={`${styles.section} ${styles.centeredSection}`}
         variants={inView}
         initial="hidden"
         whileInView="visible"

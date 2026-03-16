@@ -25,7 +25,7 @@ function fmtCompact(n: number): string {
 interface Result {
   years: number
   savingsRatePct: number
-  currentMonthly: number
+  monthlyInvest: number
   optimalMonthly: number
   projectedCurrent: number
   projectedOptimal: number
@@ -33,26 +33,25 @@ interface Result {
   costDelay: number
 }
 
-function compute(age: number, annualIncome: number, currentMonthly: number): Result {
-  const years   = Math.max(5, 65 - age)
-  const months  = years * 12
-  const r       = 0.07 / 12
+function fv(pmt: number, n: number): number {
+  if (pmt <= 0 || n <= 0) return 0
+  const r = 0.07 / 12
+  return pmt * (Math.pow(1 + r, n) - 1) / r
+}
 
-  const fv = (pmt: number, n: number) =>
-    pmt > 0 ? pmt * (Math.pow(1 + r, n) - 1) / r : 0
-
+function compute(age: number, annualIncome: number, savingsRate: number): Result {
+  const years         = Math.max(5, 65 - age)
+  const months        = years * 12
+  const monthlyInvest = (annualIncome * savingsRate / 100) / 12
   const optimalMonthly   = (annualIncome * 0.20) / 12
-  const projectedCurrent = Math.round(fv(currentMonthly, months))
+  const projectedCurrent = Math.round(fv(monthlyInvest, months))
   const projectedOptimal = Math.round(fv(optimalMonthly, months))
   const gap              = Math.max(0, projectedOptimal - projectedCurrent)
   const costDelay        = Math.max(0, Math.round(
-    fv(currentMonthly, months) - fv(currentMonthly, Math.max(0, months - 12))
+    fv(monthlyInvest, months) - fv(monthlyInvest, Math.max(0, months - 12))
   ))
-  const savingsRatePct = annualIncome > 0
-    ? (currentMonthly * 12 / annualIncome) * 100
-    : 0
 
-  return { years, savingsRatePct, currentMonthly, optimalMonthly, projectedCurrent, projectedOptimal, gap, costDelay }
+  return { years, savingsRatePct: savingsRate, monthlyInvest, optimalMonthly, projectedCurrent, projectedOptimal, gap, costDelay }
 }
 
 function useCountUp(target: number, active: boolean): number {
@@ -81,10 +80,9 @@ export default function OppCostCalculator() {
   const [step,           setStep]           = useState(0)
   const [age,            setAge]            = useState('')
   const [income,         setIncome]         = useState('')
-  const [monthly,        setMonthly]        = useState('')
+  const [savingsRate,    setSavingsRate]     = useState(5)
   const [ageErr,         setAgeErr]         = useState('')
   const [incomeErr,      setIncomeErr]      = useState('')
-  const [monthlyErr,     setMonthlyErr]     = useState('')
   const [email,          setEmail]          = useState('')
   const [emailErr,       setEmailErr]       = useState('')
   const [emailSubmitted, setEmailSubmitted] = useState(false)
@@ -92,21 +90,19 @@ export default function OppCostCalculator() {
   const stepRef  = useRef(step)
   useEffect(() => { stepRef.current = step }, [step])
 
-  // Push a history entry when result is shown so the browser back button works
   useEffect(() => {
     if (step === 3) {
       window.history.pushState({ illuminCalcResult: true }, '')
     }
   }, [step])
 
-  // On popstate (back button), reset the calculator and scroll to top
   useEffect(() => {
     const handlePop = () => {
       if (stepRef.current === 3) {
         setStep(0)
         setAge('')
         setIncome('')
-        setMonthly('')
+        setSavingsRate(5)
         window.scrollTo({ top: 0, behavior: 'smooth' })
       }
     }
@@ -115,12 +111,14 @@ export default function OppCostCalculator() {
   }, [])
 
   useEffect(() => {
-    const t = setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 400)
-    return () => clearTimeout(t)
+    if (step < 2) {
+      const t = setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 400)
+      return () => clearTimeout(t)
+    }
   }, [step])
 
-  const result     = step === 3 ? compute(parseInt(age), parseAmt(income), parseAmt(monthly)) : null
-  const countedGap = useCountUp(result?.gap ?? result?.projectedCurrent ?? 0, step === 3)
+  const result      = step === 3 ? compute(parseInt(age), parseAmt(income), savingsRate) : null
+  const countedNum  = useCountUp(result?.costDelay ?? 0, step === 3)
 
   const advance = () => {
     if (step === 0) {
@@ -136,12 +134,6 @@ export default function OppCostCalculator() {
         return
       }
     }
-    if (step === 2) {
-      if (monthly === '') {
-        setMonthlyErr('Please enter an amount (0 if you currently invest nothing).')
-        return
-      }
-    }
     setStep(s => s + 1)
   }
 
@@ -154,13 +146,6 @@ export default function OppCostCalculator() {
     const n = parseInt(digits)
     setIncome(isNaN(n) ? '' : n.toLocaleString('en-US'))
     setIncomeErr('')
-  }
-
-  const handleMonthlyChange = (raw: string) => {
-    const digits = raw.replace(/[^0-9]/g, '')
-    const n = parseInt(digits)
-    setMonthly(isNaN(n) ? '' : n.toLocaleString('en-US'))
-    setMonthlyErr('')
   }
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -181,9 +166,9 @@ export default function OppCostCalculator() {
     }
   }
 
-  const primaryHeadlineNum = result
-    ? (result.gap > 0 ? countedGap : result.projectedCurrent)
-    : 0
+  // Slider fill percentage
+  const savingsPct = (savingsRate / 50) * 100
+  const monthlyLive = income ? (parseAmt(income) * savingsRate / 100) / 12 : 0
 
   return (
     <section className={styles.calcSection}>
@@ -226,6 +211,7 @@ export default function OppCostCalculator() {
 
               <p className={styles.calcEyebrow}>Step {step + 1} of 3</p>
 
+              {/* Step 0: Age */}
               {step === 0 && (
                 <>
                   <h3 className={styles.calcQuestion}>How old are you?</h3>
@@ -240,10 +226,11 @@ export default function OppCostCalculator() {
                     min="18" max="70"
                   />
                   {ageErr && <p className={styles.calcErr}>{ageErr}</p>}
-                  <p className={styles.calcHint}>We'll assume retirement at 65.</p>
+                  <p className={styles.calcHint}>We&apos;ll assume retirement at 65.</p>
                 </>
               )}
 
+              {/* Step 1: Income */}
               {step === 1 && (
                 <>
                   <h3 className={styles.calcQuestion}>What&apos;s your annual income?</h3>
@@ -265,35 +252,55 @@ export default function OppCostCalculator() {
                 </>
               )}
 
+              {/* Step 2: Savings rate slider */}
               {step === 2 && (
                 <>
-                  <h3 className={styles.calcQuestion}>How much do you invest each month?</h3>
-                  <div className={styles.calcInputWrap}>
-                    <span className={styles.calcInputPrefix}>$</span>
+                  <h3 className={styles.calcQuestion}>What share of your income are you investing?</h3>
+
+                  <div className={styles.calcSliderRow}>
                     <input
-                      ref={inputRef}
-                      type="text"
-                      inputMode="numeric"
-                      className={`${styles.calcInput} ${styles.calcInputPrefixed}`}
-                      value={monthly}
-                      onChange={e => handleMonthlyChange(e.target.value)}
-                      onKeyDown={handleKey}
-                      placeholder="500"
+                      type="range"
+                      min={0}
+                      max={50}
+                      value={savingsRate}
+                      onChange={e => setSavingsRate(Number(e.target.value))}
+                      className={styles.calcSlider}
+                      style={{
+                        background: `linear-gradient(to right, var(--lm-gold) ${savingsPct}%, var(--lm-border-strong) ${savingsPct}%)`,
+                      }}
                     />
+                    <span className={styles.calcSliderReadout}>{savingsRate}%</span>
                   </div>
-                  {monthlyErr && <p className={styles.calcErr}>{monthlyErr}</p>}
-                  <p className={styles.calcHint}>401(k) + IRA + brokerage. Enter 0 if nothing.</p>
+
+                  {/* Live dollar readout */}
+                  <div className={styles.calcSliderBox}>
+                    <div className={styles.calcSliderBoxInner}>
+                      <span className={styles.calcSliderBoxLabel}>That&apos;s</span>
+                      <span className={styles.calcSliderBoxValue}>
+                        {fmtFull(monthlyLive)}
+                        <span className={styles.calcSliderBoxUnit}> / month</span>
+                      </span>
+                    </div>
+                    <p className={styles.calcSliderBoxNote}>
+                      Total flowing into 401(k), IRA, and brokerage after every expense is covered.
+                    </p>
+                  </div>
+
+                  <div className={styles.calcSliderBenchmarks}>
+                    <span className={styles.calcSliderBenchmark}>National median: 5%</span>
+                    <span className={styles.calcSliderBenchmark}>Recommended: 15-20%</span>
+                  </div>
                 </>
               )}
 
               <div className={styles.calcActions}>
                 {step > 0 && (
                   <button className={styles.btnGhost} onClick={() => setStep(s => s - 1)}>
-                    ← Back
+                    Back
                   </button>
                 )}
                 <button className={styles.btnPrimary} onClick={advance}>
-                  {step < 2 ? 'Continue →' : 'Calculate →'}
+                  {step < 2 ? 'Continue' : 'Calculate'}
                 </button>
               </div>
             </motion.div>
@@ -309,26 +316,28 @@ export default function OppCostCalculator() {
             >
               <div className={styles.revealInner}>
 
-                {/* Left: big number */}
+                {/* Left: big number + badge */}
                 <div>
-                  <p className={styles.sectionEyebrow}>
-                    {result.gap > 0 ? 'Your opportunity cost' : 'Your retirement trajectory'}
-                  </p>
+                  <p className={styles.sectionEyebrow}>Cost of waiting one year</p>
+
                   <div className={styles.revealNumber}>
-                    {fmtFull(primaryHeadlineNum)}
+                    {fmtFull(countedNum)}
                   </div>
+
+                  <div className={styles.calcBadge}>
+                    Every. Single. Year.
+                  </div>
+
                   <p className={styles.revealDesc}>
-                    {result.gap > 0
-                      ? `Retirement wealth forfeited by investing at your current rate (${result.savingsRatePct.toFixed(1)}%) instead of the recommended 20%.`
-                      : `Projected retirement wealth at your current savings rate. You're ahead of most; here's what each year of compounding adds.`
-                    }
+                    This is not a one-time loss. Every year you delay optimizing, you forfeit this amount in retirement wealth, permanently.
                   </p>
 
-                  {/* Cost of 1-year delay callout */}
-                  <div className={styles.calcDelayCallout}>
-                    <span className={styles.calcDelayLabel}>This year&apos;s delay alone</span>
-                    <span className={styles.calcDelayVal}>{fmtFull(result.costDelay)}</span>
-                  </div>
+                  <p className={styles.revealDesc} style={{ marginTop: '12px' }}>
+                    Wait 5 years and the true cost is{' '}
+                    <strong style={{ color: 'var(--lm-text)' }}>{fmtFull(result.costDelay * 5)}</strong>.
+                    Wait 10 years:{' '}
+                    <strong style={{ color: 'var(--lm-text)' }}>{fmtFull(result.costDelay * 10)}</strong>.
+                  </p>
 
                   <p className={styles.revealNote}>
                     Based on 7% annualized real return.<br />
@@ -337,13 +346,13 @@ export default function OppCostCalculator() {
 
                   <button
                     className={styles.calcRecalc}
-                    onClick={() => { setStep(0); setAge(''); setIncome(''); setMonthly('') }}
+                    onClick={() => { setStep(0); setAge(''); setIncome(''); setSavingsRate(5) }}
                   >
-                    ← Recalculate
+                    Recalculate
                   </button>
                 </div>
 
-                {/* Right: breakdown card */}
+                {/* Right: breakdown card + email */}
                 <div>
                   <div className={styles.revealCard}>
                     <div className={styles.revealCardRow}>
@@ -352,11 +361,11 @@ export default function OppCostCalculator() {
                     </div>
                     <div className={styles.revealCardRow}>
                       <span className={styles.revealCardLabel}>Current monthly investment</span>
-                      <span className={styles.revealCardVal}>{fmtFull(result.currentMonthly)}</span>
+                      <span className={styles.revealCardVal}>{fmtFull(result.monthlyInvest)}</span>
                     </div>
                     <div className={styles.revealCardRow}>
                       <span className={styles.revealCardLabel}>Current savings rate</span>
-                      <span className={styles.revealCardVal}>{result.savingsRatePct.toFixed(1)}%</span>
+                      <span className={styles.revealCardVal}>{result.savingsRatePct}%</span>
                     </div>
                     <div className={styles.revealCardRow}>
                       <span className={styles.revealCardLabel}>Projected at current rate</span>
