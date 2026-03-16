@@ -97,6 +97,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard/accounts?success=connected', request.url))
   } catch (error) {
     console.error('Akoya callback error:', error)
-    return NextResponse.redirect(new URL('/dashboard/accounts?error=connection_failed', request.url))
+    const msg = encodeURIComponent(error instanceof Error ? error.message : String(error))
+    return NextResponse.redirect(new URL(`/dashboard/accounts?error=connection_failed&desc=${msg}`, request.url))
   }
 }
