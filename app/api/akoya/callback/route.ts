@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
 import { exchangeCodeForToken, fetchAkoyaAccounts, fetchAkoyaTransactions } from '@/lib/akoya'
 import { prisma } from '@/lib/prisma'
 
@@ -32,6 +33,22 @@ export async function GET(request: NextRequest) {
   try {
     const { access_token, id_token } = await exchangeCodeForToken(code)
 
+    // Resolve authenticated user from session cookie
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() { return request.cookies.getAll() },
+          setAll() {},
+        },
+      }
+    )
+    const { data: { user: authUser } } = await supabase.auth.getUser()
+    if (!authUser) {
+      return NextResponse.redirect(new URL('/auth/login?error=session_expired', request.url))
+    }
+
     // Fetch accounts from Akoya
     const accountsResponse = await fetchAkoyaAccounts(connectorId, access_token, id_token)
 
@@ -43,15 +60,13 @@ export async function GET(request: NextRequest) {
       return key ? (entry[key] as Record<string, unknown>) : entry
     })
 
-    // For demo: use a placeholder userId; in production, get from session
-    const userId = 'user_demo'
-
-    // Ensure the demo user exists (foreign key requirement)
-    await prisma.user.upsert({
-      where: { id: userId },
-      create: { id: userId, email: 'demo@illumin.app' },
+    // Ensure user record exists and resolve internal userId
+    const dbUser = await prisma.user.upsert({
+      where: { email: authUser.email! },
       update: {},
+      create: { id: authUser.id, email: authUser.email! },
     })
+    const userId = dbUser.id
 
     for (const akoyaAccount of akoyaAccounts) {
       const account = await prisma.account.upsert({

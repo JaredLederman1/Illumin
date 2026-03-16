@@ -16,6 +16,12 @@
   --color-positive-bg: rgba(45, 106, 79, 0.08);
   --color-negative: #8B2635;
   --color-negative-bg: rgba(139, 38, 53, 0.08);
+  --color-negative-border: rgba(139, 38, 53, 0.15);
+  --color-positive-border: rgba(45, 106, 79, 0.15);
+  --color-gold-border: rgba(184, 145, 58, 0.15);
+  --color-info: #5A7A9A;
+  --color-info-bg: rgba(90, 122, 154, 0.06);
+  --color-info-border: rgba(90, 122, 154, 0.15);
 }
 
 *, *::before, *::after {
