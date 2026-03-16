@@ -80,7 +80,11 @@ export default function BenefitsPage() {
 
       const res  = await fetch('/api/user/benefits/extract', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form })
       const data = await res.json()
-      if (!res.ok) { setError(data.error ?? 'Analysis failed.'); return }
+      if (!res.ok) {
+        const code = data.code ? ` [${data.code}]` : ''
+        setError((data.error ?? 'Analysis failed.') + code)
+        return
+      }
       setResult({
         extracted:           data.extracted,
         crossCheck:          data.crossCheck,
