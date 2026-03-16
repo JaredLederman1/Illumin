@@ -17,7 +17,7 @@ export function getAkoyaAuthUrl(connectorId: string): string {
     client_id: clientId!,
     redirect_uri: redirectUri!,
     response_type: 'code',
-    scope: 'openid profile offline_access accounts transactions balances',
+    scope: 'openid profile offline_access',
     state: connectorId,
   })
 
