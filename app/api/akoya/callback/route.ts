@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
   const code = searchParams.get('code')
-  const connectorId = searchParams.get('state')
+  const connectorId = searchParams.get('state')?.split(':')[0] ?? null
   const akoyaError = searchParams.get('error')
   const akoyaErrorDesc = searchParams.get('error_description')
 

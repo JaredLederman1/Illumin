@@ -18,7 +18,7 @@ export function getAkoyaAuthUrl(connectorId: string): string {
     redirect_uri: redirectUri!,
     response_type: 'code',
     scope: 'openid profile offline_access',
-    state: connectorId,
+    state: `${connectorId}:${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`,
   })
 
   const url = `${AKOYA_SANDBOX_IDP}/auth?${params.toString()}`
