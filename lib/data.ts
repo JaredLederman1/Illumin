@@ -75,6 +75,24 @@ export async function fetchTransactions(params?: {
   return { transactions: data.transactions ?? [], total: data.total ?? 0 }
 }
 
+// Returns a Set of merchant names that appear in 2+ distinct calendar months
+export function detectRecurringMerchants(
+  transactions: { merchantName: string | null; date: string | Date }[]
+): Set<string> {
+  const merchantMonths: Record<string, Set<string>> = {}
+  for (const tx of transactions) {
+    if (!tx.merchantName) continue
+    const month = new Date(tx.date).toISOString().slice(0, 7)
+    if (!merchantMonths[tx.merchantName]) merchantMonths[tx.merchantName] = new Set()
+    merchantMonths[tx.merchantName].add(month)
+  }
+  const recurring = new Set<string>()
+  for (const [merchant, months] of Object.entries(merchantMonths)) {
+    if (months.size >= 2) recurring.add(merchant)
+  }
+  return recurring
+}
+
 export async function fetchNetWorth(): Promise<NetWorthSummary> {
   if (USE_MOCK_DATA) return mockNetWorth
   const res = await fetch('/api/networth')

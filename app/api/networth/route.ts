@@ -12,8 +12,8 @@ export async function GET() {
   }
   try {
     const accounts = await prisma.account.findMany()
-    const totalAssets      = accounts.filter((a: { balance: number }) => a.balance > 0).reduce((s: number, a: { balance: number }) => s + a.balance, 0)
-    const totalLiabilities = Math.abs(accounts.filter((a: { balance: number }) => a.balance < 0).reduce((s: number, a: { balance: number }) => s + a.balance, 0))
+    const totalAssets      = accounts.filter((a: { classification: string }) => a.classification === 'asset').reduce((s: number, a: { balance: number }) => s + a.balance, 0)
+    const totalLiabilities = accounts.filter((a: { classification: string }) => a.classification === 'liability').reduce((s: number, a: { balance: number }) => s + Math.abs(a.balance), 0)
     const netWorth = totalAssets - totalLiabilities
 
     // Fetch the most recent snapshot for month-over-month comparison before writing a new one

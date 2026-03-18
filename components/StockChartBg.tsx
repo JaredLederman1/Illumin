@@ -23,7 +23,9 @@ const POINTS: [number, number][] = [
   [830,  62], [872,  44],   // pullback dip before final surge
   [920,  72], [960,  50],
   [1010, 20], [1060, -10],
-  [1440, -120],
+  [1120, 55], [1175, 38],   // dip
+  [1240, 70], [1285, 48],   // dip deepens slightly
+  [1340, -5], [1440, -120], // shoots up
 ]
 
 const lineD = POINTS.reduce(

@@ -1,30 +1,22 @@
 'use client'
 
-import { useEffect, useRef, type ReactNode } from 'react'
-import styles from './page.module.css'
+import { useRef, type ReactNode } from 'react'
+import { motion, useScroll, useTransform } from 'framer-motion'
 
 export default function RevealText({ children }: { children: ReactNode }) {
   const ref = useRef<HTMLSpanElement>(null)
 
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          el.classList.add(styles.textRevealed)
-          observer.disconnect()
-        }
-      },
-      { threshold: 0.5 }
-    )
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ['start 0.9', 'start 0.4'],
+  })
+
+  const opacity = useTransform(scrollYProgress, [0, 1], [0, 1])
+  const y       = useTransform(scrollYProgress, [0, 1], [32, 0])
 
   return (
-    <span ref={ref} className={styles.revealText}>
+    <motion.span ref={ref} style={{ display: 'block', opacity, y }}>
       {children}
-    </span>
+    </motion.span>
   )
 }

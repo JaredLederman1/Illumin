@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
+import { useDashboard } from '@/lib/dashboardData'
 import { crossCheckBenefits, calcTotals } from '@/lib/benefitsAnalysis'
-import type { BenefitStatus, ExtractedBenefits } from '@/lib/benefitsAnalysis'
+import type { BenefitStatus } from '@/lib/benefitsAnalysis'
 
 // ── Shared style objects ──────────────────────────────────────────────────────
 
@@ -41,16 +41,14 @@ const inputStyle: React.CSSProperties = {
   fontSize: '13px',
 }
 
-// ── Urgency color map (CSS vars only) ────────────────────────────────────────
+// ── Urgency color map ─────────────────────────────────────────────────────────
 
 const urgencyColors: Record<BenefitStatus['urgency'], { dot: string; bg: string; border: string }> = {
-  critical: { dot: 'var(--color-negative)',      bg: 'var(--color-negative-bg)',   border: 'var(--color-negative-border)'  },
-  high:     { dot: 'var(--color-gold)',           bg: 'var(--color-gold-subtle)',   border: 'var(--color-gold-border)'      },
-  medium:   { dot: 'var(--color-info)',           bg: 'var(--color-info-bg)',       border: 'var(--color-info-border)'      },
-  info:     { dot: 'var(--color-text-muted)',     bg: 'var(--color-surface-2)',     border: 'var(--color-border)'           },
+  critical: { dot: 'var(--color-negative)',  bg: 'var(--color-negative-bg)',  border: 'var(--color-negative-border)' },
+  high:     { dot: 'var(--color-gold)',       bg: 'var(--color-gold-subtle)', border: 'var(--color-gold-border)'      },
+  medium:   { dot: 'var(--color-info)',       bg: 'var(--color-info-bg)',     border: 'var(--color-info-border)'      },
+  info:     { dot: 'var(--color-text-muted)', bg: 'var(--color-surface-2)',   border: 'var(--color-border)'           },
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
@@ -60,7 +58,7 @@ function fmtIncome(n: number) {
   return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(n)
 }
 
-interface OnboardingProfile {
+interface EditValues {
   age: number
   annualIncome: number
   savingsRate: number
@@ -70,50 +68,19 @@ interface OnboardingProfile {
 // ── Profile page ──────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
-  const [email, setEmail]             = useState<string | null>(null)
-  const [token, setToken]             = useState<string | null>(null)
-  const [profile, setProfile]         = useState<OnboardingProfile | null>(null)
-  const [editing, setEditing]         = useState(false)
-  const [editValues, setEditValues]   = useState<OnboardingProfile | null>(null)
-  const [saving, setSaving]           = useState(false)
-  const [saveError, setSaveError]     = useState<string | null>(null)
-  const [crossCheck, setCrossCheck]   = useState<BenefitStatus[]>([])
-  const [extracted, setExtracted]     = useState<ExtractedBenefits | null>(null)
-  const [done, setDone]               = useState<string[]>([])
-  const [loading, setLoading]         = useState(true)
-  const [hasBenefits, setHasBenefits] = useState(false)
+  const { loading, email, authToken, profile, setProfile, benefits, setBenefits } = useDashboard()
 
-  useEffect(() => {
-    ;(async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      setEmail(session?.user?.email ?? null)
-      const tok = session?.access_token ?? null
-      setToken(tok)
-      if (!tok) { setLoading(false); return }
+  const [editing,    setEditing]   = useState(false)
+  const [editValues, setEditValues] = useState<EditValues | null>(null)
+  const [saving,     setSaving]    = useState(false)
+  const [saveError,  setSaveError] = useState<string | null>(null)
+  const [done,       setDone]      = useState<string[]>(benefits?.actionItemsDone ?? [])
 
-      const [profileRes, benefitsRes] = await Promise.all([
-        fetch('/api/user/onboarding', { headers: { Authorization: `Bearer ${tok}` } }),
-        fetch('/api/user/benefits',   { headers: { Authorization: `Bearer ${tok}` } }),
-      ])
-
-      if (profileRes.ok) {
-        const { profile: p } = await profileRes.json()
-        if (p) setProfile(p)
-      }
-
-      if (benefitsRes.ok) {
-        const data = await benefitsRes.json()
-        if (data.benefits) {
-          setHasBenefits(true)
-          setExtracted(data.extracted)
-          setCrossCheck(data.crossCheck)
-          setDone(data.actionItemsDone ?? [])
-        }
-      }
-
-      setLoading(false)
-    })()
-  }, [])
+  // Sync done list when benefits load from context
+  const actionItemsDone = benefits?.actionItemsDone ?? []
+  const crossCheck = benefits?.extracted
+    ? crossCheckBenefits(benefits.extracted)
+    : (benefits?.crossCheck ?? [])
 
   const startEdit = () => {
     setEditValues(profile ?? { age: 0, annualIncome: 0, savingsRate: 0, retirementAge: 65 })
@@ -130,7 +97,7 @@ export default function ProfilePage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
         },
         body: JSON.stringify({
           age:           Number(editValues.age),
@@ -155,21 +122,23 @@ export default function ProfilePage() {
   }
 
   const toggleItem = useCallback(async (itemLabel: string, checked: boolean) => {
-    setDone(prev => checked ? [...prev, itemLabel] : prev.filter(l => l !== itemLabel))
-    const { data: { session } } = await supabase.auth.getSession()
-    const tok = session?.access_token
-    if (!tok) return
+    const next = checked ? [...done, itemLabel] : done.filter(l => l !== itemLabel)
+    setDone(next)
+    if (benefits) setBenefits({ ...benefits, actionItemsDone: next })
+    if (!authToken) return
     await fetch('/api/user/benefits/actions', {
       method:  'PATCH',
-      headers: { Authorization: `Bearer ${tok}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
       body:    JSON.stringify({ label: itemLabel, done: checked }),
     })
-  }, [])
+  }, [done, benefits, setBenefits, authToken])
 
-  const initials   = email ? email.slice(0, 2).toUpperCase() : ''
+  const initials    = email ? email.slice(0, 2).toUpperCase() : ''
+  const hasBenefits = !!benefits
   const actionItems = crossCheck.filter(s => s.urgency !== 'info')
-  const completedCount = actionItems.filter(s => done.includes(s.label)).length
-  const totals = extracted ? calcTotals(extracted) : null
+  const completedCount = actionItems.filter(s => (done.length ? done : actionItemsDone).includes(s.label)).length
+  const totals = benefits?.extracted ? calcTotals(benefits.extracted) : null
+  const activeDone = done.length ? done : actionItemsDone
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -239,10 +208,10 @@ export default function ProfilePage() {
           profile ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
               {[
-                { label: 'Age',             value: `${profile.age} years old`              },
-                { label: 'Annual income',   value: `$${fmtIncome(profile.annualIncome)}`   },
-                { label: 'Savings rate',    value: `${profile.savingsRate}%`               },
-                { label: 'Retirement age',  value: `${profile.retirementAge} years old`    },
+                { label: 'Age',            value: `${profile.age} years old`            },
+                { label: 'Annual income',  value: `$${fmtIncome(profile.annualIncome)}`  },
+                { label: 'Savings rate',   value: `${profile.savingsRate}%`              },
+                { label: 'Retirement age', value: `${profile.retirementAge} years old`   },
               ].map(({ label: lbl, value }) => (
                 <div key={lbl}>
                   <p style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: '4px' }}>
@@ -270,80 +239,54 @@ export default function ProfilePage() {
             </div>
           )
         ) : (
-          /* Edit form */
           editValues && (
             <div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '20px' }}>
                 <div>
                   <label style={fieldLabel}>Age</label>
-                  <input
-                    type="number"
-                    value={editValues.age}
-                    min={16} max={80}
+                  <input type="number" value={editValues.age} min={16} max={80}
                     onChange={e => setEditValues(v => v ? { ...v, age: Number(e.target.value) } : v)}
-                    style={inputStyle}
-                  />
+                    style={inputStyle} />
                 </div>
                 <div>
                   <label style={fieldLabel}>Annual income ($)</label>
-                  <input
-                    type="number"
-                    value={editValues.annualIncome}
-                    min={0}
+                  <input type="number" value={editValues.annualIncome} min={0}
                     onChange={e => setEditValues(v => v ? { ...v, annualIncome: Number(e.target.value) } : v)}
-                    style={inputStyle}
-                  />
+                    style={inputStyle} />
                 </div>
                 <div>
                   <label style={fieldLabel}>Savings rate (%)</label>
-                  <input
-                    type="number"
-                    value={editValues.savingsRate}
-                    min={0} max={100}
+                  <input type="number" value={editValues.savingsRate} min={0} max={100}
                     onChange={e => setEditValues(v => v ? { ...v, savingsRate: Number(e.target.value) } : v)}
-                    style={inputStyle}
-                  />
+                    style={inputStyle} />
                 </div>
                 <div>
                   <label style={fieldLabel}>Target retirement age</label>
-                  <input
-                    type="number"
-                    value={editValues.retirementAge}
-                    min={45} max={80}
+                  <input type="number" value={editValues.retirementAge} min={45} max={80}
                     onChange={e => setEditValues(v => v ? { ...v, retirementAge: Number(e.target.value) } : v)}
-                    style={inputStyle}
-                  />
+                    style={inputStyle} />
                 </div>
               </div>
-
               {saveError && (
                 <p style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--color-negative)', marginBottom: '14px' }}>
                   {saveError}
                 </p>
               )}
-
               <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  style={{
-                    padding: '10px 24px', backgroundColor: 'var(--color-gold)', border: 'none',
-                    borderRadius: '2px', color: 'var(--color-surface)', fontFamily: 'var(--font-mono)',
-                    fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase',
-                    cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.65 : 1,
-                  }}
-                >
+                <button onClick={handleSave} disabled={saving} style={{
+                  padding: '10px 24px', backgroundColor: 'var(--color-gold)', border: 'none',
+                  borderRadius: '2px', color: 'var(--color-surface)', fontFamily: 'var(--font-mono)',
+                  fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase',
+                  cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.65 : 1,
+                }}>
                   {saving ? 'Saving...' : 'Save'}
                 </button>
-                <button
-                  onClick={() => { setEditing(false); setSaveError(null) }}
-                  disabled={saving}
-                  style={{
-                    padding: '10px 18px', backgroundColor: 'transparent',
-                    border: '1px solid var(--color-border)', borderRadius: '2px',
-                    color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)',
-                    fontSize: '11px', letterSpacing: '0.08em', cursor: 'pointer',
-                  }}
+                <button onClick={() => { setEditing(false); setSaveError(null) }} disabled={saving} style={{
+                  padding: '10px 18px', backgroundColor: 'transparent',
+                  border: '1px solid var(--color-border)', borderRadius: '2px',
+                  color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)',
+                  fontSize: '11px', letterSpacing: '0.08em', cursor: 'pointer',
+                }}
                   onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-text)')}
                   onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-text-muted)')}
                 >
@@ -408,7 +351,7 @@ export default function ProfilePage() {
             style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
           >
             {actionItems.map((item) => {
-              const isDone = done.includes(item.label)
+              const isDone = activeDone.includes(item.label)
               const c = urgencyColors[item.urgency]
               return (
                 <motion.div
@@ -439,7 +382,6 @@ export default function ProfilePage() {
                       </svg>
                     )}
                   </div>
-
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
                       <span style={{
@@ -507,7 +449,6 @@ export default function ProfilePage() {
           </div>
         </motion.div>
       )}
-
     </div>
   )
 }

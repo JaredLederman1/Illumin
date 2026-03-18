@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import NetWorthCard from '@/components/ui/NetWorthCard'
 import DonutChart from '@/components/ui/DonutChart'
 import BarChart from '@/components/ui/BarChart'
 import TransactionRow from '@/components/ui/TransactionRow'
+import { useDashboard } from '@/lib/dashboardData'
+import { detectRecurringMerchants } from '@/lib/data'
 
 const card = {
   backgroundColor: '#FFFFFF',
@@ -24,63 +26,14 @@ const label = {
   marginBottom: '22px',
 } as const
 
-interface NetWorthState {
-  current: number
-  lastMonth: number
-  totalAssets: number
-  totalLiabilities: number
-}
-
-interface Transaction {
-  id: string
-  merchantName: string | null
-  amount: number
-  category: string | null
-  date: string | Date
-  pending: boolean
-}
-
-interface SpendingCategory {
-  category: string
-  amount: number
-  color: string
-}
-
-interface MonthlyData {
-  month: string
-  income: number
-  expenses: number
-  savings: number
-}
-
 export default function DashboardPage() {
-  const [loading, setLoading]                 = useState(true)
-  const [netWorth, setNetWorth]               = useState<NetWorthState | null>(null)
-  const [transactions, setTransactions]       = useState<Transaction[]>([])
-  const [monthlyData, setMonthlyData]         = useState<MonthlyData[]>([])
-  const [spendingByCategory, setSpending]     = useState<SpendingCategory[]>([])
+  const { loading, netWorth, transactions, accounts, monthlyData, spendingByCategory } = useDashboard()
 
-  useEffect(() => {
-    Promise.all([
-      fetch('/api/networth').then(r => r.json()).catch(() => null),
-      fetch('/api/transactions?limit=10').then(r => r.json()).catch(() => null),
-      fetch('/api/cashflow').then(r => r.json()).catch(() => null),
-    ]).then(([nw, tx, cf]) => {
-      if (nw?.netWorth !== undefined) {
-        setNetWorth({
-          current:          nw.netWorth,
-          lastMonth:        nw.previousNetWorth ?? nw.netWorth,
-          totalAssets:      nw.totalAssets,
-          totalLiabilities: nw.totalLiabilities,
-        })
-      }
-      if (Array.isArray(tx?.transactions) && tx.transactions.length > 0) {
-        setTransactions(tx.transactions)
-      }
-      if (cf?.months?.length)              setMonthlyData(cf.months)
-      if (cf?.spendingByCategory?.length)  setSpending(cf.spendingByCategory)
-    }).finally(() => setLoading(false))
-  }, [])
+  const accountMap = useMemo(() =>
+    Object.fromEntries(accounts.map(a => [a.id, a])),
+  [accounts])
+
+  const recurringMerchants = useMemo(() => detectRecurringMerchants(transactions), [transactions])
 
   const hasData = netWorth !== null && (netWorth.totalAssets > 0 || netWorth.totalLiabilities > 0)
 
@@ -152,13 +105,11 @@ export default function DashboardPage() {
         totalLiabilities={netWorth.totalLiabilities}
       />
 
-      {/* Thin gold rule */}
       <div style={{
         height: '1px',
         background: 'linear-gradient(90deg, transparent, rgba(184,145,58,0.35) 25%, rgba(184,145,58,0.35) 75%, transparent)',
       }} />
 
-      {/* Charts */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -175,7 +126,6 @@ export default function DashboardPage() {
         </div>
       </motion.div>
 
-      {/* Recent transactions */}
       {transactions.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
@@ -189,16 +139,22 @@ export default function DashboardPage() {
             animate="visible"
             variants={{ visible: { transition: { staggerChildren: 0.03 } } }}
           >
-            {transactions.map((tx) => (
-              <TransactionRow
-                key={tx.id}
-                merchantName={tx.merchantName}
-                amount={tx.amount}
-                category={tx.category}
-                date={tx.date}
-                pending={tx.pending}
-              />
-            ))}
+            {transactions.slice(0, 10).map((tx) => {
+              const acct = accountMap[tx.accountId]
+              return (
+                <TransactionRow
+                  key={tx.id}
+                  merchantName={tx.merchantName}
+                  amount={tx.amount}
+                  category={tx.category}
+                  date={tx.date}
+                  pending={tx.pending}
+                  accountName={acct?.institutionName ?? null}
+                  last4={acct?.last4 ?? null}
+                  recurring={tx.merchantName ? recurringMerchants.has(tx.merchantName) : false}
+                />
+              )
+            })}
           </motion.div>
         </motion.div>
       )}

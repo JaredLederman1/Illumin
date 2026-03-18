@@ -8,6 +8,9 @@ interface TransactionRowProps {
   category: string | null
   date: Date | string
   pending?: boolean
+  accountName?: string | null
+  last4?: string | null
+  recurring?: boolean
 }
 
 function formatCurrency(n: number) {
@@ -26,8 +29,15 @@ export const rowVariants: Variants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.22 } },
 }
 
-export default function TransactionRow({ merchantName, amount, category, date, pending }: TransactionRowProps) {
+export default function TransactionRow({
+  merchantName, amount, category, date, pending,
+  accountName, last4, recurring,
+}: TransactionRowProps) {
   const isIncome = amount > 0
+
+  const accountLabel = accountName
+    ? last4 ? `${accountName} ····${last4}` : accountName
+    : null
 
   return (
     <motion.div
@@ -46,47 +56,48 @@ export default function TransactionRow({ merchantName, amount, category, date, p
       }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{
-            fontSize: '13px',
-            color: '#1A1714',
-            fontFamily: 'var(--font-mono)',
-            fontWeight: 500,
-          }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '13px', color: '#1A1714', fontFamily: 'var(--font-mono)', fontWeight: 500 }}>
             {merchantName ?? 'Unknown Merchant'}
           </span>
           {pending && (
             <span style={{
-              fontSize: '9px',
-              color: '#B8913A',
-              fontFamily: 'var(--font-mono)',
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              border: '1px solid rgba(184,145,58,0.4)',
-              padding: '1px 5px',
-              borderRadius: '2px',
+              fontSize: '9px', color: '#B8913A', fontFamily: 'var(--font-mono)',
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+              border: '1px solid rgba(184,145,58,0.4)', padding: '1px 5px', borderRadius: '2px',
             }}>
               Pending
             </span>
           )}
+          {recurring && (
+            <span style={{
+              fontSize: '9px', color: '#4A6785', fontFamily: 'var(--font-mono)',
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+              border: '1px solid rgba(74,103,133,0.35)', padding: '1px 5px', borderRadius: '2px',
+            }}>
+              Recurring
+            </span>
+          )}
           {category && (
             <span style={{
-              fontSize: '9px',
-              color: '#A89880',
-              fontFamily: 'var(--font-mono)',
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              border: '1px solid rgba(184,145,58,0.15)',
-              padding: '1px 5px',
-              borderRadius: '2px',
+              fontSize: '9px', color: '#A89880', fontFamily: 'var(--font-mono)',
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+              border: '1px solid rgba(184,145,58,0.15)', padding: '1px 5px', borderRadius: '2px',
             }}>
               {category}
             </span>
           )}
         </div>
-        <span style={{ fontSize: '11px', color: '#A89880', fontFamily: 'var(--font-mono)' }}>
-          {formatDate(date)}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ fontSize: '11px', color: '#A89880', fontFamily: 'var(--font-mono)' }}>
+            {formatDate(date)}
+          </span>
+          {accountLabel && (
+            <span style={{ fontSize: '11px', color: '#B8913A', fontFamily: 'var(--font-mono)', opacity: 0.7 }}>
+              {accountLabel}
+            </span>
+          )}
+        </div>
       </div>
       <span style={{
         fontFamily: 'var(--font-serif)',

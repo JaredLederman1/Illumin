@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
 
     const now = new Date()
     const startDate = new Date(now)
-    startDate.setDate(startDate.getDate() - 30)
+    startDate.setFullYear(startDate.getFullYear() - 2)
     const start = startDate.toISOString().split('T')[0]
     const end = now.toISOString().split('T')[0]
 
@@ -66,7 +66,9 @@ export async function POST(request: NextRequest) {
           const plaidAccount = plaidAccounts.find(p => p.account_id === account.plaidAccountId)
           if (!plaidAccount) continue
 
-          const balance = plaidAccount.balances.current ?? plaidAccount.balances.available ?? account.balance
+          const isLiability = plaidAccount.type === 'credit' || plaidAccount.type === 'loan'
+          const rawBalance = plaidAccount.balances.current ?? plaidAccount.balances.available ?? account.balance
+          const balance = isLiability ? -Math.abs(rawBalance) : rawBalance
           await prisma.account.update({
             where: { id: account.id },
             data: { balance },

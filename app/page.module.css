@@ -136,8 +136,8 @@
    ════════════════════════════════════════════════════════════ */
 
 @keyframes bloomIn {
-  from { opacity: 0; transform: scale(0.96); }
-  to   { opacity: 1; transform: scale(1);    }
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 /* ── SECTION SHELL ────────────────────────────────────────── */
@@ -183,8 +183,6 @@
   padding:               80px 0;
   border-top:            1px solid var(--color-grid-line);
   align-items:           center;
-  opacity:               0;
-  transform:             scale(0.96);
 }
 
 .featureRow.visible {

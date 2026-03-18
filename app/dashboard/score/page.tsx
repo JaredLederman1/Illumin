@@ -1,10 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
-import type { ScoreReport, Finding } from '@/lib/scoring'
+import { useDashboard } from '@/lib/dashboardData'
+import type { Finding } from '@/lib/scoring'
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
@@ -36,32 +35,12 @@ function ScoreRing({ score }: { score: number }) {
 }
 
 export default function ScorePage() {
-  const [report, setReport]   = useState<ScoreReport | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError]     = useState<string | null>(null)
-
-  useEffect(() => {
-    ;(async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
-      if (!token) { setError('Sign in to view your score.'); setLoading(false); return }
-
-      const res = await fetch('/api/user/score', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const data = await res.json()
-      if (!res.ok) { setError(data.error ?? 'Failed to load score.'); setLoading(false); return }
-      setReport(data.report)
-      setLoading(false)
-    })()
-  }, [])
+  const { loading, authToken, scoreReport: report } = useDashboard()
 
   const scoreLabel = !report ? '' : report.overallScore >= 80 ? 'Strong' : report.overallScore >= 60 ? 'On Track' : report.overallScore >= 40 ? 'Needs Work' : 'At Risk'
 
   return (
     <div style={{ padding: '40px 48px', maxWidth: '900px' }}>
-
-      {/* Header */}
       <div style={{ marginBottom: '36px' }}>
         <p style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: '#B8913A', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '10px' }}>
           Financial Score
@@ -78,25 +57,19 @@ export default function ScorePage() {
         <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#8A95A3' }}>Loading…</p>
       )}
 
-      {error && (
+      {!loading && !authToken && (
         <div style={{ backgroundColor: 'rgba(139,58,58,0.06)', border: '1px solid rgba(139,58,58,0.2)', borderRadius: '6px', padding: '16px 20px' }}>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#8B3A3A' }}>{error}</p>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#8B3A3A' }}>Sign in to view your score.</p>
         </div>
       )}
 
       {report && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
-
-          {/* Score overview */}
           <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '40px',
+            display: 'flex', alignItems: 'center', gap: '40px',
             backgroundColor: 'rgba(184,145,58,0.04)',
             border: '1px solid rgba(184,145,58,0.15)',
-            borderRadius: '8px',
-            padding: '32px 36px',
-            marginBottom: '32px',
+            borderRadius: '8px', padding: '32px 36px', marginBottom: '32px',
           }}>
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <ScoreRing score={report.overallScore} />
@@ -127,7 +100,6 @@ export default function ScorePage() {
             </div>
           </div>
 
-          {/* Findings */}
           {report.findings.length > 0 ? (
             <>
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: '#8A95A3', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '16px' }}>
@@ -142,12 +114,7 @@ export default function ScorePage() {
                       initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.06, duration: 0.3 }}
-                      style={{
-                        backgroundColor: c.bg,
-                        border: `1px solid ${c.border}`,
-                        borderRadius: '6px',
-                        padding: '16px 20px',
-                      }}
+                      style={{ backgroundColor: c.bg, border: `1px solid ${c.border}`, borderRadius: '6px', padding: '16px 20px' }}
                     >
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px' }}>
                         <div style={{ flex: 1 }}>
@@ -176,18 +143,12 @@ export default function ScorePage() {
             </div>
           )}
 
-          {/* CTA to upload */}
           {!report.dimensions.find(d => d.name === 'Benefits Utilization') && (
             <Link href="/dashboard/benefits" style={{
-              display: 'inline-block',
-              padding: '12px 24px',
-              backgroundColor: '#B8913A',
-              color: '#0D1018',
-              borderRadius: '4px',
-              fontFamily: 'var(--font-mono)',
-              fontSize: '12px',
-              textDecoration: 'none',
-              letterSpacing: '0.06em',
+              display: 'inline-block', padding: '12px 24px',
+              backgroundColor: '#B8913A', color: '#0D1018',
+              borderRadius: '4px', fontFamily: 'var(--font-mono)',
+              fontSize: '12px', textDecoration: 'none', letterSpacing: '0.06em',
             }}>
               Upload contract to complete analysis →
             </Link>

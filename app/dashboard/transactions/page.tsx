@@ -1,11 +1,25 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import TransactionRow from '@/components/ui/TransactionRow'
 import Link from 'next/link'
+import { useDashboard } from '@/lib/dashboardData'
+import { detectRecurringMerchants } from '@/lib/data'
 
-const CATEGORIES = ['All', 'Income', 'Groceries', 'Dining', 'Entertainment', 'Transport', 'Utilities', 'Shopping', 'Health', 'Travel']
+// Maps display label → Plaid personal_finance_category.primary values
+const CATEGORY_MAP: Record<string, string[]> = {
+  Income:        ['INCOME', 'TRANSFER_IN'],
+  Groceries:     ['FOOD_AND_DRINK'],
+  Dining:        ['FOOD_AND_DRINK'],
+  Entertainment: ['ENTERTAINMENT', 'RECREATION'],
+  Transport:     ['TRANSPORTATION', 'TRAVEL'],
+  Utilities:     ['HOME_IMPROVEMENT', 'UTILITIES', 'RENT_AND_UTILITIES'],
+  Shopping:      ['GENERAL_MERCHANDISE', 'PERSONAL_CARE', 'APPAREL_AND_ACCESSORIES'],
+  Health:        ['MEDICAL', 'HEALTHCARE'],
+  Travel:        ['TRAVEL', 'TRANSPORTATION'],
+}
+const CATEGORIES = ['All', ...Object.keys(CATEGORY_MAP)]
 const PAGE_SIZE = 10
 
 const controlStyle = {
@@ -19,62 +33,31 @@ const controlStyle = {
   outline: 'none',
 } as const
 
-interface Account {
-  id: string
-  institutionName: string
-  last4: string | null
-}
-
-interface Transaction {
-  id: string
-  accountId: string
-  merchantName: string | null
-  amount: number
-  category: string | null
-  date: string | Date
-  pending: boolean
-}
-
 export default function TransactionsPage() {
+  const { loading, accounts, transactions } = useDashboard()
+
   const [search,        setSearch]        = useState('')
   const [category,      setCategory]      = useState('All')
   const [accountFilter, setAccountFilter] = useState('All')
   const [page,          setPage]          = useState(1)
-  const [loading,       setLoading]       = useState(true)
-  const [accounts,      setAccounts]      = useState<Account[]>([])
-  const [transactions,  setTransactions]  = useState<Transaction[]>([])
-  const [loadedReal,    setLoadedReal]    = useState(false)
 
-  useEffect(() => {
-    fetch('/api/accounts')
-      .then(r => r.json())
-      .then(d => { if (d.accounts?.length) setAccounts(d.accounts) })
-      .catch(() => {})
+  const accountMap = useMemo(() =>
+    Object.fromEntries(accounts.map(a => [a.id, a])),
+  [accounts])
 
-    // Fetch a generous batch; client-side filtering handles search, category, and account
-    fetch('/api/transactions?limit=500')
-      .then(r => r.json())
-      .then(d => {
-        if (Array.isArray(d.transactions)) {
-          setTransactions(d.transactions)
-          setLoadedReal(true)
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [])
+  const recurringMerchants = useMemo(() => detectRecurringMerchants(transactions), [transactions])
 
   const filtered = useMemo(() => {
     return transactions.filter(tx => {
       const matchSearch   = !search || (tx.merchantName ?? '').toLowerCase().includes(search.toLowerCase())
-      const matchCategory = category === 'All' || tx.category === category
+      const matchCategory = category === 'All' || (CATEGORY_MAP[category] ?? [category]).includes(tx.category ?? '')
       const matchAccount  = accountFilter === 'All' || tx.accountId === accountFilter
       return matchSearch && matchCategory && matchAccount
     })
   }, [transactions, search, category, accountFilter])
 
-  const paginated   = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-  const totalPages  = Math.ceil(filtered.length / PAGE_SIZE)
+  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
 
   if (loading) {
     return (
@@ -84,7 +67,7 @@ export default function TransactionsPage() {
     )
   }
 
-  if (loadedReal && transactions.length === 0) {
+  if (transactions.length === 0) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -161,25 +144,34 @@ export default function TransactionsPage() {
       }}>
         {paginated.length === 0 ? (
           <p style={{ fontSize: '13px', color: '#A89880', fontFamily: 'var(--font-mono)', textAlign: 'center', padding: '40px 0' }}>
-            {loadedReal ? 'No transactions found. Connect an account to import your transactions.' : 'No transactions found'}
+            No transactions match your filters
           </p>
         ) : (
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={{ visible: { transition: { staggerChildren: 0.025 } } }}
-          >
-            {paginated.map(tx => (
-              <TransactionRow
-                key={tx.id}
-                merchantName={tx.merchantName}
-                amount={tx.amount}
-                category={tx.category}
-                date={tx.date}
-                pending={tx.pending}
-              />
-            ))}
-          </motion.div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`${category}-${accountFilter}-${search}-${page}`}
+              initial="hidden"
+              animate="visible"
+              variants={{ visible: { transition: { staggerChildren: 0.025 } } }}
+            >
+              {paginated.map(tx => {
+                const acct = accountMap[tx.accountId]
+                return (
+                  <TransactionRow
+                    key={tx.id}
+                    merchantName={tx.merchantName}
+                    amount={tx.amount}
+                    category={tx.category}
+                    date={tx.date}
+                    pending={tx.pending}
+                    accountName={acct?.institutionName ?? null}
+                    last4={acct?.last4 ?? null}
+                    recurring={tx.merchantName ? recurringMerchants.has(tx.merchantName) : false}
+                  />
+                )
+              })}
+            </motion.div>
+          </AnimatePresence>
         )}
 
         {totalPages > 1 && (

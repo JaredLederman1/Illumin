@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from 'react'
 interface AccountCardProps {
   id?: string
   accountType: string
+  classification?: string
   balance: number
   last4?: string | null
   onRemove?: (id: string) => void
@@ -22,7 +23,7 @@ const accountTypeLabel: Record<string, string> = {
   investment: 'Investment',
 }
 
-export default function AccountCard({ id, accountType, balance, last4, onRemove }: AccountCardProps) {
+export default function AccountCard({ id, accountType, classification, balance, last4, onRemove }: AccountCardProps) {
   const isNegative = balance < 0
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirming, setConfirming] = useState(false)
@@ -59,9 +60,22 @@ export default function AccountCard({ id, accountType, balance, last4, onRemove 
       transition: 'opacity 200ms ease',
     }}>
       <div>
-        <p style={{ fontSize: '13px', color: '#1A1714', fontFamily: 'var(--font-serif)', fontWeight: 400, marginBottom: '2px' }}>
-          {accountTypeLabel[accountType] ?? accountType}
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+          <p style={{ fontSize: '13px', color: '#1A1714', fontFamily: 'var(--font-serif)', fontWeight: 400 }}>
+            {accountTypeLabel[accountType] ?? accountType}
+          </p>
+          {classification && (
+            <span style={{
+              fontSize: '9px', fontFamily: 'var(--font-mono)', letterSpacing: '0.10em',
+              textTransform: 'uppercase', padding: '2px 6px', borderRadius: '2px',
+              backgroundColor: classification === 'liability' ? 'rgba(139,38,53,0.08)' : 'rgba(45,106,79,0.08)',
+              color: classification === 'liability' ? '#8B2635' : '#2D6A4F',
+              border: `1px solid ${classification === 'liability' ? 'rgba(139,38,53,0.2)' : 'rgba(45,106,79,0.2)'}`,
+            }}>
+              {classification === 'liability' ? 'Liability' : 'Asset'}
+            </span>
+          )}
+        </div>
         <p style={{ fontSize: '11px', color: '#A89880', fontFamily: 'var(--font-mono)', letterSpacing: '0.03em' }}>
           {last4 ? `···· ${last4}` : 'No account number'}
         </p>

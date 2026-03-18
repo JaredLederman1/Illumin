@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import ForecastChart from '@/components/ui/ForecastChart'
+import { useDashboard } from '@/lib/dashboardData'
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
@@ -25,49 +25,8 @@ const sectionLabel = {
   marginBottom: '22px',
 } as const
 
-interface ForecastData {
-  avgIncome: number
-  avgExpenses: number
-  avgSavings: number
-  checkingBalance: number
-  emergencyFundMonths: number
-  historicalMonths: { month: string; balance: number; projected: boolean }[]
-  projectedMonths: { month: string; balance: number; projected: boolean }[]
-}
-
-function EmptyState() {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: 'easeOut' }}
-      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', gap: '20px', textAlign: 'center' }}
-    >
-      <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: '1px solid rgba(184,145,58,0.25)', backgroundColor: 'rgba(184,145,58,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
-        ◈
-      </div>
-      <div>
-        <p style={{ fontFamily: 'var(--font-serif)', fontSize: '22px', fontWeight: 400, color: '#1A1714', marginBottom: '8px' }}>No forecast data</p>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#A89880', lineHeight: 1.7 }}>Connect a bank account to generate a 6-month cash flow projection.</p>
-      </div>
-      <Link href="/dashboard/accounts" style={{ padding: '10px 24px', backgroundColor: '#B8913A', border: 'none', borderRadius: '2px', color: '#FFFFFF', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', textDecoration: 'none', display: 'inline-block' }}>
-        Connect an Account
-      </Link>
-    </motion.div>
-  )
-}
-
 export default function ForecastPage() {
-  const [loading, setLoading] = useState(true)
-  const [data, setData]       = useState<ForecastData | null>(null)
-
-  useEffect(() => {
-    fetch('/api/forecast')
-      .then(r => r.json())
-      .then(d => { if (d.avgIncome !== undefined) setData(d) })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [])
+  const { loading, forecast } = useDashboard()
 
   if (loading) {
     return (
@@ -77,9 +36,29 @@ export default function ForecastPage() {
     )
   }
 
-  if (!data) return <EmptyState />
+  if (!forecast) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', gap: '20px', textAlign: 'center' }}
+      >
+        <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: '1px solid rgba(184,145,58,0.25)', backgroundColor: 'rgba(184,145,58,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+          ◈
+        </div>
+        <div>
+          <p style={{ fontFamily: 'var(--font-serif)', fontSize: '22px', fontWeight: 400, color: '#1A1714', marginBottom: '8px' }}>No forecast data</p>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#A89880', lineHeight: 1.7 }}>Connect a bank account to generate a 6-month cash flow projection.</p>
+        </div>
+        <Link href="/dashboard/accounts" style={{ padding: '10px 24px', backgroundColor: '#B8913A', border: 'none', borderRadius: '2px', color: '#FFFFFF', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', textDecoration: 'none', display: 'inline-block' }}>
+          Connect an Account
+        </Link>
+      </motion.div>
+    )
+  }
 
-  const { avgIncome, avgExpenses, avgSavings, emergencyFundMonths, historicalMonths, projectedMonths } = data
+  const { avgIncome, avgExpenses, avgSavings, emergencyFundMonths, historicalMonths, projectedMonths } = forecast
   const forecastData = [...historicalMonths, ...projectedMonths]
 
   const summaryItems = [
@@ -90,7 +69,6 @@ export default function ForecastPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Summary */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
         {summaryItems.map(({ label, value, color }, i) => (
           <motion.div
@@ -106,13 +84,11 @@ export default function ForecastPage() {
         ))}
       </div>
 
-      {/* Forecast chart */}
       <div style={card}>
         <p style={sectionLabel}>Checking Balance: 6-Month Projection</p>
         <ForecastChart data={forecastData} emergencyFundMonths={emergencyFundMonths} />
       </div>
 
-      {/* Projection table */}
       <div style={card}>
         <p style={sectionLabel}>Projected Monthly Balances</p>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>

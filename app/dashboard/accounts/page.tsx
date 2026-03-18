@@ -1,15 +1,16 @@
 'use client'
 
-import { useState, useEffect, useRef, Suspense, useCallback } from 'react'
+import { useState, useRef, Suspense, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { usePlaidLink } from 'react-plaid-link'
 import AccountCard from '@/components/ui/AccountCard'
-import { fetchAccounts } from '@/lib/data'
+import { useDashboard } from '@/lib/dashboardData'
 
 interface Account {
   id: string
   institutionName: string
   accountType: string
+  classification?: string
   balance: number
   last4: string | null
 }
@@ -102,6 +103,7 @@ function InstitutionGroup({
                 key={account.id}
                 id={account.id}
                 accountType={account.accountType}
+                classification={account.classification}
                 balance={account.balance}
                 last4={account.last4}
                 onRemove={onRemove}
@@ -187,26 +189,15 @@ function ConnectButton({
 }
 
 function AccountsContent() {
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [loading, setLoading] = useState(true)
+  const { loading, accounts, setAccounts, refresh } = useDashboard()
   const [resetting, setResetting] = useState(false)
   const [banner, setBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
-  useEffect(() => {
-    fetchAccounts()
-      .then(a => setAccounts(a))
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [])
-
   const handleRemove = (id: string) => setAccounts(prev => prev.filter(a => a.id !== id))
 
-  const handleConnectSuccess = (newAccounts: Account[]) => {
-    setAccounts(prev => {
-      const existingIds = new Set(prev.map(a => a.id))
-      const merged = [...prev, ...newAccounts.filter(a => !existingIds.has(a.id))]
-      return merged
-    })
+  const handleConnectSuccess = async (newAccounts: Account[]) => {
+    setBanner({ type: 'success', message: `${newAccounts.length} account${newAccounts.length !== 1 ? 's' : ''} connected successfully. Refreshing data…` })
+    await refresh()
     setBanner({ type: 'success', message: `${newAccounts.length} account${newAccounts.length !== 1 ? 's' : ''} connected successfully.` })
   }
 
@@ -217,7 +208,7 @@ function AccountsContent() {
       const res = await fetch('/api/plaid/reset', { method: 'POST' })
       const data = await res.json()
       if (data.success) {
-        setAccounts([])
+        await refresh()
         setBanner({ type: 'success', message: `Reset complete: removed ${data.deletedAccounts} account(s) and ${data.deletedTransactions} transaction(s).` })
       } else {
         setBanner({ type: 'error', message: 'Reset failed: ' + (data.error ?? 'unknown error') })
@@ -235,8 +226,8 @@ function AccountsContent() {
     return acc
   }, {})
 
-  const totalAssets = accounts.filter(a => a.balance > 0).reduce((s, a) => s + a.balance, 0)
-  const totalLiabilities = Math.abs(accounts.filter(a => a.balance < 0).reduce((s, a) => s + a.balance, 0))
+  const totalAssets = accounts.filter(a => a.classification === 'asset').reduce((s, a) => s + a.balance, 0)
+  const totalLiabilities = accounts.filter(a => a.classification === 'liability').reduce((s, a) => s + Math.abs(a.balance), 0)
 
   const card = { backgroundColor: '#FFFFFF', border: '1px solid rgba(184,145,58,0.15)', borderRadius: '2px', padding: '28px' } as const
   const labelStyle = { fontFamily: 'var(--font-mono)', fontSize: '10px', color: '#A89880', textTransform: 'uppercase' as const, letterSpacing: '0.16em' } as const

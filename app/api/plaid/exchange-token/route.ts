@@ -66,7 +66,10 @@ export async function POST(request: NextRequest) {
       if (!selected) continue
     }
 
-    const balance = plaidAccount.balances.current ?? plaidAccount.balances.available ?? 0
+    const isLiability = plaidAccount.type === 'credit' || plaidAccount.type === 'loan'
+    const classification = isLiability ? 'liability' : 'asset'
+    const rawBalance = plaidAccount.balances.current ?? plaidAccount.balances.available ?? 0
+    const balance = isLiability ? -Math.abs(rawBalance) : rawBalance
     const accountType = plaidAccount.subtype ?? plaidAccount.type ?? 'checking'
     const last4 = plaidAccount.mask ?? null
 
@@ -76,6 +79,7 @@ export async function POST(request: NextRequest) {
         userId: dbUser.id,
         institutionName: institutionName ?? 'Connected Institution',
         accountType,
+        classification,
         balance,
         last4,
         plaidAccountId: plaidAccount.account_id,
@@ -84,6 +88,7 @@ export async function POST(request: NextRequest) {
       },
       update: {
         balance,
+        classification,
         plaidAccessToken: accessToken,
         plaidItemId: itemId,
       },
@@ -92,10 +97,10 @@ export async function POST(request: NextRequest) {
     createdAccounts.push(account)
   }
 
-  // Fetch transactions for the last 30 days
+  // Fetch transactions for the last 2 years (covers full sandbox dataset)
   const now = new Date()
   const startDate = new Date(now)
-  startDate.setDate(startDate.getDate() - 30)
+  startDate.setFullYear(startDate.getFullYear() - 2)
   const start = startDate.toISOString().split('T')[0]
   const end = now.toISOString().split('T')[0]
 

@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import BarChart from '@/components/ui/BarChart'
+import { useDashboard } from '@/lib/dashboardData'
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
@@ -25,47 +25,8 @@ const sectionLabel = {
   marginBottom: '22px',
 } as const
 
-interface MonthlyData {
-  month: string
-  year?: number
-  income: number
-  expenses: number
-  savings: number
-}
-
-function EmptyState() {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: 'easeOut' }}
-      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', gap: '20px', textAlign: 'center' }}
-    >
-      <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: '1px solid rgba(184,145,58,0.25)', backgroundColor: 'rgba(184,145,58,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
-        ◈
-      </div>
-      <div>
-        <p style={{ fontFamily: 'var(--font-serif)', fontSize: '22px', fontWeight: 400, color: '#1A1714', marginBottom: '8px' }}>No cash flow data</p>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#A89880', lineHeight: 1.7 }}>Connect a bank account to see your income, expenses, and savings trends.</p>
-      </div>
-      <Link href="/dashboard/accounts" style={{ padding: '10px 24px', backgroundColor: '#B8913A', border: 'none', borderRadius: '2px', color: '#FFFFFF', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', textDecoration: 'none', display: 'inline-block' }}>
-        Connect an Account
-      </Link>
-    </motion.div>
-  )
-}
-
 export default function CashFlowPage() {
-  const [loading, setLoading]     = useState(true)
-  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([])
-
-  useEffect(() => {
-    fetch('/api/cashflow')
-      .then(r => r.json())
-      .then(d => { if (d.months?.length) setMonthlyData(d.months) })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [])
+  const { loading, monthlyData } = useDashboard()
 
   if (loading) {
     return (
@@ -75,7 +36,27 @@ export default function CashFlowPage() {
     )
   }
 
-  if (monthlyData.length === 0) return <EmptyState />
+  if (monthlyData.length === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', gap: '20px', textAlign: 'center' }}
+      >
+        <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: '1px solid rgba(184,145,58,0.25)', backgroundColor: 'rgba(184,145,58,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+          ◈
+        </div>
+        <div>
+          <p style={{ fontFamily: 'var(--font-serif)', fontSize: '22px', fontWeight: 400, color: '#1A1714', marginBottom: '8px' }}>No cash flow data</p>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#A89880', lineHeight: 1.7 }}>Connect a bank account to see your income, expenses, and savings trends.</p>
+        </div>
+        <Link href="/dashboard/accounts" style={{ padding: '10px 24px', backgroundColor: '#B8913A', border: 'none', borderRadius: '2px', color: '#FFFFFF', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', textDecoration: 'none', display: 'inline-block' }}>
+          Connect an Account
+        </Link>
+      </motion.div>
+    )
+  }
 
   const recent = monthlyData.slice(-3)
 
@@ -143,7 +124,7 @@ export default function CashFlowPage() {
               </tr>
             </thead>
             <tbody>
-              {monthlyData.map(({ month, year, income, expenses, savings }, i) => {
+              {[...monthlyData].reverse().map(({ month, year, income, expenses, savings }, i) => {
                 const rate = income > 0 ? ((savings / income) * 100).toFixed(0) : '0'
                 return (
                   <tr key={`${month}-${year}-${i}`} style={{ backgroundColor: i % 2 === 0 ? 'transparent' : 'rgba(184,145,58,0.02)' }}>
