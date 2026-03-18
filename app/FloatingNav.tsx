@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import styles from './FloatingNav.module.css'
 
 export default function FloatingNav() {
@@ -13,6 +14,7 @@ export default function FloatingNav() {
   }, [])
 
   return (
+    <>
     <nav className={`${styles.nav} ${scrolled ? styles.scrolled : ''}`}>
       <span className={styles.wordmark}>Illumin</span>
 
@@ -40,5 +42,10 @@ export default function FloatingNav() {
         Get started
       </a>
     </nav>
+
+    <Link href="/admin/login" className={styles.adminBtn}>
+      Admin
+    </Link>
+    </>
   )
 }
