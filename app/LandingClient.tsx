@@ -1,15 +1,10 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useScroll, useTransform } from 'framer-motion'
 import Link from 'next/link'
 import styles from './landing.module.css'
 import OppCostCalculator from '@/components/OppCostCalculator'
-
-const fadeUp = {
-  hidden:  { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0 },
-}
 
 const inView = {
   hidden:  { opacity: 0, y: 20 },
@@ -53,13 +48,46 @@ export default function LandingClient() {
   const calcRef  = useRef<HTMLDivElement>(null)
   const ctaRef   = useRef<HTMLElement>(null)
   const emailRef = useRef<HTMLInputElement>(null)
+
+  // Parallax section refs
+  const statRef     = useRef<HTMLDivElement>(null)
+  const problemRef  = useRef<HTMLElement>(null)
+  const featuresRef = useRef<HTMLElement>(null)
+
   const [email, setEmail]           = useState('')
   const [emailError, setEmailError] = useState<string | null>(null)
   const [submitted, setSubmitted]   = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
+  // Hero: window scroll-based parallax
+  const { scrollY } = useScroll()
+  const heroCardsY   = useTransform(scrollY, [0, 900], [0, 100])
+  const heroContentY = useTransform(scrollY, [0, 900], [0, 30])
+
+  // Stat row parallax
+  const { scrollYProgress: statP } = useScroll({ target: statRef, offset: ['start end', 'end start'] })
+  const statY = useTransform(statP, [0, 1], [50, -50])
+
+  // Problem section parallax
+  const { scrollYProgress: problemP } = useScroll({ target: problemRef, offset: ['start end', 'end start'] })
+  const problemHeaderY = useTransform(problemP, [0, 1], [60, -60])
+  const problemGridY   = useTransform(problemP, [0, 1], [30, -30])
+
+  // Features section parallax
+  const { scrollYProgress: featuresP } = useScroll({ target: featuresRef, offset: ['start end', 'end start'] })
+  const featuresHeaderY = useTransform(featuresP, [0, 1], [60, -60])
+  const featuresListY   = useTransform(featuresP, [0, 1], [30, -30])
+
+  // CTA section parallax (reuse ctaRef)
+  const { scrollYProgress: ctaP } = useScroll({ target: ctaRef, offset: ['start end', 'end start'] })
+  const ctaParallaxY = useTransform(ctaP, [0, 1], [40, -40])
+
   const scrollToCTA = () => {
     calcRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
+  const scrollToProblem = () => {
+    problemRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   const scrollToEmail = () => {
@@ -105,65 +133,81 @@ export default function LandingClient() {
 
       {/* ── HERO ────────────────────────────────────────────── */}
       <section className={styles.hero}>
-        <div className={styles.heroGrid} aria-hidden="true" />
-        <div className={styles.heroOrb}  aria-hidden="true" />
 
-        <div className={styles.heroRule} />
+        {/* Blurred dashboard preview */}
+        <motion.div className={styles.heroCardsWrap} style={{ y: heroCardsY }}>
+          <div className={styles.heroCardsInner}>
 
-        <motion.p
-          className={styles.heroEyebrow}
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 }}
-        >
-          Personal wealth management
-        </motion.p>
+            {/* Card 1: Portfolio balance */}
+            <div className={styles.heroCard}>
+              <p className={styles.heroCardHeader}>Portfolio</p>
+              <p className={styles.heroCardValue}>$124,850</p>
+              <p className={styles.heroCardSub}>+$3,240 this month</p>
+            </div>
 
-        <motion.h1
-          className={styles.heroHeadline}
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: 'easeOut', delay: 0.35 }}
-        >
-          The 1%&apos;s Playbook,<br /><em>Now for Everyone</em>
-        </motion.h1>
+            {/* Card 2: Spending categories */}
+            <div className={styles.heroCard}>
+              <p className={styles.heroCardHeader}>This Month</p>
+              <div className={styles.heroCardRow}>
+                <span className={styles.heroCardRowLabel}>Housing</span>
+                <span className={styles.heroCardRowVal}>$2,100</span>
+              </div>
+              <div className={styles.heroCardRow}>
+                <span className={styles.heroCardRowLabel}>Food</span>
+                <span className={styles.heroCardRowVal}>$480</span>
+              </div>
+              <div className={styles.heroCardRow}>
+                <span className={styles.heroCardRowLabel}>Transport</span>
+                <span className={styles.heroCardRowVal}>$340</span>
+              </div>
+              <div className={styles.heroCardRow}>
+                <span className={styles.heroCardRowLabel}>Other</span>
+                <span className={styles.heroCardRowVal}>$220</span>
+              </div>
+            </div>
 
-        <motion.div
-          className={styles.heroDivider}
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: 'easeOut', delay: 0.5 }}
-        />
+            {/* Card 3: Opportunity cost */}
+            <div className={styles.heroCard}>
+              <p className={styles.heroCardHeader}>Inaction Cost</p>
+              <p className={styles.heroCardValue}>$18,400</p>
+              <p className={styles.heroCardSub}>per year left on the table</p>
+            </div>
 
-        <motion.p
-          className={styles.heroTagline}
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: 'easeOut', delay: 0.6 }}
-        >
-          <em>You can&apos;t fix what you can&apos;t see.</em>
-          <br /><br />
-          Illumin gives you the complete picture: net worth, investments, cash flow, opportunity cost,
-          and a financial health score. The tools that used to require a $500/hr advisor or a 1% AUM fee.
-        </motion.p>
-
-        <motion.div
-          className={styles.heroActions}
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: 'easeOut', delay: 0.75 }}
-        >
-          <button onClick={scrollToCTA} className={`${styles.btnPrimary} ${styles.btnHero}`}>See your number</button>
+          </div>
         </motion.div>
+
+        {/* Gradient overlay */}
+        <div className={styles.heroGradient} aria-hidden="true" />
+
+        {/* Content */}
+        <motion.div className={styles.heroContentWrap} style={{ y: heroContentY }}>
+          <h1 className={styles.heroHeadline}>
+            You can&apos;t fix what you can&apos;t see.
+          </h1>
+          <p className={styles.heroSubhead}>
+            Illumin surfaces the hidden costs in your financial life, starting with what inaction is costing you right now.
+          </p>
+          <div className={styles.heroActions}>
+            <button onClick={scrollToCTA} className={styles.heroBtnPrimary}>
+              See what it&apos;s costing you
+            </button>
+            <button onClick={scrollToProblem} className={styles.heroBtnGhost}>
+              How it works
+            </button>
+          </div>
+        </motion.div>
+
       </section>
 
       {/* ── STAT ROW ────────────────────────────────────────── */}
       <motion.div
+        ref={statRef}
         className={styles.statRow}
         variants={inView}
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.3 }}
+        style={{ y: statY }}
       >
         <div className={styles.stat}>
           <div className={styles.statNumber}>$127K</div>
@@ -171,9 +215,7 @@ export default function LandingClient() {
         </div>
         <div className={styles.stat}>
           <div className={styles.statNumber}>Professional Grade</div>
-          <div className={styles.statLabel}>Integrated wealth management
-            
-          </div>
+          <div className={styles.statLabel}>Integrated wealth management</div>
         </div>
         <div className={styles.stat}>
           <div className={styles.statNumber}>0%</div>
@@ -185,19 +227,23 @@ export default function LandingClient() {
 
       {/* ── PROBLEM ─────────────────────────────────────────── */}
       <motion.section
+        ref={problemRef}
         className={`${styles.section} ${styles.centeredSection}`}
         variants={inView}
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.1 }}
       >
-        <p className={styles.sectionEyebrow}>The problem</p>
-        <h2 className={styles.sectionHeadline}>Wealth Management For All,<br /><em>Not Just Millionaires.</em></h2>
-        <p className={styles.sectionSub}>
-          Private banks and RIAs offer sophisticated financial planning: portfolio construction, tax optimization,
-          wealth projections, exclusively to clients with millions in assets. Everyone else gets a budgeting app. Illumin closes that gap.
-        </p>
-        <div className={styles.problemGrid}>
+        <motion.div style={{ y: problemHeaderY }}>
+          <p className={styles.sectionEyebrow}>The problem</p>
+          <h2 className={styles.sectionHeadline}>Wealth Management For All, Not Just Millionaires.</h2>
+          <p className={styles.sectionSub}>
+            Private banks and RIAs offer sophisticated financial planning: portfolio construction, tax optimization,
+            wealth projections, exclusively to clients with millions in assets. Everyone else gets a budgeting app. Illumin closes that gap.
+          </p>
+        </motion.div>
+
+        <motion.div className={styles.problemGrid} style={{ y: problemGridY }}>
           <div className={styles.problemRowHeader}><span className={styles.problemRowHeaderText}>Today</span></div>
           <div className={styles.problemCell}>
             <p className={styles.problemCellLabel}>Private wealth management</p>
@@ -224,7 +270,7 @@ export default function LandingClient() {
               <strong>No minimums. No fees. No advisor required.</strong> Access that was kept from you, now yours by default.
             </p>
           </div>
-        </div>
+        </motion.div>
       </motion.section>
 
       <div className={styles.goldRule} />
@@ -244,18 +290,22 @@ export default function LandingClient() {
 
       {/* ── FEATURES ────────────────────────────────────────── */}
       <motion.section
+        ref={featuresRef}
         className={`${styles.section} ${styles.centeredSection}`}
         variants={inView}
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.1 }}
       >
-        <p className={styles.sectionEyebrow}>What Illumin does</p>
-        <h2 className={styles.sectionHeadline}>Five pillars. One platform.</h2>
-        <p className={styles.sectionSub}>
-          The complete wealth management infrastructure, designed for people who have never had access to it.
-        </p>
-        <div className={styles.featureList}>
+        <motion.div style={{ y: featuresHeaderY }}>
+          <p className={styles.sectionEyebrow}>What Illumin does</p>
+          <h2 className={styles.sectionHeadline}>Five pillars. One platform.</h2>
+          <p className={styles.sectionSub}>
+            The complete wealth management infrastructure, designed for people who have never had access to it.
+          </p>
+        </motion.div>
+
+        <motion.div className={styles.featureList} style={{ y: featuresListY }}>
           {FEATURES.map(f => (
             <div key={f.num} className={styles.featureItem}>
               <span className={styles.featureNum}>{f.num}</span>
@@ -266,7 +316,7 @@ export default function LandingClient() {
               <span className={styles.featureTag}>{f.tag}</span>
             </div>
           ))}
-        </div>
+        </motion.div>
       </motion.section>
 
       {/* ── CTA ─────────────────────────────────────────────── */}
@@ -277,6 +327,7 @@ export default function LandingClient() {
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.2 }}
+        style={{ y: ctaParallaxY }}
       >
         <h2 className={styles.ctaHeadline}>See your complete financial picture.</h2>
         <p className={styles.ctaSub}>It takes two minutes. No advisor required.</p>

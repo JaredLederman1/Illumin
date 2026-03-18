@@ -1,6 +1,11 @@
 import type { Metadata } from "next"
-import { Cormorant_Garamond, DM_Mono, DM_Serif_Display } from "next/font/google"
+import { Cormorant_Garamond, DM_Mono, DM_Serif_Display, Geist } from "next/font/google"
 import "./globals.css"
+
+const geist = Geist({
+  variable: "--font-sans",
+  subsets: ["latin"],
+})
 
 const cormorantGaramond = Cormorant_Garamond({
   variable: "--font-serif",
@@ -9,7 +14,7 @@ const cormorantGaramond = Cormorant_Garamond({
 })
 
 const dmSerifDisplay = DM_Serif_Display({
-  variable: "--font-heading",
+  variable: "--font-display",
   subsets: ["latin"],
   weight: "400",
 })
@@ -31,8 +36,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${cormorantGaramond.variable} ${dmSerifDisplay.variable} ${dmMono.variable} antialiased`}
-        style={{ backgroundColor: '#F5F0E8', color: '#1A1714', fontFamily: 'var(--font-mono), monospace' }}
+        className={`${geist.variable} ${cormorantGaramond.variable} ${dmSerifDisplay.variable} ${dmMono.variable} antialiased`}
+        style={{ backgroundColor: '#F5F0E8', color: '#1A1714', fontFamily: 'var(--font-sans), sans-serif' }}
       >
         {children}
       </body>

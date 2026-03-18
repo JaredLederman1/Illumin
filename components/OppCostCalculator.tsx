@@ -215,16 +215,23 @@ export default function OppCostCalculator() {
               {step === 0 && (
                 <>
                   <h3 className={styles.calcQuestion}>How old are you?</h3>
-                  <input
-                    ref={inputRef}
-                    type="number"
-                    className={styles.calcInput}
-                    value={age}
-                    onChange={e => { setAge(e.target.value); setAgeErr('') }}
-                    onKeyDown={handleKey}
-                    placeholder="32"
-                    min="18" max="70"
-                  />
+                  <div className={styles.calcInputWrap}>
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      inputMode="numeric"
+                      className={`${styles.calcInput} ${styles.calcInputPrefixed}`}
+                      value={age}
+                      onChange={e => {
+                        const v = e.target.value.replace(/[^0-9]/g, '')
+                        setAge(v)
+                        setAgeErr('')
+                      }}
+                      onKeyDown={handleKey}
+                      placeholder=""
+                    />
+                    <span className={styles.calcInputSuffix}>years old</span>
+                  </div>
                   {ageErr && <p className={styles.calcErr}>{ageErr}</p>}
                   <p className={styles.calcHint}>We&apos;ll assume retirement at 65.</p>
                 </>
@@ -244,7 +251,7 @@ export default function OppCostCalculator() {
                       value={income}
                       onChange={e => handleIncomeChange(e.target.value)}
                       onKeyDown={handleKey}
-                      placeholder="145,000"
+                      placeholder=""
                     />
                   </div>
                   {incomeErr && <p className={styles.calcErr}>{incomeErr}</p>}
@@ -266,7 +273,7 @@ export default function OppCostCalculator() {
                       onChange={e => setSavingsRate(Number(e.target.value))}
                       className={styles.calcSlider}
                       style={{
-                        background: `linear-gradient(to right, var(--lm-gold) ${savingsPct}%, var(--lm-border-strong) ${savingsPct}%)`,
+                        background: `linear-gradient(to right, white ${savingsPct}%, rgba(255,255,255,0.12) ${savingsPct}%)`,
                       }}
                     />
                     <span className={styles.calcSliderReadout}>{savingsRate}%</span>
