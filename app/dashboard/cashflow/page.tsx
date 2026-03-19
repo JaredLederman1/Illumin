@@ -10,7 +10,7 @@ function fmt(n: number) {
 }
 
 const card = {
-  backgroundColor: '#FFFFFF',
+  backgroundColor: '#0F1318',
   border: '1px solid rgba(184,145,58,0.15)',
   borderRadius: '2px',
   padding: '28px',
@@ -19,7 +19,7 @@ const card = {
 const sectionLabel = {
   fontFamily: 'var(--font-mono)',
   fontSize: '10px',
-  color: '#A89880',
+  color: '#6B7A8D',
   textTransform: 'uppercase' as const,
   letterSpacing: '0.16em',
   marginBottom: '22px',
@@ -31,7 +31,7 @@ export default function CashFlowPage() {
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '320px' }}>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#A89880', letterSpacing: '0.06em' }}>Loading…</p>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#6B7A8D', letterSpacing: '0.06em' }}>Loading…</p>
       </div>
     )
   }
@@ -44,14 +44,14 @@ export default function CashFlowPage() {
         transition={{ duration: 0.35, ease: 'easeOut' }}
         style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', gap: '20px', textAlign: 'center' }}
       >
-        <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: '1px solid rgba(184,145,58,0.25)', backgroundColor: 'rgba(184,145,58,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+        <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: '1px solid rgba(184,145,58,0.25)', backgroundColor: 'rgba(184,145,58,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
           ◈
         </div>
         <div>
-          <p style={{ fontFamily: 'var(--font-serif)', fontSize: '22px', fontWeight: 400, color: '#1A1714', marginBottom: '8px' }}>No cash flow data</p>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#A89880', lineHeight: 1.7 }}>Connect a bank account to see your income, expenses, and savings trends.</p>
+          <p style={{ fontFamily: 'var(--font-serif)', fontSize: '22px', fontWeight: 400, color: '#F0F2F8', marginBottom: '8px' }}>No cash flow data</p>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#6B7A8D', lineHeight: 1.7 }}>Connect a bank account to see your income, expenses, and savings trends.</p>
         </div>
-        <Link href="/dashboard/accounts" style={{ padding: '10px 24px', backgroundColor: '#B8913A', border: 'none', borderRadius: '2px', color: '#FFFFFF', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', textDecoration: 'none', display: 'inline-block' }}>
+        <Link href="/dashboard/accounts" style={{ padding: '10px 24px', backgroundColor: '#B8913A', border: 'none', borderRadius: '2px', color: '#F0F2F8', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', textDecoration: 'none', display: 'inline-block' }}>
           Connect an Account
         </Link>
       </motion.div>
@@ -72,28 +72,28 @@ export default function CashFlowPage() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, ease: 'easeOut' }}
-              style={{ backgroundColor: '#FFFFFF', border: '1px solid rgba(184,145,58,0.15)', borderRadius: '2px', padding: '24px' }}
+              style={{ backgroundColor: '#0F1318', border: '1px solid rgba(184,145,58,0.15)', borderRadius: '2px', padding: '24px' }}
             >
               <p style={{ fontFamily: 'var(--font-serif)', fontSize: '18px', fontWeight: 400, color: '#B8913A', marginBottom: '20px', letterSpacing: '0.02em' }}>
                 {month}{year ? ` ${year}` : ''}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '11px' }}>
                 {[
-                  { label: 'Income',   value: fmt(income),   color: '#2D6A4F' },
-                  { label: 'Expenses', value: fmt(expenses), color: '#8B2635' },
+                  { label: 'Income',   value: fmt(income),   color: '#4CAF7D' },
+                  { label: 'Expenses', value: fmt(expenses), color: '#E05C6E' },
                 ].map(r => (
                   <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                    <span style={{ fontSize: '11px', color: '#A89880', fontFamily: 'var(--font-mono)', letterSpacing: '0.04em' }}>{r.label}</span>
+                    <span style={{ fontSize: '11px', color: '#6B7A8D', fontFamily: 'var(--font-mono)', letterSpacing: '0.04em' }}>{r.label}</span>
                     <span style={{ fontFamily: 'var(--font-serif)', fontSize: '16px', color: r.color }}>{r.value}</span>
                   </div>
                 ))}
                 <div style={{ borderTop: '1px solid rgba(184,145,58,0.12)', paddingTop: '11px', display: 'flex', flexDirection: 'column', gap: '11px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                    <span style={{ fontSize: '11px', color: '#A89880', fontFamily: 'var(--font-mono)', letterSpacing: '0.04em' }}>Net Savings</span>
-                    <span style={{ fontFamily: 'var(--font-serif)', fontSize: '16px', color: '#1A1714' }}>{fmt(savings)}</span>
+                    <span style={{ fontSize: '11px', color: '#6B7A8D', fontFamily: 'var(--font-mono)', letterSpacing: '0.04em' }}>Net Savings</span>
+                    <span style={{ fontFamily: 'var(--font-serif)', fontSize: '16px', color: '#F0F2F8' }}>{fmt(savings)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                    <span style={{ fontSize: '11px', color: '#A89880', fontFamily: 'var(--font-mono)', letterSpacing: '0.04em' }}>Savings Rate</span>
+                    <span style={{ fontSize: '11px', color: '#6B7A8D', fontFamily: 'var(--font-mono)', letterSpacing: '0.04em' }}>Savings Rate</span>
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: '#B8913A', fontWeight: 500 }}>{savingsRate}%</span>
                   </div>
                 </div>
@@ -117,7 +117,7 @@ export default function CashFlowPage() {
             <thead>
               <tr>
                 {['Month', 'Income', 'Expenses', 'Net Savings', 'Rate'].map(h => (
-                  <th key={h} style={{ padding: '8px 16px 12px', textAlign: 'left', fontSize: '10px', color: '#A89880', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 400, borderBottom: '1px solid rgba(184,145,58,0.2)' }}>
+                  <th key={h} style={{ padding: '8px 16px 12px', textAlign: 'left', fontSize: '10px', color: '#6B7A8D', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 400, borderBottom: '1px solid rgba(184,145,58,0.2)' }}>
                     {h}
                   </th>
                 ))}
@@ -127,13 +127,13 @@ export default function CashFlowPage() {
               {[...monthlyData].reverse().map(({ month, year, income, expenses, savings }, i) => {
                 const rate = income > 0 ? ((savings / income) * 100).toFixed(0) : '0'
                 return (
-                  <tr key={`${month}-${year}-${i}`} style={{ backgroundColor: i % 2 === 0 ? 'transparent' : 'rgba(184,145,58,0.02)' }}>
-                    <td style={{ padding: '13px 16px', fontFamily: 'var(--font-serif)', fontSize: '15px', color: '#1A1714', borderBottom: '1px solid rgba(184,145,58,0.07)' }}>
+                  <tr key={`${month}-${year}-${i}`} style={{ backgroundColor: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
+                    <td style={{ padding: '13px 16px', fontFamily: 'var(--font-serif)', fontSize: '15px', color: '#F0F2F8', borderBottom: '1px solid rgba(184,145,58,0.07)' }}>
                       {month}{year ? ` ${year}` : ''}
                     </td>
-                    <td style={{ padding: '13px 16px', fontFamily: 'var(--font-serif)', fontSize: '15px', color: '#2D6A4F', borderBottom: '1px solid rgba(184,145,58,0.07)' }}>{fmt(income)}</td>
-                    <td style={{ padding: '13px 16px', fontFamily: 'var(--font-serif)', fontSize: '15px', color: '#8B2635', borderBottom: '1px solid rgba(184,145,58,0.07)' }}>{fmt(expenses)}</td>
-                    <td style={{ padding: '13px 16px', fontFamily: 'var(--font-serif)', fontSize: '15px', color: '#1A1714', borderBottom: '1px solid rgba(184,145,58,0.07)' }}>{fmt(savings)}</td>
+                    <td style={{ padding: '13px 16px', fontFamily: 'var(--font-serif)', fontSize: '15px', color: '#4CAF7D', borderBottom: '1px solid rgba(184,145,58,0.07)' }}>{fmt(income)}</td>
+                    <td style={{ padding: '13px 16px', fontFamily: 'var(--font-serif)', fontSize: '15px', color: '#E05C6E', borderBottom: '1px solid rgba(184,145,58,0.07)' }}>{fmt(expenses)}</td>
+                    <td style={{ padding: '13px 16px', fontFamily: 'var(--font-serif)', fontSize: '15px', color: '#F0F2F8', borderBottom: '1px solid rgba(184,145,58,0.07)' }}>{fmt(savings)}</td>
                     <td style={{ padding: '13px 16px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#B8913A', borderBottom: '1px solid rgba(184,145,58,0.07)', fontWeight: 500 }}>{rate}%</td>
                   </tr>
                 )

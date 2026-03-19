@@ -39,14 +39,14 @@ export default function Header() {
       justifyContent: 'space-between',
       padding: '0 36px',
       borderBottom: '1px solid rgba(184,145,58,0.18)',
-      backgroundColor: '#FFFFFF',
+      backgroundColor: '#0F1318',
       flexShrink: 0,
     }}>
       <h1 style={{
         fontFamily: 'var(--font-serif)',
         fontSize: '20px',
         fontWeight: 400,
-        color: '#1A1714',
+        color: '#F0F2F8',
         margin: 0,
         letterSpacing: '0.01em',
       }}>
@@ -55,7 +55,7 @@ export default function Header() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         <span style={{
           fontSize: '11px',
-          color: '#A89880',
+          color: '#6B7A8D',
           fontFamily: 'var(--font-mono)',
           letterSpacing: '0.04em',
         }}>
@@ -80,7 +80,7 @@ export default function Header() {
               style={{
                 fontFamily: 'var(--font-mono)',
                 fontSize: '9px',
-                color: '#A89880',
+                color: '#6B7A8D',
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
@@ -97,7 +97,7 @@ export default function Header() {
           width: '30px',
           height: '30px',
           borderRadius: '50%',
-          backgroundColor: 'rgba(184,145,58,0.08)',
+          backgroundColor: 'rgba(184,145,58,0.10)',
           border: '1px solid rgba(184,145,58,0.3)',
           display: 'flex',
           alignItems: 'center',

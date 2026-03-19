@@ -6,7 +6,7 @@ import { DashboardProvider } from '@/lib/dashboardData'
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <DashboardProvider>
-      <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#F5F0E8' }}>
+      <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#080B0F' }}>
         <Sidebar />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
           <Header />

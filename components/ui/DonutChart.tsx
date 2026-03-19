@@ -11,7 +11,7 @@ function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 }
 
-const PALETTE = ['#B8913A', '#2D6A4F', '#8B4513', '#4A6785', '#9B7B4A', '#7A6A5A']
+const PALETTE = ['#B8913A', '#4CAF7D', '#8B4513', '#4A6785', '#9B7B4A', '#7A6A5A']
 
 export default function DonutChart({ data }: DonutChartProps) {
   const total = data.reduce((sum, d) => sum + d.amount, 0)
@@ -43,13 +43,13 @@ export default function DonutChart({ data }: DonutChartProps) {
             <Tooltip
               formatter={(value) => formatCurrency(Number(value))}
               contentStyle={{
-                backgroundColor: '#FFFFFF',
+                backgroundColor: '#0F1318',
                 border: '1px solid rgba(184,145,58,0.25)',
                 borderRadius: '2px',
-                color: '#1A1714',
+                color: '#F0F2F8',
                 fontFamily: 'var(--font-mono)',
                 fontSize: '11px',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.40)',
               }}
             />
           </PieChart>
@@ -77,7 +77,7 @@ export default function DonutChart({ data }: DonutChartProps) {
               }} />
               <span style={{
                 fontSize: '11px',
-                color: '#6B5D4A',
+                color: '#A8B4C0',
                 fontFamily: 'var(--font-mono)',
                 letterSpacing: '0.03em',
               }}>
@@ -86,7 +86,7 @@ export default function DonutChart({ data }: DonutChartProps) {
             </div>
             <span style={{
               fontSize: '11px',
-              color: '#1A1714',
+              color: '#F0F2F8',
               fontFamily: 'var(--font-mono)',
               fontWeight: 500,
             }}>

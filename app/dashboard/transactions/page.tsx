@@ -25,10 +25,10 @@ const PAGE_SIZE = 10
 
 const controlStyle = {
   padding: '8px 12px',
-  backgroundColor: '#FFFFFF',
+  backgroundColor: 'rgba(255,255,255,0.04)',
   border: '1px solid rgba(184,145,58,0.25)',
   borderRadius: '2px',
-  color: '#1A1714',
+  color: '#F0F2F8',
   fontSize: '12px',
   fontFamily: 'var(--font-mono)',
   outline: 'none',
@@ -37,10 +37,10 @@ const controlStyle = {
 const inputStyle = {
   width: '100%',
   padding: '10px 12px',
-  backgroundColor: '#FDFBF8',
+  backgroundColor: 'rgba(255,255,255,0.04)',
   border: '1px solid rgba(184,145,58,0.25)',
   borderRadius: '2px',
-  color: '#1A1714',
+  color: '#F0F2F8',
   fontSize: '13px',
   fontFamily: 'var(--font-mono)',
   outline: 'none',
@@ -52,7 +52,7 @@ const labelStyle = {
   fontSize: '10px',
   letterSpacing: '0.1em',
   textTransform: 'uppercase' as const,
-  color: '#A89880',
+  color: '#6B7A8D',
   marginBottom: '6px',
 }
 
@@ -135,17 +135,17 @@ export default function TransactionsPage() {
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '320px' }}>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#A89880', letterSpacing: '0.06em' }}>Loading…</p>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#6B7A8D', letterSpacing: '0.06em' }}>Loading…</p>
       </div>
     )
   }
 
   const pageBtn = (active: boolean) => ({
     padding: '6px 14px',
-    backgroundColor: active ? '#B8913A' : '#FFFFFF',
+    backgroundColor: active ? '#B8913A' : '#0F1318',
     border: '1px solid rgba(184,145,58,0.35)',
     borderRadius: '2px',
-    color: active ? '#FFFFFF' : '#B8913A',
+    color: active ? '#F0F2F8' : '#B8913A',
     fontSize: '11px',
     fontFamily: 'var(--font-mono)',
     cursor: active ? 'not-allowed' : 'pointer',
@@ -158,7 +158,7 @@ export default function TransactionsPage() {
 
       {/* Filters + Add button */}
       <div style={{
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#0F1318',
         border: '1px solid rgba(184,145,58,0.15)',
         borderRadius: '2px',
         padding: '20px 24px',
@@ -191,7 +191,7 @@ export default function TransactionsPage() {
               backgroundColor: 'transparent',
               border: '1px solid rgba(184,145,58,0.25)',
               borderRadius: '2px',
-              color: '#A89880',
+              color: '#6B7A8D',
               fontSize: '11px',
               fontFamily: 'var(--font-mono)',
               letterSpacing: '0.08em',
@@ -203,7 +203,7 @@ export default function TransactionsPage() {
             Reset Filters
           </button>
         )}
-        <span style={{ fontSize: '11px', color: '#A89880', fontFamily: 'var(--font-mono)', marginLeft: 'auto', letterSpacing: '0.04em' }}>
+        <span style={{ fontSize: '11px', color: '#6B7A8D', fontFamily: 'var(--font-mono)', marginLeft: 'auto', letterSpacing: '0.04em' }}>
           {filtered.length} transactions
         </span>
         <button
@@ -213,7 +213,7 @@ export default function TransactionsPage() {
             backgroundColor: '#B8913A',
             border: 'none',
             borderRadius: '2px',
-            color: '#FFFFFF',
+            color: '#F0F2F8',
             fontSize: '11px',
             fontFamily: 'var(--font-mono)',
             letterSpacing: '0.08em',
@@ -228,21 +228,21 @@ export default function TransactionsPage() {
 
       {/* List */}
       <div style={{
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#0F1318',
         border: '1px solid rgba(184,145,58,0.15)',
         borderRadius: '2px',
         padding: '28px',
       }}>
         {transactions.length === 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '200px', gap: '20px', textAlign: 'center' }}>
-            <p style={{ fontFamily: 'var(--font-serif)', fontSize: '22px', fontWeight: 400, color: '#1A1714', marginBottom: '8px' }}>No transactions yet</p>
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#A89880', lineHeight: 1.7 }}>Connect a bank account or add a transaction manually.</p>
-            <Link href="/dashboard/accounts" style={{ padding: '10px 24px', backgroundColor: '#B8913A', border: 'none', borderRadius: '2px', color: '#FFFFFF', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', textDecoration: 'none', display: 'inline-block' }}>
+            <p style={{ fontFamily: 'var(--font-serif)', fontSize: '22px', fontWeight: 400, color: '#F0F2F8', marginBottom: '8px' }}>No transactions yet</p>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#6B7A8D', lineHeight: 1.7 }}>Connect a bank account or add a transaction manually.</p>
+            <Link href="/dashboard/accounts" style={{ padding: '10px 24px', backgroundColor: '#B8913A', border: 'none', borderRadius: '2px', color: '#F0F2F8', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', textDecoration: 'none', display: 'inline-block' }}>
               Connect an Account
             </Link>
           </div>
         ) : paginated.length === 0 ? (
-          <p style={{ fontSize: '13px', color: '#A89880', fontFamily: 'var(--font-mono)', textAlign: 'center', padding: '40px 0' }}>
+          <p style={{ fontSize: '13px', color: '#6B7A8D', fontFamily: 'var(--font-mono)', textAlign: 'center', padding: '40px 0' }}>
             No transactions match your filters
           </p>
         ) : (
@@ -278,7 +278,7 @@ export default function TransactionsPage() {
         {totalPages > 1 && (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', marginTop: '24px', paddingTop: '20px', borderTop: '1px solid rgba(184,145,58,0.1)' }}>
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={pageBtn(page === 1)}>Prev</button>
-            <span style={{ fontSize: '11px', color: '#A89880', fontFamily: 'var(--font-mono)', padding: '0 8px' }}>
+            <span style={{ fontSize: '11px', color: '#6B7A8D', fontFamily: 'var(--font-mono)', padding: '0 8px' }}>
               {page} / {totalPages}
             </span>
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={pageBtn(page === totalPages)}>Next</button>
@@ -298,7 +298,7 @@ export default function TransactionsPage() {
             transition={{ duration: 0.2 }}
             onClick={() => setModalOpen(false)}
             style={{
-              position: 'fixed', inset: 0, backgroundColor: 'rgba(26,23,20,0.5)',
+              position: 'fixed', inset: 0, backgroundColor: 'rgba(8,11,15,0.7)',
               backdropFilter: 'blur(4px)', zIndex: 50,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
@@ -313,7 +313,7 @@ export default function TransactionsPage() {
               onClick={e => e.stopPropagation()}
               style={{
                 width: '100%', maxWidth: '480px',
-                backgroundColor: '#FFFFFF',
+                backgroundColor: '#0F1318',
                 border: '1px solid rgba(184,145,58,0.25)',
                 borderRadius: '4px',
                 padding: '32px',
@@ -323,12 +323,12 @@ export default function TransactionsPage() {
             >
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <p style={{ fontFamily: 'var(--font-serif)', fontSize: '20px', fontWeight: 400, color: '#1A1714', margin: 0 }}>
+              <p style={{ fontFamily: 'var(--font-serif)', fontSize: '20px', fontWeight: 400, color: '#F0F2F8', margin: 0 }}>
                 Add Transaction
               </p>
               <button
                 onClick={() => setModalOpen(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#A89880', fontSize: '18px', lineHeight: 1 }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7A8D', fontSize: '18px', lineHeight: 1 }}
               >
                 ×
               </button>
@@ -344,10 +344,10 @@ export default function TransactionsPage() {
                     onClick={() => setForm(f => ({ ...f, type: t }))}
                     style={{
                       flex: 1, padding: '9px 0',
-                      backgroundColor: form.type === t ? '#B8913A' : '#FDFBF8',
+                      backgroundColor: form.type === t ? '#B8913A' : 'rgba(255,255,255,0.04)',
                       border: `1px solid ${form.type === t ? '#B8913A' : 'rgba(184,145,58,0.25)'}`,
                       borderRadius: '2px',
-                      color: form.type === t ? '#FFFFFF' : '#6B5D4A',
+                      color: form.type === t ? '#F0F2F8' : '#A8B4C0',
                       fontFamily: 'var(--font-mono)', fontSize: '11px',
                       letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer',
                     }}
@@ -425,7 +425,7 @@ export default function TransactionsPage() {
             </div>
 
             {submitError && (
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#8B2635', margin: 0 }}>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#E05C6E', margin: 0 }}>
                 {submitError}
               </p>
             )}
@@ -436,11 +436,11 @@ export default function TransactionsPage() {
                 onClick={() => setModalOpen(false)}
                 style={{
                   flex: 1, padding: '11px 0',
-                  backgroundColor: '#FFFFFF',
+                  backgroundColor: 'rgba(255,255,255,0.04)',
                   border: '1px solid rgba(184,145,58,0.25)',
                   borderRadius: '2px', cursor: 'pointer',
                   fontFamily: 'var(--font-mono)', fontSize: '11px',
-                  letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6B5D4A',
+                  letterSpacing: '0.08em', textTransform: 'uppercase', color: '#A8B4C0',
                 }}
               >
                 Cancel
@@ -454,7 +454,7 @@ export default function TransactionsPage() {
                   borderRadius: '2px', cursor: submitting ? 'not-allowed' : 'pointer',
                   opacity: submitting ? 0.7 : 1,
                   fontFamily: 'var(--font-mono)', fontSize: '11px',
-                  letterSpacing: '0.08em', textTransform: 'uppercase', color: '#FFFFFF',
+                  letterSpacing: '0.08em', textTransform: 'uppercase', color: '#F0F2F8',
                 }}
               >
                 {submitting ? 'Saving…' : 'Save Transaction'}

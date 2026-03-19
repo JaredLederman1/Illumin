@@ -23,13 +23,13 @@ export default function BarChart({ data }: BarChartProps) {
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(184,145,58,0.12)" vertical={false} />
           <XAxis
             dataKey="month"
-            tick={{ fill: '#A89880', fontSize: 10, fontFamily: 'var(--font-mono)' }}
+            tick={{ fill: '#6B7A8D', fontSize: 10, fontFamily: 'var(--font-mono)' }}
             axisLine={false}
             tickLine={false}
           />
           <YAxis
             tickFormatter={formatK}
-            tick={{ fill: '#A89880', fontSize: 10, fontFamily: 'var(--font-mono)' }}
+            tick={{ fill: '#6B7A8D', fontSize: 10, fontFamily: 'var(--font-mono)' }}
             axisLine={false}
             tickLine={false}
             width={36}
@@ -37,18 +37,18 @@ export default function BarChart({ data }: BarChartProps) {
           <Tooltip
             formatter={(value, name) => [`$${Number(value).toLocaleString()}`, String(name).charAt(0).toUpperCase() + String(name).slice(1)]}
             contentStyle={{
-              backgroundColor: '#FFFFFF',
+              backgroundColor: '#0F1318',
               border: '1px solid rgba(184,145,58,0.25)',
               borderRadius: '2px',
-              color: '#1A1714',
+              color: '#F0F2F8',
               fontFamily: 'var(--font-mono)',
               fontSize: '11px',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.40)',
             }}
-            cursor={{ fill: 'rgba(184,145,58,0.04)' }}
+            cursor={{ fill: 'rgba(184,145,58,0.06)' }}
           />
-          <Legend wrapperStyle={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#A89880' }} />
-          <Bar dataKey="income"   fill="#2D6A4F" radius={[2, 2, 0, 0]} />
+          <Legend wrapperStyle={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#6B7A8D' }} />
+          <Bar dataKey="income"   fill="#4CAF7D" radius={[2, 2, 0, 0]} />
           <Bar dataKey="expenses" fill="#8B4513" radius={[2, 2, 0, 0]} />
         </RechartsBarChart>
       </ResponsiveContainer>

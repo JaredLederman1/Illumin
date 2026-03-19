@@ -1,23 +1,23 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #F6F2EA;
-  --color-surface: #FFFFFF;
-  --color-surface-2: #FDFBF8;
-  --color-border: rgba(184, 145, 58, 0.18);
+  --color-bg: #080B0F;
+  --color-surface: #0F1318;
+  --color-surface-2: #151B22;
+  --color-border: rgba(184, 145, 58, 0.20);
   --color-border-strong: rgba(184, 145, 58, 0.35);
   --color-gold: #B8913A;
   --color-gold-dark: #9A7A2A;
   --color-gold-subtle: rgba(184, 145, 58, 0.07);
-  --color-text: #1A1714;
-  --color-text-mid: #6B5D4A;
-  --color-text-muted: #A89880;
-  --color-positive: #2D6A4F;
-  --color-positive-bg: rgba(45, 106, 79, 0.08);
-  --color-negative: #8B2635;
-  --color-negative-bg: rgba(139, 38, 53, 0.08);
-  --color-negative-border: rgba(139, 38, 53, 0.15);
-  --color-positive-border: rgba(45, 106, 79, 0.15);
+  --color-text: #F0F2F8;
+  --color-text-mid: #A8B4C0;
+  --color-text-muted: #6B7A8D;
+  --color-positive: #4CAF7D;
+  --color-positive-bg: rgba(76, 175, 125, 0.10);
+  --color-negative: #E05C6E;
+  --color-negative-bg: rgba(224, 92, 110, 0.10);
+  --color-negative-border: rgba(224, 92, 110, 0.20);
+  --color-positive-border: rgba(76, 175, 125, 0.20);
   --color-gold-border: rgba(184, 145, 58, 0.15);
   --color-info: #5A7A9A;
   --color-info-bg: rgba(90, 122, 154, 0.06);
@@ -40,10 +40,8 @@
 }
 
 html, body {
-  background-color: #F5F0E8;
-  background-image: radial-gradient(circle, var(--color-surface-texture) 1px, transparent 1px);
-  background-size: 24px 24px;
-  color: #1A1714;
+  background-color: #080B0F;
+  color: #F0F2F8;
   font-family: var(--font-sans);
   min-height: 100vh;
 }
@@ -67,10 +65,10 @@ a {
 }
 
 input, select {
-  background-color: transparent;
+  background-color: rgba(255,255,255,0.04);
   border: 1px solid rgba(184, 145, 58, 0.25);
   border-radius: 2px;
-  color: #1A1714;
+  color: #F0F2F8;
   font-family: var(--font-sans);
   font-size: 12px;
   padding: 8px 12px;
@@ -84,7 +82,7 @@ input:focus, select:focus {
 }
 
 input::placeholder {
-  color: #A89880;
+  color: #6B7A8D;
 }
 
 /* Range inputs */
@@ -138,7 +136,7 @@ input[type="number"] {
   height: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: #F5F0E8;
+  background: #080B0F;
 }
 ::-webkit-scrollbar-thumb {
   background: rgba(184, 145, 58, 0.25);

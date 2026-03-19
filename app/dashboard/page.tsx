@@ -11,7 +11,7 @@ import { useDashboard } from '@/lib/dashboardData'
 import { detectRecurringMerchants } from '@/lib/data'
 
 const card = {
-  backgroundColor: '#FFFFFF',
+  backgroundColor: '#0F1318',
   border: '1px solid rgba(184,145,58,0.15)',
   borderRadius: '2px',
   padding: '28px',
@@ -20,7 +20,7 @@ const card = {
 const label = {
   fontFamily: 'var(--font-mono)',
   fontSize: '10px',
-  color: '#A89880',
+  color: '#6B7A8D',
   textTransform: 'uppercase' as const,
   letterSpacing: '0.16em',
   marginBottom: '22px',
@@ -40,7 +40,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '320px' }}>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#A89880', letterSpacing: '0.06em' }}>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#6B7A8D', letterSpacing: '0.06em' }}>
           Loading…
         </p>
       </div>
@@ -61,17 +61,17 @@ export default function DashboardPage() {
         <div style={{
           width: '48px', height: '48px', borderRadius: '50%',
           border: '1px solid rgba(184,145,58,0.25)',
-          backgroundColor: 'rgba(184,145,58,0.06)',
+          backgroundColor: 'rgba(184,145,58,0.08)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: '20px',
         }}>
           ◈
         </div>
         <div>
-          <p style={{ fontFamily: 'var(--font-serif)', fontSize: '22px', fontWeight: 400, color: '#1A1714', marginBottom: '8px' }}>
+          <p style={{ fontFamily: 'var(--font-serif)', fontSize: '22px', fontWeight: 400, color: '#F0F2F8', marginBottom: '8px' }}>
             No data yet
           </p>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#A89880', lineHeight: 1.7 }}>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#6B7A8D', lineHeight: 1.7 }}>
             Connect a bank account to see your net worth, spending, and transactions here.
           </p>
         </div>
@@ -82,7 +82,7 @@ export default function DashboardPage() {
             backgroundColor: '#B8913A',
             border: 'none',
             borderRadius: '2px',
-            color: '#FFFFFF',
+            color: '#F0F2F8',
             fontFamily: 'var(--font-mono)',
             fontSize: '11px',
             letterSpacing: '0.08em',

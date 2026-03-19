@@ -21,7 +21,7 @@ export default function Sidebar() {
     <aside style={{
       width: '220px',
       minHeight: '100vh',
-      backgroundColor: '#FFFFFF',
+      backgroundColor: '#0F1318',
       borderRight: '1px solid rgba(184,145,58,0.18)',
       display: 'flex',
       flexDirection: 'column',
@@ -46,7 +46,7 @@ export default function Sidebar() {
         <div style={{
           fontFamily: 'var(--font-mono)',
           fontSize: '9px',
-          color: '#A89880',
+          color: '#6B7A8D',
           letterSpacing: '0.18em',
           textTransform: 'uppercase',
         }}>
@@ -71,8 +71,8 @@ export default function Sidebar() {
                 borderLeft: isActive ? '2px solid #B8913A' : '2px solid transparent',
                 marginBottom: '2px',
                 textDecoration: 'none',
-                color: isActive ? '#B8913A' : '#A89880',
-                backgroundColor: isActive ? 'rgba(184,145,58,0.05)' : 'transparent',
+                color: isActive ? '#B8913A' : '#6B7A8D',
+                backgroundColor: isActive ? 'rgba(184,145,58,0.08)' : 'transparent',
                 fontSize: '12px',
                 fontFamily: 'var(--font-mono)',
                 letterSpacing: '0.06em',
@@ -97,7 +97,7 @@ export default function Sidebar() {
           width: '32px',
           height: '32px',
           borderRadius: '50%',
-          backgroundColor: 'rgba(184,145,58,0.08)',
+          backgroundColor: 'rgba(184,145,58,0.10)',
           border: '1px solid rgba(184,145,58,0.3)',
           display: 'flex',
           alignItems: 'center',
@@ -111,12 +111,12 @@ export default function Sidebar() {
           JL
         </div>
         <div>
-          <div style={{ fontSize: '11px', color: '#6B5D4A', fontFamily: 'var(--font-mono)', marginBottom: '2px' }}>
+          <div style={{ fontSize: '11px', color: '#A8B4C0', fontFamily: 'var(--font-mono)', marginBottom: '2px' }}>
             Jared L.
           </div>
           <Link href="/auth/login" style={{
             fontSize: '10px',
-            color: '#A89880',
+            color: '#6B7A8D',
             fontFamily: 'var(--font-mono)',
             textDecoration: 'none',
           }}>

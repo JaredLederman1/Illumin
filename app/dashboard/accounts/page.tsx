@@ -53,11 +53,11 @@ function InstitutionGroup({
         onClick={() => setOpen(o => !o)}
         style={{
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '16px 20px', backgroundColor: '#FFFFFF', border: 'none', cursor: 'pointer',
+          padding: '16px 20px', backgroundColor: '#0F1318', border: 'none', cursor: 'pointer',
           transition: 'background-color 120ms ease',
         }}
-        onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(184,145,58,0.02)')}
-        onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#FFFFFF')}
+        onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.02)')}
+        onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#0F1318')}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <div style={{
@@ -70,20 +70,20 @@ function InstitutionGroup({
             {initials}
           </div>
           <div style={{ textAlign: 'left' }}>
-            <p style={{ fontSize: '14px', color: '#1A1714', fontFamily: 'var(--font-serif)', fontWeight: 400, marginBottom: '2px' }}>
+            <p style={{ fontSize: '14px', color: '#F0F2F8', fontFamily: 'var(--font-serif)', fontWeight: 400, marginBottom: '2px' }}>
               {name}
             </p>
-            <p style={{ fontSize: '11px', color: '#A89880', fontFamily: 'var(--font-mono)', letterSpacing: '0.03em' }}>
+            <p style={{ fontSize: '11px', color: '#6B7A8D', fontFamily: 'var(--font-mono)', letterSpacing: '0.03em' }}>
               {accounts.length} account{accounts.length !== 1 ? 's' : ''}
             </p>
           </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <p style={{ fontFamily: 'var(--font-serif)', fontSize: '18px', fontWeight: 400, color: total < 0 ? '#8B2635' : '#1A1714' }}>
+          <p style={{ fontFamily: 'var(--font-serif)', fontSize: '18px', fontWeight: 400, color: total < 0 ? '#E05C6E' : '#F0F2F8' }}>
             {fmt(total)}
           </p>
-          <span style={{ fontSize: '10px', color: '#A89880', transition: 'transform 200ms ease', display: 'inline-block', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+          <span style={{ fontSize: '10px', color: '#6B7A8D', transition: 'transform 200ms ease', display: 'inline-block', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>
             ▼
           </span>
         </div>
@@ -182,7 +182,7 @@ function ConnectButton({
         {connecting ? 'Connecting...' : '+ Connect Account'}
       </button>
       {error && (
-        <p style={{ fontSize: '11px', color: '#8B2635', fontFamily: 'var(--font-mono)' }}>{error}</p>
+        <p style={{ fontSize: '11px', color: '#E05C6E', fontFamily: 'var(--font-mono)' }}>{error}</p>
       )}
     </div>
   )
@@ -229,18 +229,18 @@ function AccountsContent() {
   const totalAssets = accounts.filter(a => a.classification === 'asset').reduce((s, a) => s + a.balance, 0)
   const totalLiabilities = accounts.filter(a => a.classification === 'liability').reduce((s, a) => s + Math.abs(a.balance), 0)
 
-  const card = { backgroundColor: '#FFFFFF', border: '1px solid rgba(184,145,58,0.15)', borderRadius: '2px', padding: '28px' } as const
-  const labelStyle = { fontFamily: 'var(--font-mono)', fontSize: '10px', color: '#A89880', textTransform: 'uppercase' as const, letterSpacing: '0.16em' } as const
+  const card = { backgroundColor: '#0F1318', border: '1px solid rgba(184,145,58,0.15)', borderRadius: '2px', padding: '28px' } as const
+  const labelStyle = { fontFamily: 'var(--font-mono)', fontSize: '10px', color: '#6B7A8D', textTransform: 'uppercase' as const, letterSpacing: '0.16em' } as const
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {banner && (
         <div style={{
           padding: '13px 18px',
-          backgroundColor: banner.type === 'success' ? 'rgba(45,106,79,0.06)' : 'rgba(139,38,53,0.06)',
-          border: `1px solid ${banner.type === 'success' ? 'rgba(45,106,79,0.2)' : 'rgba(139,38,53,0.2)'}`,
+          backgroundColor: banner.type === 'success' ? 'rgba(76,175,125,0.10)' : 'rgba(224,92,110,0.08)',
+          border: `1px solid ${banner.type === 'success' ? 'rgba(76,175,125,0.20)' : 'rgba(224,92,110,0.20)'}`,
           borderRadius: '2px',
-          color: banner.type === 'success' ? '#2D6A4F' : '#8B2635',
+          color: banner.type === 'success' ? '#4CAF7D' : '#E05C6E',
           fontFamily: 'var(--font-mono)', fontSize: '12px',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         }}>
@@ -257,12 +257,12 @@ function AccountsContent() {
       {/* Summary */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
         {[
-          { label: 'Total Assets',      value: totalAssets,                   color: '#2D6A4F' },
-          { label: 'Total Liabilities', value: totalLiabilities,              color: '#8B2635' },
+          { label: 'Total Assets',      value: totalAssets,                   color: '#4CAF7D' },
+          { label: 'Total Liabilities', value: totalLiabilities,              color: '#E05C6E' },
           { label: 'Net Worth',         value: totalAssets - totalLiabilities, color: '#B8913A' },
         ].map(({ label: lbl, value, color }) => (
-          <div key={lbl} style={{ backgroundColor: '#FFFFFF', border: '1px solid rgba(184,145,58,0.15)', borderRadius: '2px', padding: '24px' }}>
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: '#A89880', textTransform: 'uppercase', letterSpacing: '0.16em', marginBottom: '10px' }}>{lbl}</p>
+          <div key={lbl} style={{ backgroundColor: '#0F1318', border: '1px solid rgba(184,145,58,0.15)', borderRadius: '2px', padding: '24px' }}>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: '#6B7A8D', textTransform: 'uppercase', letterSpacing: '0.16em', marginBottom: '10px' }}>{lbl}</p>
             <p style={{ fontFamily: 'var(--font-serif)', fontSize: '28px', fontWeight: 400, color }}>{fmt(value)}</p>
           </div>
         ))}
@@ -280,11 +280,11 @@ function AccountsContent() {
               title="Dev only: delete all accounts and transactions to re-connect"
               style={{
                 padding: '8px 12px', backgroundColor: 'transparent',
-                border: '1px solid rgba(139,38,53,0.3)', borderRadius: '2px',
-                color: '#8B2635', fontSize: '11px', fontFamily: 'var(--font-mono)', letterSpacing: '0.04em',
+                border: '1px solid rgba(224,92,110,0.25)', borderRadius: '2px',
+                color: '#E05C6E', fontSize: '11px', fontFamily: 'var(--font-mono)', letterSpacing: '0.04em',
                 cursor: resetting ? 'not-allowed' : 'pointer', opacity: resetting ? 0.5 : 1,
               }}
-              onMouseEnter={e => !resetting && (e.currentTarget.style.backgroundColor = 'rgba(139,38,53,0.05)')}
+              onMouseEnter={e => !resetting && (e.currentTarget.style.backgroundColor = 'rgba(224,92,110,0.08)')}
               onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
             >
               {resetting ? 'Resetting...' : 'Reset [dev]'}
@@ -296,9 +296,9 @@ function AccountsContent() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {loading ? (
-            <p style={{ color: '#A89880', fontFamily: 'var(--font-mono)', fontSize: '12px', padding: '20px 0' }}>Loading accounts...</p>
+            <p style={{ color: '#6B7A8D', fontFamily: 'var(--font-mono)', fontSize: '12px', padding: '20px 0' }}>Loading accounts...</p>
           ) : Object.keys(grouped).length === 0 ? (
-            <p style={{ color: '#A89880', fontFamily: 'var(--font-mono)', fontSize: '12px', padding: '20px 0' }}>No accounts connected yet.</p>
+            <p style={{ color: '#6B7A8D', fontFamily: 'var(--font-mono)', fontSize: '12px', padding: '20px 0' }}>No accounts connected yet.</p>
           ) : (
             Object.entries(grouped).map(([institution, accts]) => (
               <InstitutionGroup

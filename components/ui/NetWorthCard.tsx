@@ -24,7 +24,7 @@ export default function NetWorthCard({ current, lastMonth, totalAssets, totalLia
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
       style={{
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#0F1318',
         border: '1px solid rgba(184,145,58,0.18)',
         borderRadius: '2px',
         padding: '36px 40px',
@@ -38,7 +38,7 @@ export default function NetWorthCard({ current, lastMonth, totalAssets, totalLia
         <p style={{
           fontFamily: 'var(--font-mono)',
           fontSize: '10px',
-          color: '#A89880',
+          color: '#6B7A8D',
           letterSpacing: '0.18em',
           textTransform: 'uppercase',
           marginBottom: '12px',
@@ -50,7 +50,7 @@ export default function NetWorthCard({ current, lastMonth, totalAssets, totalLia
             fontFamily: 'var(--font-serif)',
             fontSize: '60px',
             fontWeight: 300,
-            color: '#1A1714',
+            color: '#F0F2F8',
             lineHeight: 1,
             letterSpacing: '-0.01em',
           }}>
@@ -62,8 +62,8 @@ export default function NetWorthCard({ current, lastMonth, totalAssets, totalLia
             gap: '5px',
             fontFamily: 'var(--font-mono)',
             fontSize: '12px',
-            color: isPositive ? '#2D6A4F' : '#8B2635',
-            backgroundColor: isPositive ? 'rgba(45,106,79,0.08)' : 'rgba(139,38,53,0.08)',
+            color: isPositive ? '#4CAF7D' : '#E05C6E',
+            backgroundColor: isPositive ? 'rgba(76,175,125,0.10)' : 'rgba(224,92,110,0.10)',
             padding: '4px 10px',
             borderRadius: '2px',
           }}>
@@ -75,7 +75,7 @@ export default function NetWorthCard({ current, lastMonth, totalAssets, totalLia
         <p style={{
           fontFamily: 'var(--font-mono)',
           fontSize: '11px',
-          color: '#A89880',
+          color: '#6B7A8D',
           letterSpacing: '0.04em',
         }}>
           vs last month
@@ -83,7 +83,7 @@ export default function NetWorthCard({ current, lastMonth, totalAssets, totalLia
       </div>
 
       {/* Divider */}
-      <div style={{ width: '1px', height: '80px', backgroundColor: 'rgba(184,145,58,0.15)', flexShrink: 0 }} />
+      <div style={{ width: '1px', height: '80px', backgroundColor: 'rgba(184,145,58,0.18)', flexShrink: 0 }} />
 
       {/* Assets + Liabilities */}
       <div style={{ display: 'flex', gap: '48px', alignItems: 'center' }}>
@@ -91,7 +91,7 @@ export default function NetWorthCard({ current, lastMonth, totalAssets, totalLia
           <p style={{
             fontFamily: 'var(--font-mono)',
             fontSize: '10px',
-            color: '#A89880',
+            color: '#6B7A8D',
             letterSpacing: '0.18em',
             textTransform: 'uppercase',
             marginBottom: '10px',
@@ -102,20 +102,20 @@ export default function NetWorthCard({ current, lastMonth, totalAssets, totalLia
             fontFamily: 'var(--font-serif)',
             fontSize: '30px',
             fontWeight: 400,
-            color: '#1A1714',
+            color: '#F0F2F8',
             lineHeight: 1,
           }}>
             {formatCurrency(totalAssets)}
           </p>
         </div>
 
-        <div style={{ width: '1px', height: '52px', backgroundColor: 'rgba(184,145,58,0.15)' }} />
+        <div style={{ width: '1px', height: '52px', backgroundColor: 'rgba(184,145,58,0.18)' }} />
 
         <div>
           <p style={{
             fontFamily: 'var(--font-mono)',
             fontSize: '10px',
-            color: '#A89880',
+            color: '#6B7A8D',
             letterSpacing: '0.18em',
             textTransform: 'uppercase',
             marginBottom: '10px',
@@ -126,7 +126,7 @@ export default function NetWorthCard({ current, lastMonth, totalAssets, totalLia
             fontFamily: 'var(--font-serif)',
             fontSize: '30px',
             fontWeight: 400,
-            color: '#8B2635',
+            color: '#E05C6E',
             lineHeight: 1,
           }}>
             {formatCurrency(totalLiabilities)}

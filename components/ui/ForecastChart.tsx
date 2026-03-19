@@ -25,13 +25,13 @@ export default function ForecastChart({ data, emergencyFundMonths }: ForecastCha
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(184,145,58,0.12)" />
           <XAxis
             dataKey="month"
-            tick={{ fill: '#A89880', fontSize: 10, fontFamily: 'var(--font-mono)' }}
+            tick={{ fill: '#6B7A8D', fontSize: 10, fontFamily: 'var(--font-mono)' }}
             axisLine={false}
             tickLine={false}
           />
           <YAxis
             tickFormatter={formatK}
-            tick={{ fill: '#A89880', fontSize: 10, fontFamily: 'var(--font-mono)' }}
+            tick={{ fill: '#6B7A8D', fontSize: 10, fontFamily: 'var(--font-mono)' }}
             axisLine={false}
             tickLine={false}
             width={40}
@@ -39,13 +39,13 @@ export default function ForecastChart({ data, emergencyFundMonths }: ForecastCha
           <Tooltip
             formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Balance']}
             contentStyle={{
-              backgroundColor: '#FFFFFF',
+              backgroundColor: '#0F1318',
               border: '1px solid rgba(184,145,58,0.25)',
               borderRadius: '2px',
-              color: '#1A1714',
+              color: '#F0F2F8',
               fontFamily: 'var(--font-mono)',
               fontSize: '11px',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.40)',
             }}
           />
           <Line
@@ -71,15 +71,15 @@ export default function ForecastChart({ data, emergencyFundMonths }: ForecastCha
       <div style={{
         marginTop: '20px',
         padding: '14px 18px',
-        backgroundColor: 'rgba(45,106,79,0.06)',
-        border: '1px solid rgba(45,106,79,0.18)',
+        backgroundColor: 'rgba(76,175,125,0.10)',
+        border: '1px solid rgba(76,175,125,0.18)',
         borderRadius: '2px',
         display: 'flex',
         alignItems: 'center',
         gap: '10px',
       }}>
-        <span style={{ fontSize: '16px', color: '#2D6A4F' }}>◎</span>
-        <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: '#2D6A4F', letterSpacing: '0.02em' }}>
+        <span style={{ fontSize: '16px', color: '#4CAF7D' }}>◎</span>
+        <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: '#4CAF7D', letterSpacing: '0.02em' }}>
           Projected emergency fund coverage: <strong>{emergencyFundMonths.toFixed(1)} months</strong>
         </span>
       </div>
