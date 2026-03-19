@@ -377,27 +377,20 @@
    LIGHT FEATURES SECTION  (dark/light flip)
    ════════════════════════════════════════════════════════════ */
 
-/* ── SECTION SHELL — theme inversion ─────────────────────── */
+/* ── SECTION SHELL ────────────────────────────────────────── */
 .lightFeatures {
-  --color-background: #F0F2F8;
-  --color-foreground: #080B0F;
-  --color-muted:      #6B7A8D;
-  --color-surface:    color-mix(in srgb, var(--color-foreground) 5%, transparent);
-
-  background: var(--color-background);
-  padding:    100px 80px 120px;
-  /* reuse .featuresHeader, .featureRow, .featureLeft, .featureText,
-     .featureLabel, .featureH3 — all reference --color-* vars that are
-     now re-defined here, so they render correctly inverted. */
-}
-
-/* ── INVERTED CARD (dark card on light section) ───────────── */
-.invertedCard {
   --color-background: #080B0F;
   --color-foreground: #F0F2F8;
   --color-muted:      #6B7A8D;
+  --color-surface:    color-mix(in srgb, var(--color-foreground) 4%, transparent);
 
-  background:    var(--color-background);
+  background: var(--color-background);
+  padding:    100px 80px 120px;
+}
+
+/* ── CARD (elevated surface on dark section) ──────────────── */
+.invertedCard {
+  background:    rgba(255,255,255,0.04);
   border:        1px solid var(--color-grid-line);
   border-radius: 8px;
   padding:       28px;
