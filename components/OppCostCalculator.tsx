@@ -1,153 +1,154 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import styles from '@/app/landing.module.css'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function parseAmt(s: string): number {
-  return parseFloat(s.replace(/[^0-9.]/g, '')) || 0
+function fv(monthlyPmt: number, months: number): number {
+  if (months <= 0 || monthlyPmt <= 0) return 0
+  const r = 0.07 / 12
+  return monthlyPmt * ((Math.pow(1 + r, months) - 1) / r)
 }
 
-function fmtFull(n: number): string {
+function fmt(n: number) {
   return new Intl.NumberFormat('en-US', {
-    style: 'currency', currency: 'USD', maximumFractionDigits: 0,
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
   }).format(n)
 }
 
-function fmtCompact(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000)     return `$${Math.round(n / 1_000)}K`
-  return fmtFull(n)
+function formatNumber(n: number) {
+  return new Intl.NumberFormat('en-US').format(n)
 }
 
-interface Result {
-  years: number
-  savingsRatePct: number
-  monthlyInvest: number
-  optimalMonthly: number
-  projectedCurrent: number
-  projectedOptimal: number
-  gap: number
-  costDelay: number
+// ─── Shared styles (mirrored exactly from onboarding) ────────────────────────
+
+const heading: React.CSSProperties = {
+  fontFamily: 'var(--font-serif)',
+  fontSize: '36px',
+  fontWeight: 300,
+  color: 'var(--color-text)',
+  lineHeight: 1.2,
+  marginBottom: '14px',
 }
 
-function fv(pmt: number, n: number): number {
-  if (pmt <= 0 || n <= 0) return 0
-  const r = 0.07 / 12
-  return pmt * (Math.pow(1 + r, n) - 1) / r
+const body: React.CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: '13px',
+  color: 'var(--color-text-mid)',
+  lineHeight: 1.7,
+  letterSpacing: '0.02em',
 }
 
-function compute(age: number, annualIncome: number, savingsRate: number): Result {
-  const years         = Math.max(5, 65 - age)
-  const months        = years * 12
-  const monthlyInvest = (annualIncome * savingsRate / 100) / 12
-  const optimalMonthly   = (annualIncome * 0.20) / 12
-  const projectedCurrent = Math.round(fv(monthlyInvest, months))
-  const projectedOptimal = Math.round(fv(optimalMonthly, months))
-  const gap              = Math.max(0, projectedOptimal - projectedCurrent)
-  const costDelay        = Math.max(0, Math.round(
-    fv(monthlyInvest, months) - fv(monthlyInvest, Math.max(0, months - 12))
-  ))
-
-  return { years, savingsRatePct: savingsRate, monthlyInvest, optimalMonthly, projectedCurrent, projectedOptimal, gap, costDelay }
+const muted: React.CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: '10px',
+  color: 'var(--color-text-muted)',
+  letterSpacing: '0.14em',
+  textTransform: 'uppercase',
 }
 
-function useCountUp(target: number, active: boolean): number {
-  const [val, setVal] = useState(0)
-  useEffect(() => {
-    if (!active || target === 0) { setVal(0); return }
-    const duration  = 1800
-    const startTime = Date.now()
-    let rafId: number
-    const tick = () => {
-      const elapsed  = Date.now() - startTime
-      const progress = Math.min(elapsed / duration, 1)
-      const eased    = 1 - Math.pow(1 - progress, 4)
-      setVal(Math.round(eased * target))
-      if (progress < 1) { rafId = requestAnimationFrame(tick) }
-    }
-    rafId = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafId)
-  }, [target, active])
-  return val
+const continueBtn: React.CSSProperties = {
+  display: 'block',
+  margin: '48px auto 0',
+  padding: '13px 36px',
+  backgroundColor: 'var(--color-gold)',
+  border: 'none',
+  borderRadius: '2px',
+  color: 'var(--color-surface)',
+  fontSize: '12px',
+  fontFamily: 'var(--font-mono)',
+  letterSpacing: '0.12em',
+  textTransform: 'uppercase',
+  fontWeight: 500,
+  cursor: 'pointer',
 }
+
+const bigNumStyle: React.CSSProperties = {
+  fontFamily: 'var(--font-serif)',
+  fontSize: '80px',
+  fontWeight: 300,
+  color: 'var(--color-text)',
+  lineHeight: 1,
+  width: '100%',
+  background: 'transparent',
+  border: 'none',
+  borderBottom: '1px solid var(--color-border)',
+  outline: 'none',
+  padding: '0 0 10px',
+  textAlign: 'center',
+  display: 'block',
+  marginTop: '44px',
+}
+
+const sliderReadout: React.CSSProperties = {
+  fontFamily: 'var(--font-serif)',
+  fontSize: '60px',
+  fontWeight: 300,
+  color: 'var(--color-text)',
+  lineHeight: 1,
+  minWidth: '140px',
+  textAlign: 'right',
+  flexShrink: 0,
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type Step = 0 | 1 | 2 | 3 | 'reveal'
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function OppCostCalculator() {
-  const [step,           setStep]           = useState(0)
-  const [age,            setAge]            = useState('')
-  const [income,         setIncome]         = useState('')
-  const [savingsRate,    setSavingsRate]     = useState(5)
-  const [ageErr,         setAgeErr]         = useState('')
-  const [incomeErr,      setIncomeErr]      = useState('')
-  const [email,          setEmail]          = useState('')
-  const [emailErr,       setEmailErr]       = useState('')
-  const [emailSubmitted, setEmailSubmitted] = useState(false)
-  const inputRef    = useRef<HTMLInputElement>(null)
-  const mirrorRef   = useRef<HTMLSpanElement>(null)
-  const [ageMirrorW, setAgeMirrorW] = useState(0)
-  const stepRef  = useRef(step)
-  useEffect(() => { stepRef.current = step }, [step])
+  const [step, setStep]                         = useState<Step>(0)
+  const [age, setAge]                           = useState<number | ''>('')
+  const [ageRaw, setAgeRaw]                     = useState('')
+  const [income, setIncome]                     = useState(120000)
+  const [incomeDisplay, setIncomeDisplay]       = useState('120,000')
+  const [savingsRate, setSavingsRate]           = useState(5)
+  const [retirementAge, setRetirementAge]       = useState(65)
+  const [email, setEmail]                       = useState('')
+  const [emailErr, setEmailErr]                 = useState('')
+  const [emailSubmitted, setEmailSubmitted]     = useState(false)
 
-  useEffect(() => {
-    if (step === 3) {
-      window.history.pushState({ illuminCalcResult: true }, '')
-    }
-  }, [step])
+  const stepNum      = typeof step === 'number' ? step : null
+  const filledSegs: number = step === 'reveal' ? 4 : Number(step) + 1
+  const savingsPct   = (savingsRate / 50) * 100
+  const retirePct    = ((retirementAge - 45) / (75 - 45)) * 100
 
-  useEffect(() => {
-    const handlePop = () => {
-      if (stepRef.current === 3) {
-        setStep(0)
-        setAge('')
-        setIncome('')
-        setSavingsRate(5)
-        window.scrollTo({ top: 0, behavior: 'smooth' })
-      }
-    }
-    window.addEventListener('popstate', handlePop)
-    return () => window.removeEventListener('popstate', handlePop)
-  }, [])
+  // Reveal calculations
+  const ageNum          = typeof age === 'number' ? Math.max(16, Math.min(80, age)) : 0
+  const yearsToRetire   = Math.max(0, retirementAge - ageNum)
+  const monthlyInvest   = (income * savingsRate / 100) / 12
+  const months          = yearsToRetire * 12
+  const wealthNow       = fv(monthlyInvest, months)
+  const wealthMinus1Yr  = fv(monthlyInvest, Math.max(0, months - 12))
+  const opportunityCost = Math.max(0, wealthNow - wealthMinus1Yr)
+  const wealthAt20      = fv((income * 0.20) / 12, months)
 
-  useEffect(() => {
-    if (step < 2) {
-      const t = setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 400)
-      return () => clearTimeout(t)
-    }
-  }, [step])
-
-  const result      = step === 3 ? compute(parseInt(age), parseAmt(income), savingsRate) : null
-  const countedNum  = useCountUp(result?.costDelay ?? 0, step === 3)
-
-  const advance = () => {
-    if (step === 0) {
-      const a = parseInt(age)
-      if (!age || isNaN(a) || a < 18 || a > 70) {
-        setAgeErr('Please enter an age between 18 and 70.')
-        return
-      }
-    }
-    if (step === 1) {
-      if (parseAmt(income) <= 0) {
-        setIncomeErr('Please enter your annual income.')
-        return
-      }
-    }
-    setStep(s => s + 1)
+  const handleIncomeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/,/g, '').replace(/[^0-9]/g, '')
+    const num = parseInt(raw) || 0
+    setIncome(num)
+    setIncomeDisplay(num ? formatNumber(num) : '')
   }
 
-  const handleKey = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') advance()
+  const handleContinue = () => {
+    if (typeof step !== 'number') return
+    if (step < 3) { setStep((step + 1) as Step); return }
+    setStep('reveal')
   }
 
-  const handleIncomeChange = (raw: string) => {
-    const digits = raw.replace(/[^0-9]/g, '')
-    const n = parseInt(digits)
-    setIncome(isNaN(n) ? '' : n.toLocaleString('en-US'))
-    setIncomeErr('')
+  const handleReset = () => {
+    setStep(0)
+    setAgeRaw('')
+    setAge('')
+    setIncome(120000)
+    setIncomeDisplay('120,000')
+    setSavingsRate(5)
+    setRetirementAge(65)
   }
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -168,284 +169,541 @@ export default function OppCostCalculator() {
     }
   }
 
-  // Slider fill percentage
-  const savingsPct = (savingsRate / 50) * 100
-  const monthlyLive = income ? (parseAmt(income) * savingsRate / 100) / 12 : 0
+  const stepVariants = {
+    hidden:  { opacity: 0, y: 12 },
+    visible: { opacity: 1, y: 0 },
+    exit:    { opacity: 0, y: -8 },
+  }
 
+  const transition = { duration: 0.25, ease: 'easeOut' as const }
+
+  // ── Steps content ──────────────────────────────────────────────────────────
+  const renderStep = () => (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={step}
+        variants={stepVariants}
+        initial="hidden"
+        animate="visible"
+        exit="exit"
+        transition={transition}
+      >
+        <form onSubmit={e => { e.preventDefault(); handleContinue() }}>
+
+          {/* Step 0: Age */}
+          {step === 0 && (
+            <div>
+              <h3 style={heading}>How old are you?</h3>
+              <p style={body}>Your age determines how many compounding years remain.</p>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={ageRaw}
+                onChange={e => {
+                  const raw = e.target.value.replace(/[^0-9]/g, '')
+                  setAgeRaw(raw)
+                  const n = parseInt(raw)
+                  setAge(raw === '' || isNaN(n) ? '' : n)
+                }}
+                onBlur={() => {
+                  const n = typeof age === 'number' ? age : 0
+                  if (ageRaw !== '' && n < 16) { setAgeRaw('16'); setAge(16) }
+                  if (ageRaw !== '' && n > 80) { setAgeRaw('80'); setAge(80) }
+                }}
+                placeholder="enter your age"
+                style={{
+                  ...bigNumStyle,
+                  color: ageRaw === '' ? 'var(--color-text-muted)' : 'var(--color-text)',
+                }}
+              />
+              <p style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '11px',
+                color: 'var(--color-text-muted)',
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+                textAlign: 'center',
+                marginTop: '10px',
+              }}>
+                years old
+              </p>
+            </div>
+          )}
+
+          {/* Step 1: Income */}
+          {step === 1 && (
+            <div>
+              <h3 style={heading}>What is your annual income?</h3>
+              <p style={body}>Gross income before tax, including any reliable bonus.</p>
+              <div style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                borderBottom: '1px solid var(--color-border)',
+                marginTop: '44px',
+                paddingBottom: '10px',
+              }}>
+                <span style={{
+                  fontFamily: 'var(--font-serif)',
+                  fontSize: '72px',
+                  fontWeight: 300,
+                  color: 'var(--color-text-muted)',
+                  lineHeight: 1,
+                  flexShrink: 0,
+                }}>$</span>
+                <input
+                  type="text"
+                  value={incomeDisplay}
+                  onChange={handleIncomeChange}
+                  inputMode="numeric"
+                  style={{
+                    flex: 1,
+                    fontSize: '72px',
+                    fontFamily: 'var(--font-serif)',
+                    fontWeight: 300,
+                    color: 'var(--color-text)',
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    padding: '0 0 0 6px',
+                    lineHeight: 1,
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Savings rate */}
+          {step === 2 && (
+            <div>
+              <h3 style={heading}>What share of your income are you currently investing?</h3>
+              <p style={body}>Include 401(k) contributions.</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '24px', marginTop: '44px' }}>
+                <input
+                  type="range"
+                  min={0}
+                  max={50}
+                  value={savingsRate}
+                  onChange={e => setSavingsRate(Number(e.target.value))}
+                  style={{
+                    flex: 1,
+                    background: `linear-gradient(to right, var(--color-gold) ${savingsPct}%, var(--color-border) ${savingsPct}%)`,
+                  }}
+                />
+                <span style={sliderReadout}>{savingsRate}%</span>
+              </div>
+
+              {/* Live dollar preview */}
+              <div style={{
+                marginTop: '28px',
+                padding: '20px 22px',
+                backgroundColor: 'var(--color-surface)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '2px',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <span style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '10px',
+                    color: 'var(--color-text-muted)',
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase' as const,
+                  }}>
+                    That&apos;s
+                  </span>
+                  <span style={{
+                    fontFamily: 'var(--font-serif)',
+                    fontSize: '32px',
+                    fontWeight: 300,
+                    color: 'var(--color-gold)',
+                    lineHeight: 1,
+                  }}>
+                    {fmt((income * savingsRate / 100) / 12)}
+                    <span style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: '11px',
+                      color: 'var(--color-text-muted)',
+                      letterSpacing: '0.08em',
+                      marginLeft: '6px',
+                    }}>/ month</span>
+                  </span>
+                </div>
+                <p style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '11px',
+                  color: 'var(--color-text-muted)',
+                  lineHeight: 1.65,
+                  letterSpacing: '0.02em',
+                  margin: 0,
+                }}>
+                  This is what flows into your savings and investment accounts after every expense (rent, food, utilities, everything) is already paid.
+                </p>
+              </div>
+
+              <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                <p style={muted}>National median: 5%</p>
+                <p style={muted}>Recommended: 15-20%</p>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Retirement age */}
+          {step === 3 && (
+            <div>
+              <h3 style={heading}>At what age do you plan to retire?</h3>
+              <p style={body}>We will use this to project your long-term wealth trajectory.</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '24px', marginTop: '44px' }}>
+                <input
+                  type="range"
+                  min={45}
+                  max={75}
+                  value={retirementAge}
+                  onChange={e => setRetirementAge(Number(e.target.value))}
+                  style={{
+                    flex: 1,
+                    background: `linear-gradient(to right, var(--color-gold) ${retirePct}%, var(--color-border) ${retirePct}%)`,
+                  }}
+                />
+                <span style={sliderReadout}>{retirementAge}</span>
+              </div>
+              <p style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '11px',
+                color: 'var(--color-text-muted)',
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+                textAlign: 'right',
+                marginTop: '8px',
+              }}>
+                years old
+              </p>
+            </div>
+          )}
+
+          <button type="submit" style={continueBtn}>
+            {typeof step === 'number' && step < 3 ? 'Continue' : 'See my number'}
+          </button>
+        </form>
+      </motion.div>
+    </AnimatePresence>
+  )
+
+  // ── Reveal ─────────────────────────────────────────────────────────────────
+  const renderReveal = () => (
+    <motion.div
+      key="reveal"
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: 'easeOut' }}
+      style={{ width: '100%', maxWidth: '880px' }}
+    >
+      {/* Two-column layout */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '56px', marginBottom: '0', alignItems: 'start' }}>
+
+        {/* Left: big number + context */}
+        <div style={{ textAlign: 'left' }}>
+          <p style={{ ...muted, marginBottom: '20px' }}>Cost of waiting one year</p>
+          <p style={{
+            fontFamily: 'var(--font-serif)',
+            fontSize: '76px',
+            fontWeight: 300,
+            color: 'var(--color-text)',
+            lineHeight: 1,
+            letterSpacing: '-0.01em',
+            marginBottom: '28px',
+          }}>
+            {fmt(opportunityCost)}
+          </p>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            backgroundColor: 'rgba(184,145,58,0.10)',
+            border: '1px solid var(--color-gold)',
+            borderRadius: '2px',
+            padding: '5px 12px',
+            marginBottom: '24px',
+          }}>
+            <span style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '10px',
+              color: 'var(--color-gold)',
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase' as const,
+              fontWeight: 500,
+            }}>
+              Every. Single. Year.
+            </span>
+          </div>
+          <p style={{
+            fontFamily: 'var(--font-serif)',
+            fontSize: '20px',
+            fontWeight: 300,
+            color: 'var(--color-text)',
+            lineHeight: 1.45,
+            marginBottom: '16px',
+          }}>
+            This is not a one-time loss. Every year you delay, you forfeit this amount in retirement wealth, permanently.
+          </p>
+          <p style={{
+            fontFamily: 'var(--font-serif)',
+            fontSize: '16px',
+            fontWeight: 300,
+            color: 'var(--color-text-mid)',
+            lineHeight: 1.5,
+            marginBottom: '20px',
+          }}>
+            Wait 5 years and the true cost is <strong style={{ color: 'var(--color-text)' }}>{fmt(opportunityCost * 5)}</strong>. Wait 10 years: <strong style={{ color: 'var(--color-text)' }}>{fmt(opportunityCost * 10)}</strong>. The clock does not pause.
+          </p>
+          <p style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '11px',
+            color: 'var(--color-text-muted)',
+            lineHeight: 1.7,
+            letterSpacing: '0.02em',
+          }}>
+            Based on 7% annualized real return. S&amp;P 500 historical average. Calculated in today&apos;s dollars.
+          </p>
+          <button
+            onClick={handleReset}
+            style={{
+              marginTop: '24px',
+              background: 'none',
+              border: 'none',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '11px',
+              color: 'var(--color-text-muted)',
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              cursor: 'pointer',
+              padding: 0,
+              textDecoration: 'underline',
+              textUnderlineOffset: '3px',
+            }}
+          >
+            Recalculate
+          </button>
+        </div>
+
+        {/* Right: breakdown card + waitlist */}
+        <div>
+          <div style={{
+            backgroundColor: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: '2px',
+            padding: '28px',
+            marginBottom: '20px',
+          }}>
+            {[
+              { label: 'Years to retirement',                      value: `${yearsToRetire} yrs` },
+              { label: 'Current monthly investment',               value: fmt(monthlyInvest)     },
+              { label: 'Projected wealth at current savings rate', value: fmt(wealthNow)         },
+              { label: 'Projected wealth at 20% savings rate',     value: fmt(wealthAt20)        },
+            ].map(({ label, value }, i, arr) => (
+              <div
+                key={label}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'baseline',
+                  paddingBottom: '18px',
+                  marginBottom: i < arr.length - 1 ? '18px' : 0,
+                  borderBottom: i < arr.length - 1 ? '1px solid var(--color-border)' : 'none',
+                }}
+              >
+                <span style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '11px',
+                  color: 'var(--color-text-muted)',
+                  letterSpacing: '0.04em',
+                  maxWidth: '140px',
+                  lineHeight: 1.5,
+                  textAlign: 'left',
+                }}>
+                  {label}
+                </span>
+                <span style={{
+                  fontFamily: 'var(--font-serif)',
+                  fontSize: '20px',
+                  fontWeight: 400,
+                  color: 'var(--color-text)',
+                  flexShrink: 0,
+                  marginLeft: '16px',
+                }}>
+                  {value}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Waitlist box */}
+          <div style={{
+            backgroundColor: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: '2px',
+            padding: '24px 28px',
+            textAlign: 'left',
+          }}>
+            {emailSubmitted ? (
+              <p style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '13px',
+                color: 'var(--color-gold)',
+                letterSpacing: '0.04em',
+                textAlign: 'center',
+                margin: 0,
+              }}>
+                You&apos;re on the list. We&apos;ll be in touch.
+              </p>
+            ) : (
+              <>
+                <p style={{
+                  fontFamily: 'var(--font-serif)',
+                  fontSize: '20px',
+                  fontWeight: 300,
+                  color: 'var(--color-text)',
+                  lineHeight: 1.35,
+                  marginBottom: '8px',
+                }}>
+                  Don&apos;t let this be just a number.
+                </p>
+                <p style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '12px',
+                  color: 'var(--color-text-muted)',
+                  lineHeight: 1.6,
+                  letterSpacing: '0.02em',
+                  marginBottom: '20px',
+                }}>
+                  Get early access to Illumin and a full action plan at launch.
+                </p>
+                <form onSubmit={handleEmailSubmit} noValidate>
+                  <input
+                    type="email"
+                    placeholder="Your email address"
+                    value={email}
+                    onChange={e => { setEmail(e.target.value); setEmailErr('') }}
+                    autoComplete="email"
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      backgroundColor: 'var(--color-bg)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '2px',
+                      color: 'var(--color-text)',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: '13px',
+                      outline: 'none',
+                      marginBottom: '10px',
+                      boxSizing: 'border-box' as const,
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    style={{
+                      width: '100%',
+                      padding: '13px',
+                      backgroundColor: 'var(--color-gold)',
+                      border: 'none',
+                      borderRadius: '2px',
+                      color: 'var(--color-surface)',
+                      fontSize: '12px',
+                      fontFamily: 'var(--font-mono)',
+                      letterSpacing: '0.12em',
+                      textTransform: 'uppercase' as const,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Get early access
+                  </button>
+                  {emailErr && (
+                    <p style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: '11px',
+                      color: 'var(--color-negative)',
+                      marginTop: '8px',
+                    }}>
+                      {emailErr}
+                    </p>
+                  )}
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  )
+
+  // ── Shell ──────────────────────────────────────────────────────────────────
   return (
     <section className={styles.calcSection}>
       <div className={styles.calcInner}>
 
+        {/* Section header */}
         <div className={styles.calcSectionHeader}>
           <p className={styles.sectionEyebrow}>The calculation</p>
           <h2 className={styles.sectionHeadline}>See your number.</h2>
           <p className={styles.sectionSub}>
-            Three inputs. The exact dollar cost of your current trajectory, and what closing the gap looks like.
+            Four inputs. The exact dollar cost of your current trajectory, and what closing the gap looks like.
           </p>
         </div>
 
-        <AnimatePresence mode="wait">
+        {/* Progress bar: 4 segments */}
+        <div style={{
+          height: '2px',
+          display: 'flex',
+          gap: '2px',
+          width: '100%',
+          maxWidth: step === 'reveal' ? '880px' : '480px',
+          marginBottom: '0',
+          transition: 'max-width 0.4s ease',
+        }}>
+          {[0, 1, 2, 3].map(i => (
+            <div
+              key={i}
+              style={{
+                flex: 1,
+                backgroundColor: i < filledSegs ? 'var(--color-gold)' : 'var(--color-border)',
+                transition: 'background-color 350ms ease',
+              }}
+            />
+          ))}
+        </div>
 
-          {/* ── Steps 0–2: inputs ─────────────────────────────────── */}
-          {step < 3 && (
-            <motion.div
-              key={`step-${step}`}
-              className={styles.calcStepWrap}
-              initial={{ opacity: 0, y: 28 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.38, ease: 'easeOut' }}
-            >
-              {/* Locked previous answers */}
-              {step > 0 && (
-                <motion.div
-                  className={styles.calcProgress}
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <span className={styles.calcProgressItem}>Age: {age}</span>
-                  {step > 1 && (
-                    <span className={styles.calcProgressItem}>Income: ${income} / yr</span>
-                  )}
-                </motion.div>
-              )}
+        {/* Step counter */}
+        {stepNum !== null && (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            width: '100%',
+            maxWidth: '480px',
+            marginTop: '8px',
+            marginBottom: '32px',
+          }}>
+            <span style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '11px',
+              color: 'var(--color-text-muted)',
+              letterSpacing: '0.1em',
+            }}>
+              {stepNum + 1} / 4
+            </span>
+          </div>
+        )}
 
-              <p className={styles.calcEyebrow}>Step {step + 1} of 3</p>
+        {/* Reveal spacer (no step counter shown) */}
+        {step === 'reveal' && <div style={{ height: '32px' }} />}
 
-              {/* Step 0: Age */}
-              {step === 0 && (
-                <>
-                  <h3 className={styles.calcQuestion}>How old are you?</h3>
-                  <div className={styles.calcInputWrap}>
-                    {/* Hidden mirror to measure typed text width */}
-                    <span
-                      ref={mirrorRef}
-                      aria-hidden
-                      className={styles.calcInputMirror}
-                    >
-                      {age}
-                    </span>
-                    <input
-                      ref={inputRef}
-                      type="text"
-                      inputMode="numeric"
-                      className={`${styles.calcInput} ${styles.calcInputPrefixed}`}
-                      value={age}
-                      onChange={e => {
-                        const v = e.target.value.replace(/[^0-9]/g, '')
-                        setAge(v)
-                        setAgeErr('')
-                        requestAnimationFrame(() => {
-                          setAgeMirrorW(mirrorRef.current?.offsetWidth ?? 0)
-                        })
-                      }}
-                      onKeyDown={handleKey}
-                      placeholder="enter your age"
-                    />
-                    {age && (
-                      <span
-                        className={styles.calcInputSuffix}
-                        style={{ left: `calc(50% + ${ageMirrorW / 2}px - 2px)`, right: 'auto' }}
-                      >
-                        years old
-                      </span>
-                    )}
-                  </div>
-                  {ageErr && <p className={styles.calcErr}>{ageErr}</p>}
-                  <p className={styles.calcHint}>We&apos;ll assume retirement at 65.</p>
-                </>
-              )}
+        {/* Content */}
+        {step === 'reveal' ? (
+          renderReveal()
+        ) : (
+          <div style={{ width: '100%', maxWidth: '480px' }}>
+            {renderStep()}
+          </div>
+        )}
 
-              {/* Step 1: Income */}
-              {step === 1 && (
-                <>
-                  <h3 className={styles.calcQuestion}>What&apos;s your annual income?</h3>
-                  <div className={styles.calcInputWrap}>
-                    <span className={styles.calcInputPrefix}>$</span>
-                    <input
-                      ref={inputRef}
-                      type="text"
-                      inputMode="numeric"
-                      className={`${styles.calcInput} ${styles.calcInputPrefixed}`}
-                      value={income}
-                      onChange={e => handleIncomeChange(e.target.value)}
-                      onKeyDown={handleKey}
-                      placeholder="enter your income"
-                    />
-                  </div>
-                  {incomeErr && <p className={styles.calcErr}>{incomeErr}</p>}
-                  <p className={styles.calcHint}>Pre-tax. Used to calculate your target investment rate.</p>
-                </>
-              )}
-
-              {/* Step 2: Savings rate slider */}
-              {step === 2 && (
-                <>
-                  <h3 className={styles.calcQuestion}>What share of your income are you investing?</h3>
-
-                  <div className={styles.calcSliderRow}>
-                    <input
-                      type="range"
-                      min={0}
-                      max={50}
-                      value={savingsRate}
-                      onChange={e => setSavingsRate(Number(e.target.value))}
-                      className={styles.calcSlider}
-                      style={{
-                        background: `linear-gradient(to right, white ${savingsPct}%, rgba(255,255,255,0.12) ${savingsPct}%)`,
-                      }}
-                    />
-                    <div className={styles.calcSliderReadoutWrap}>
-                      <span className={styles.calcSliderReadoutLabel}>That&apos;s</span>
-                      <span className={styles.calcSliderReadout}>{savingsRate}%</span>
-                    </div>
-                  </div>
-
-                  {/* Live dollar readout */}
-                  <div className={styles.calcSliderBox}>
-                    <div className={styles.calcSliderBoxInner}>
-                      <span className={styles.calcSliderBoxValue}>
-                        {fmtFull(monthlyLive)}
-                        <span className={styles.calcSliderBoxUnit}> / month</span>
-                      </span>
-                    </div>
-                    <p className={styles.calcSliderBoxNote}>
-                      Total flowing into 401(k), IRA, and brokerage after every expense is covered.
-                    </p>
-                  </div>
-
-                  <div className={styles.calcSliderBenchmarks}>
-                    <span className={styles.calcSliderBenchmark}>National median: 5%</span>
-                    <span className={styles.calcSliderBenchmark}>Recommended: 15-20%</span>
-                  </div>
-                </>
-              )}
-
-              <div className={styles.calcActions}>
-                {step > 0 && (
-                  <button className={styles.btnGhost} onClick={() => setStep(s => s - 1)}>
-                    Back
-                  </button>
-                )}
-                <button className={styles.btnPrimary} onClick={advance}>
-                  {step < 2 ? 'Continue' : 'Calculate'}
-                </button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ── Step 3: result ────────────────────────────────────── */}
-          {step === 3 && result && (
-            <motion.div
-              key="result"
-              initial={{ opacity: 0, y: 28 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
-            >
-              <div className={styles.revealInner}>
-
-                {/* Left: big number + badge */}
-                <div>
-                  <p className={styles.sectionEyebrow}>Cost of waiting one year</p>
-
-                  <div className={styles.revealNumber}>
-                    {fmtFull(countedNum)}
-                  </div>
-
-                  <div className={styles.calcBadge}>
-                    Every. Single. Year.
-                  </div>
-
-                  <p className={styles.revealDesc}>
-                    This is not a one-time loss. Every year you delay optimizing, you forfeit this amount in retirement wealth, permanently.
-                  </p>
-
-                  <p className={styles.revealDesc} style={{ marginTop: '12px' }}>
-                    Wait 5 years and the true cost is{' '}
-                    <strong style={{ color: 'var(--lm-text)' }}>{fmtFull(result.costDelay * 5)}</strong>.
-                    Wait 10 years:{' '}
-                    <strong style={{ color: 'var(--lm-text)' }}>{fmtFull(result.costDelay * 10)}</strong>.
-                  </p>
-
-                  <p className={styles.revealNote}>
-                    Based on 7% annualized real return.<br />
-                    S&amp;P 500 historical average. Calculated in today&apos;s dollars.
-                  </p>
-
-                  <button
-                    className={styles.calcRecalc}
-                    onClick={() => { setStep(0); setAge(''); setIncome(''); setSavingsRate(5) }}
-                  >
-                    Recalculate
-                  </button>
-                </div>
-
-                {/* Right: breakdown card + email */}
-                <div>
-                  <div className={styles.revealCard}>
-                    <div className={styles.revealCardRow}>
-                      <span className={styles.revealCardLabel}>Years to retirement</span>
-                      <span className={styles.revealCardVal}>{result.years}</span>
-                    </div>
-                    <div className={styles.revealCardRow}>
-                      <span className={styles.revealCardLabel}>Current monthly investment</span>
-                      <span className={styles.revealCardVal}>{fmtFull(result.monthlyInvest)}</span>
-                    </div>
-                    <div className={styles.revealCardRow}>
-                      <span className={styles.revealCardLabel}>Current savings rate</span>
-                      <span className={styles.revealCardVal}>{result.savingsRatePct}%</span>
-                    </div>
-                    <div className={styles.revealCardRow}>
-                      <span className={styles.revealCardLabel}>Projected at current rate</span>
-                      <span className={styles.revealCardVal}>{fmtCompact(result.projectedCurrent)}</span>
-                    </div>
-                    <div className={styles.revealCardRow}>
-                      <span className={styles.revealCardLabel}>Projected at 20% rate</span>
-                      <span className={`${styles.revealCardVal} ${styles.positive}`}>
-                        {fmtCompact(result.projectedOptimal)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Email capture */}
-                  <div className={styles.calcEmailWrap}>
-                    {emailSubmitted ? (
-                      <p className={styles.calcEmailConfirm}>
-                        You&apos;re on the list. We&apos;ll be in touch.
-                      </p>
-                    ) : (
-                      <>
-                        <p className={styles.calcEmailHeadline}>
-                          Don&apos;t let this be just a number.
-                        </p>
-                        <p className={styles.calcEmailSub}>
-                          Get early access to Illumin and a full action plan at launch.
-                        </p>
-                        <form onSubmit={handleEmailSubmit} className={styles.calcEmailForm} noValidate>
-                          <input
-                            type="email"
-                            className={styles.ctaInput}
-                            placeholder="Your email address"
-                            value={email}
-                            onChange={e => { setEmail(e.target.value); setEmailErr('') }}
-                            autoComplete="email"
-                          />
-                          <button type="submit" className={styles.btnPrimary}>
-                            Claim your spot
-                          </button>
-                        </form>
-                        {emailErr && <p className={styles.ctaError}>{emailErr}</p>}
-                      </>
-                    )}
-                  </div>
-                </div>
-
-              </div>
-            </motion.div>
-          )}
-
-        </AnimatePresence>
       </div>
     </section>
   )

@@ -139,7 +139,7 @@ export default function Sidebar() {
       <nav style={{ paddingTop: '16px', flex: 1 }}>
         {/* Overview */}
         <Link href="/dashboard" style={standaloneStyle('/dashboard')}>
-          Dashboard
+          DASHBOARD
         </Link>
 
         {/* Divider */}
@@ -213,7 +213,7 @@ export default function Sidebar() {
 
         {/* Profile */}
         <Link href="/dashboard/profile" style={standaloneStyle('/dashboard/profile')}>
-          Profile
+          PROFILE
         </Link>
       </nav>
 

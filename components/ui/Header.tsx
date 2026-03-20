@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -93,7 +94,7 @@ export default function Header() {
             </button>
           </>
         )}
-        <div style={{
+        <Link href="/dashboard/profile" style={{
           width: '30px',
           height: '30px',
           borderRadius: '50%',
@@ -105,9 +106,11 @@ export default function Header() {
           fontFamily: 'var(--font-mono)',
           fontSize: '12px',
           color: '#B8913A',
+          textDecoration: 'none',
+          cursor: 'pointer',
         }}>
           JL
-        </div>
+        </Link>
       </div>
     </header>
   )
