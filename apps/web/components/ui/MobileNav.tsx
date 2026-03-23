@@ -97,7 +97,7 @@ export default function MobileNav() {
   }
 
   return (
-    <div className="mobile-nav-fixed">
+    <>
       {/* Subcategory tray, slides in from right */}
       <AnimatePresence>
         {openCategory && (() => {
@@ -217,13 +217,9 @@ export default function MobileNav() {
                 justifyContent: 'center',
                 gap: 3,
                 minHeight: spacing.tapTarget,
-                borderTop: isOpen ? `2px solid ${colors.gold}` : active ? `2px solid ${colors.gold}` : '2px solid transparent',
-                backgroundColor: isOpen ? colors.goldSubtle : 'transparent',
-                background: 'none',
+                background: isOpen ? colors.goldSubtle : 'transparent',
                 border: 'none',
-                borderTopWidth: 2,
-                borderTopStyle: 'solid',
-                borderTopColor: isOpen || active ? colors.gold : 'transparent',
+                borderTop: (isOpen || active) ? `2px solid ${colors.gold}` : '2px solid transparent',
                 cursor: 'pointer',
                 padding: 0,
               }}
@@ -247,6 +243,6 @@ export default function MobileNav() {
           )
         })}
       </nav>
-    </div>
+    </>
   )
 }

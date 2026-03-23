@@ -151,19 +151,17 @@ input[type="number"] {
 
   .mobile-nav {
     display: block;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 90;
   }
 
   .dashboard-main {
     padding: 16px 16px 130px 16px;
   }
-}
-
-.mobile-nav-fixed {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 90;
 }
 
 ::-webkit-scrollbar {
