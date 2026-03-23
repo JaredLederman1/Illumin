@@ -31,7 +31,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         {/* Mobile bottom nav, fixed at bottom, hidden on desktop via CSS */}
-        <div className="mobile-nav">
+        <div
+          className="mobile-nav"
+          style={{ position: 'fixed', bottom: 0, left: 0, right: 0, width: '100%', zIndex: 90 }}
+        >
           <MobileNav />
         </div>
         <GlobalTooltipRenderer />
