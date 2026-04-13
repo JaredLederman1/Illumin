@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
   // ── File validation ──────────────────────────────────────────────────────────
   let fileBuffer: Buffer
   try {
-    const formData = await request.formData()
+    const formData = await request.formData() as unknown as globalThis.FormData
     const file = formData.get('contract')
     if (!file || !(file instanceof Blob)) {
       return err('No file uploaded. Attach a PDF as "contract".', 'FILE_MISSING', 400)

@@ -76,7 +76,7 @@ function ForecastDesktop() {
       tooltipSources: [{
         label: 'Liquid account balances',
         value: checkingBalance,
-        type: 'sum' as const,
+        type: 'computed' as const,
         detail: 'Checking + savings accounts',
       }],
     },

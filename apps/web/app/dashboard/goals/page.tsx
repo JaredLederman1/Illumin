@@ -93,7 +93,7 @@ function GoalCard({ goal, delay }: { goal: Goal; delay: number }) {
               value={goal.current}
               title={`${goal.name}: Current`}
               computationNote="Current balance from connected accounts"
-              sources={[{ label: 'Account balance', value: goal.current, type: 'sum' as const }]}
+              sources={[{ label: 'Account balance', value: goal.current, type: 'computed' as const }]}
             />
           </p>
         </div>
@@ -104,7 +104,7 @@ function GoalCard({ goal, delay }: { goal: Goal; delay: number }) {
               value={goal.target}
               title={`${goal.name}: Target`}
               computationNote="Target amount based on your financial profile"
-              sources={[{ label: 'Goal target', value: goal.target, type: 'sum' as const }]}
+              sources={[{ label: 'Goal target', value: goal.target, type: 'computed' as const }]}
             />
           </p>
         </div>
@@ -117,7 +117,7 @@ function GoalCard({ goal, delay }: { goal: Goal; delay: number }) {
                 title={`${goal.name}: Monthly Needed`}
                 computationNote="(Target - Current) / months to goal"
                 sources={[
-                  { label: 'Remaining gap', value: goal.target - goal.current, type: 'sum' as const },
+                  { label: 'Remaining gap', value: goal.target - goal.current, type: 'computed' as const },
                   { label: 'Monthly contribution', value: goal.monthlyContributionNeeded, type: 'average' as const },
                 ]}
               />

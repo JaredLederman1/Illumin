@@ -262,6 +262,9 @@ function ConnectButton({
   const { open, ready } = usePlaidLink({
     token: linkToken ?? '',
     onSuccess: handlePlaidSuccess,
+    onExit: (err) => {
+      if (err) console.error('[Plaid Link exit error]', JSON.stringify(err, null, 2))
+    },
   })
 
   return (
@@ -339,6 +342,9 @@ function useMobilePlaidConnect(onSuccess: (accounts: Account[]) => void, onConne
   const { open, ready } = usePlaidLink({
     token: linkToken ?? '',
     onSuccess: handlePlaidSuccess,
+    onExit: (err) => {
+      if (err) console.error('[Plaid Link exit error]', JSON.stringify(err, null, 2))
+    },
   })
 
   return { open, ready, connecting, error }

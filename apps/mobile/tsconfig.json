@@ -1,0 +1,10 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@illumin/lib": ["../../packages/lib/src/index.ts"],
+      "@illumin/types": ["../../packages/types/src/index.ts"]
+    }
+  }
+}

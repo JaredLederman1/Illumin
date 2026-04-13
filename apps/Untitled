@@ -1,0 +1,20 @@
+## Error Type
+Console Error
+
+## Error Message
+[handleInlineSave] API error: 500 "{\"error\":\"Cannot read properties of undefined (reading 'upsert')\"}"
+
+
+    at TransactionsPage.useCallback[handleInlineSave] (app/dashboard/transactions/page.tsx:125:15)
+    at async TransactionRow.useCallback[commitEdit] (components/ui/TransactionRow.tsx:129:7)
+
+## Code Frame
+  123 |     if (!res.ok) {
+  124 |       const text = await res.text()
+> 125 |       console.error('[handleInlineSave] API error:', res.status, text)
+      |               ^
+  126 |       let msg = 'Failed to save'
+  127 |       try { msg = JSON.parse(text).error ?? msg } catch {}
+  128 |       throw new Error(msg)
+
+Next.js version: 16.1.6 (Turbopack)
