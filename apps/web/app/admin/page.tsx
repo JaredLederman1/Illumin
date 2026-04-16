@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
+
+const ADMIN_EMAILS = ['jared.a.lederman@gmail.com']
 
 const row: React.CSSProperties = {
   display: 'flex',
@@ -33,17 +36,28 @@ export default function AdminPage() {
   const [loading, setLoading]       = useState(true)
 
   useEffect(() => {
-    const isAdmin = sessionStorage.getItem('illumin_admin') === 'true'
-    if (!isAdmin) {
-      router.replace('/admin/login')
-      return
+    async function checkAdmin() {
+      const stored = sessionStorage.getItem('illumin_admin')
+      if (!stored || !ADMIN_EMAILS.includes(stored)) {
+        router.replace('/admin/login')
+        return
+      }
+      const { data: { user } } = await supabase.auth.getUser()
+      const email = user?.email?.toLowerCase()
+      if (!email || !ADMIN_EMAILS.includes(email)) {
+        sessionStorage.removeItem('illumin_admin')
+        router.replace('/admin/login')
+        return
+      }
+      setAdminEmail(email)
+      setLoading(false)
     }
-    setAdminEmail('jared.a.lederman@gmail.com')
-    setLoading(false)
+    checkAdmin()
   }, [router])
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
     sessionStorage.removeItem('illumin_admin')
+    await supabase.auth.signOut()
     router.push('/admin/login')
   }
 

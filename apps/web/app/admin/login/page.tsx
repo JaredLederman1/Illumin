@@ -38,13 +38,10 @@ const primaryBtn = (loading: boolean): React.CSSProperties => ({
   marginTop: '8px',
 })
 
-const ADMIN_CREDENTIALS = {
-  username: 'jared.a.lederman@gmail.com',
-  password: 'REDACTED',
-}
+const ADMIN_EMAILS = ['jared.a.lederman@gmail.com']
 
 export default function AdminLoginPage() {
-  const [username, setUsername]  = useState('')
+  const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [showPwd, setShowPwd]   = useState(false)
   const [error, setError]       = useState<string | null>(null)
@@ -56,24 +53,22 @@ export default function AdminLoginPage() {
     setLoading(true)
     setError(null)
     try {
-      if (
-        username === ADMIN_CREDENTIALS.username &&
-        password === ADMIN_CREDENTIALS.password
-      ) {
-        // Sign in via Supabase to get a real session for dashboard access
-        const { error: authError } = await supabase.auth.signInWithPassword({
-          email: ADMIN_CREDENTIALS.username,
-          password: ADMIN_CREDENTIALS.password,
-        })
-        if (authError) {
-          setError(authError.message)
-          return
-        }
-        sessionStorage.setItem('illumin_admin', 'true')
-        router.push('/dashboard')
-      } else {
-        setError('Invalid username or password.')
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      if (authError) {
+        setError('Invalid email or password.')
+        return
       }
+      const userEmail = data.user?.email?.toLowerCase()
+      if (!userEmail || !ADMIN_EMAILS.includes(userEmail)) {
+        await supabase.auth.signOut()
+        setError('This account does not have admin access.')
+        return
+      }
+      sessionStorage.setItem('illumin_admin', userEmail)
+      router.push('/dashboard')
     } catch {
       setError('Something went wrong. Please try again.')
     } finally {
@@ -108,13 +103,13 @@ export default function AdminLoginPage() {
 
       <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         <div>
-          <label style={fieldLabel}>Username</label>
+          <label style={fieldLabel}>Email</label>
           <input
-            type="text"
-            value={username}
-            onChange={e => setUsername(e.target.value)}
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
             required
-            autoComplete="username"
+            autoComplete="email"
             style={inputStyle}
           />
         </div>
