@@ -4,8 +4,6 @@ import type { MessageParam } from '@anthropic-ai/sdk/resources/messages'
 import { prisma } from '@/lib/prisma'
 import { crossCheckBenefits, calcTotals } from '@/lib/benefitsAnalysis'
 import type { ExtractedBenefits } from '@/lib/benefitsAnalysis'
-import { rateLimiter, getRateLimitKey } from '@/lib/rateLimit'
-
 export type { ExtractedBenefits } from '@/lib/benefitsAnalysis'
 export type { BenefitStatus }     from '@/lib/benefitsAnalysis'
 
@@ -68,10 +66,6 @@ function err(message: string, code: string, status: number) {
 }
 
 export async function POST(request: NextRequest) {
-  const limitKey = await getRateLimitKey(request)
-  const limit = rateLimiter('ai', limitKey)
-  if (!limit.allowed) return limit.response
-
   // ── Auth ────────────────────────────────────────────────────────────────────
   const authHeader = request.headers.get('authorization')
   if (!authHeader?.startsWith('Bearer ')) {

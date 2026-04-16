@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { rateLimiter, getRateLimitKey } from '@/lib/rateLimit'
-
 const resend = new Resend(process.env.RESEND_API_KEY)
 const AUDIENCE_ID = process.env.RESEND_AUDIENCE_ID!
 
 export async function POST(request: NextRequest) {
-  const limitKey = await getRateLimitKey(request)
-  const limit = rateLimiter('public', limitKey)
-  if (!limit.allowed) return limit.response
-
   try {
     const { email } = await request.json()
 

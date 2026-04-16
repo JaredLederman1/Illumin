@@ -1,17 +1,60 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { rateLimit, rateLimitStrict } from '@/lib/rateLimit'
 
 const PUBLIC_PATHS = ['/', '/admin', '/admin/login', '/auth/login', '/auth/signup', '/auth/mfa/enroll', '/auth/mfa/verify', '/api/waitlist', '/logo', '/privacy']
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // Rate limit API routes
+  if (pathname.startsWith('/api/')) {
+    const ip =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+
+    const isStrictRoute =
+      pathname.startsWith('/api/auth/') || pathname.startsWith('/api/plaid/')
+
+    const result = isStrictRoute ? rateLimitStrict(ip) : rateLimit(ip)
+
+    if (!result.success) {
+      const retryAfter = Math.ceil((result.resetAt - Date.now()) / 1000)
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(retryAfter),
+            'X-RateLimit-Remaining': '0',
+          },
+        }
+      )
+    }
+
+    // For API routes that are also public, skip auth but attach rate limit header
+    if (PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))) {
+      const response = NextResponse.next()
+      response.headers.set('X-RateLimit-Remaining', String(result.remaining))
+      return response
+    }
+
+    // For authenticated API routes, continue to auth check below
+    // and attach rate limit header after
+    const response = await handleAuth(request)
+    response.headers.set('X-RateLimit-Remaining', String(result.remaining))
+    return response
+  }
+
   // Allow public paths through without auth check
   if (PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))) {
     return NextResponse.next()
   }
 
+  return handleAuth(request)
+}
+
+async function handleAuth(request: NextRequest): Promise<NextResponse> {
   const response = NextResponse.next()
 
   const supabase = createServerClient(

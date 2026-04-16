@@ -8,13 +8,19 @@ import {
   InvestmentsHoldingsGetResponse,
   InvestmentsTransactionsGetResponse,
 } from 'plaid'
+import { PLAID_CLIENT_ID, PLAID_SECRET, PLAID_ENV } from '@/lib/env'
+
+const resolvedEnv = PLAID_ENV as keyof typeof PlaidEnvironments
+if (!PlaidEnvironments[resolvedEnv]) {
+  console.warn(`[plaid] PLAID_ENV is "${PLAID_ENV}" which is not a valid Plaid environment. Falling back to sandbox.`)
+}
 
 const configuration = new Configuration({
-  basePath: PlaidEnvironments[process.env.PLAID_ENV as keyof typeof PlaidEnvironments] || PlaidEnvironments.production,
+  basePath: PlaidEnvironments[resolvedEnv] || PlaidEnvironments.sandbox,
   baseOptions: {
     headers: {
-      'PLAID-CLIENT-ID': process.env.PLAID_CLIENT_ID,
-      'PLAID-SECRET': process.env.PLAID_SECRET,
+      'PLAID-CLIENT-ID': PLAID_CLIENT_ID,
+      'PLAID-SECRET': PLAID_SECRET,
     },
   },
 })
@@ -22,6 +28,7 @@ const configuration = new Configuration({
 export const plaidClient = new PlaidApi(configuration)
 
 export async function createLinkToken(userId: string): Promise<string> {
+  const redirectUri = process.env.PLAID_REDIRECT_URI
   const response = await plaidClient.linkTokenCreate({
     user: { client_user_id: userId },
     client_name: 'Illumin',
@@ -29,6 +36,7 @@ export async function createLinkToken(userId: string): Promise<string> {
     optional_products: [Products.Investments],
     country_codes: [CountryCode.Us],
     language: 'en',
+    ...(redirectUri ? { redirect_uri: redirectUri } : {}),
   })
   return response.data.link_token
 }

@@ -2,13 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createLinkToken } from '@/lib/plaid'
 import { prisma } from '@/lib/prisma'
-import { rateLimiter, getRateLimitKey } from '@/lib/rateLimit'
-
 export async function GET(request: NextRequest) {
-  const limitKey = await getRateLimitKey(request)
-  const limit = rateLimiter('plaid', limitKey)
-  if (!limit.allowed) return limit.response
-
   const authHeader = request.headers.get('authorization')
   const token = authHeader?.replace('Bearer ', '')
 
@@ -38,6 +32,16 @@ export async function GET(request: NextRequest) {
     create: { id: authUser.id, email: authUser.email! },
   })
 
-  const linkToken = await createLinkToken(dbUser.id)
-  return NextResponse.json({ linkToken })
+  try {
+    const linkToken = await createLinkToken(dbUser.id)
+    return NextResponse.json({ linkToken })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    const plaidError = (err as { response?: { data?: unknown } })?.response?.data
+    console.error('[create-link-token] Plaid error:', plaidError ?? message)
+    return NextResponse.json(
+      { error: 'Failed to create link token', detail: plaidError ?? message },
+      { status: 500 }
+    )
+  }
 }

@@ -2,9 +2,19 @@
 import './lib/env'
 
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["pdf-parse"],
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: "illumin",
+  project: "illumin-web",
+  silent: true,
+  widenClientFileUpload: true,
+  disableLogger: true,
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
+});

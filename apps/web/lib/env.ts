@@ -1,57 +1,29 @@
 /**
- * Environment variable validation
- * Import this at the top of your Next.js config or instrumentation file.
- * Throws at startup if required vars are missing, so you catch config problems
- * before they surface as runtime errors in production.
+ * Runtime environment variable validation.
+ * Import in API routes and server-side lib files only.
+ * Do NOT import in middleware.ts or client-side code.
+ *
+ * Throws at import time if any required variable is missing or empty,
+ * so configuration problems surface immediately on startup.
  */
 
-const REQUIRED_ENV_VARS = [
-  'NEXT_PUBLIC_SUPABASE_URL',
-  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-  'SUPABASE_SERVICE_ROLE_KEY',
-  'DATABASE_URL',
-  'ANTHROPIC_API_KEY',
-  'PLAID_CLIENT_ID',
-  'PLAID_SECRET',
-  'RESEND_API_KEY',
-  'RESEND_AUDIENCE_ID',
-] as const
-
-type RequiredEnvVar = (typeof REQUIRED_ENV_VARS)[number]
-
-function validateEnv(): Record<RequiredEnvVar, string> {
-  const missing: string[] = []
-
-  for (const key of REQUIRED_ENV_VARS) {
-    const val = process.env[key]
-    if (!val || val.trim() === '') {
-      missing.push(key)
-    }
-  }
-
-  if (missing.length > 0) {
+function requireEnv(name: string): string {
+  const value = process.env[name]
+  if (!value || value.trim() === '') {
     throw new Error(
-      `[illumin] Missing required environment variables:\n  ${missing.join('\n  ')}\n\nAdd them to .env.local and restart the server.`
+      `[illumin] Missing required environment variable: ${name}. ` +
+      'Add it to .env.local and restart the server.'
     )
   }
-
-  // Validate format of keys we can sanity-check
-  const anthropicKey = process.env.ANTHROPIC_API_KEY!
-  if (!anthropicKey.startsWith('sk-ant-')) {
-    throw new Error('[illumin] ANTHROPIC_API_KEY does not look valid (expected sk-ant- prefix)')
-  }
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  try {
-    new URL(supabaseUrl)
-  } catch {
-    throw new Error(`[illumin] NEXT_PUBLIC_SUPABASE_URL is not a valid URL: ${supabaseUrl}`)
-  }
-
-  return Object.fromEntries(
-    REQUIRED_ENV_VARS.map(k => [k, process.env[k]!])
-  ) as Record<RequiredEnvVar, string>
+  return value
 }
 
-// Validated env -- throws at import time if config is incomplete
-export const env = validateEnv()
+export const DATABASE_URL = requireEnv('DATABASE_URL')
+export const NEXT_PUBLIC_SUPABASE_URL = requireEnv('NEXT_PUBLIC_SUPABASE_URL')
+export const NEXT_PUBLIC_SUPABASE_ANON_KEY = requireEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY')
+export const SUPABASE_SERVICE_ROLE_KEY = requireEnv('SUPABASE_SERVICE_ROLE_KEY')
+export const PLAID_CLIENT_ID = requireEnv('PLAID_CLIENT_ID')
+export const PLAID_SECRET = requireEnv('PLAID_SECRET')
+export const PLAID_ENV = requireEnv('PLAID_ENV')
+export const ANTHROPIC_API_KEY = requireEnv('ANTHROPIC_API_KEY')
+export const RESEND_API_KEY = requireEnv('RESEND_API_KEY')

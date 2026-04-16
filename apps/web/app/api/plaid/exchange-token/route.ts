@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { exchangePublicToken, getAccounts, getTransactions, getHoldings } from '@/lib/plaid'
 import { prisma } from '@/lib/prisma'
-import { rateLimiter, getRateLimitKey } from '@/lib/rateLimit'
 import { categorizeTransaction } from '@/lib/categories'
 
 interface PlaidAccountSelection {
@@ -14,10 +13,6 @@ interface PlaidAccountSelection {
 }
 
 export async function POST(request: NextRequest) {
-  const limitKey = await getRateLimitKey(request)
-  const limit = rateLimiter('plaid', limitKey)
-  if (!limit.allowed) return limit.response
-
   const authHeader = request.headers.get('authorization')
   const token = authHeader?.replace('Bearer ', '')
 

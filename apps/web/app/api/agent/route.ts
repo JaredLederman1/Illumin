@@ -1,16 +1,10 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { rateLimiter, getRateLimitKey } from "@/lib/rateLimit";
-
 export const maxDuration = 60; // Vercel Pro: 60s; Hobby: 10s
 
 export async function POST(request: NextRequest) {
   try {
-    const limitKey = await getRateLimitKey(request);
-    const limit = rateLimiter("ai", limitKey);
-    if (!limit.allowed) return limit.response;
-
     // Auth check: this route has filesystem tool access and must not be public
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,

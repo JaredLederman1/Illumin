@@ -221,14 +221,19 @@ function ConnectButton({
   onSuccessRef.current = onSuccess
 
   useEffect(() => {
-    const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {}
+    if (!authToken) return
+    setError(null)
+    const headers: Record<string, string> = { Authorization: `Bearer ${authToken}` }
     fetch('/api/plaid/create-link-token', { headers })
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
       .then(data => {
         if (data.linkToken) setLinkToken(data.linkToken)
         else setError('Could not initialize connection. Check Plaid credentials.')
       })
-      .catch(() => setError('Could not initialize connection.'))
+      .catch((err) => setError(`Could not initialize connection: ${err.message}`))
   }, [authToken])
 
   const handlePlaidSuccess = useCallback(
@@ -301,14 +306,19 @@ function useMobilePlaidConnect(onSuccess: (accounts: Account[]) => void, onConne
   onSuccessRef.current = onSuccess
 
   useEffect(() => {
-    const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {}
+    if (!authToken) return
+    setError(null)
+    const headers: Record<string, string> = { Authorization: `Bearer ${authToken}` }
     fetch('/api/plaid/create-link-token', { headers })
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
       .then(data => {
         if (data.linkToken) setLinkToken(data.linkToken)
         else setError('Could not initialize connection.')
       })
-      .catch(() => setError('Could not initialize connection.'))
+      .catch((err) => setError(`Could not initialize connection: ${err.message}`))
   }, [authToken])
 
   const handlePlaidSuccess = useCallback(
