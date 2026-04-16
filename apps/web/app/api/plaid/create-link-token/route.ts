@@ -42,7 +42,16 @@ export async function GET(request: NextRequest) {
     console.error('[create-link-token] Plaid error:', detail)
     console.error('[create-link-token] PLAID_ENV:', process.env.PLAID_ENV, 'PLAID_CLIENT_ID:', process.env.PLAID_CLIENT_ID?.slice(0, 6) + '...')
     return NextResponse.json(
-      { error: 'Failed to create link token', detail },
+      {
+        error: 'Failed to create link token',
+        detail,
+        debug: {
+          plaidEnv: process.env.PLAID_ENV,
+          clientIdPrefix: process.env.PLAID_CLIENT_ID?.slice(0, 6),
+          secretPrefix: process.env.PLAID_SECRET?.slice(0, 6),
+          secretLength: process.env.PLAID_SECRET?.length,
+        },
+      },
       { status: 500 }
     )
   }
