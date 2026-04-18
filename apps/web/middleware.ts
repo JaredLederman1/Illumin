@@ -8,8 +8,19 @@ const PUBLIC_PATHS = ['/', '/admin', '/admin/login', '/auth/login', '/auth/signu
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Rate limit API routes
+  const isProduction = process.env.NODE_ENV === 'production'
+
+  // Rate limit API routes (production only). In non-production environments
+  // all localhost traffic shares a single "unknown" IP bucket, which trips
+  // the limiter during normal dev work (hot reloads, multiple tabs, retries).
   if (pathname.startsWith('/api/')) {
+    if (!isProduction) {
+      if (PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))) {
+        return NextResponse.next()
+      }
+      return handleAuth(request)
+    }
+
     const ip =
       request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
 

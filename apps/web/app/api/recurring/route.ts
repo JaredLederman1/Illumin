@@ -9,6 +9,7 @@ export interface RecurringCharge {
 }
 
 export interface RecurringMerchant {
+  // Preserved fields consumed by the existing page
   name: string
   occurrences: number
   lastAmount: number
@@ -19,53 +20,110 @@ export interface RecurringMerchant {
   totalSpent: number
   charges: RecurringCharge[]
   nextExpectedDate: string | null
+  // Fields defined by the recurring spec
+  merchantName: string
+  estimatedMonthlyAmount: number
+  expectedDay: number
+  lastChargeDate: string
+  consecutiveMonths: number
 }
 
-// A merchant is "monthly" if it appears in at least 70% of the calendar months
-// between its first and last transaction. Otherwise it is "irregular".
-function detectFrequency(dates: Date[]): 'monthly' | 'irregular' {
-  if (dates.length < 2) return 'irregular'
-  const months = new Set(dates.map(d => d.toISOString().slice(0, 7)))
-  const sorted = [...dates].sort((a, b) => a.getTime() - b.getTime())
-  const first = sorted[0]
-  const last = sorted[sorted.length - 1]
-  const totalMonths =
-    (last.getFullYear() - first.getFullYear()) * 12 +
-    (last.getMonth() - first.getMonth()) +
-    1
-  return months.size / totalMonths >= 0.7 ? 'monthly' : 'irregular'
+type TxLike = { merchantName: string | null; amount: number; category: string | null; date: Date | string }
+
+function toDate(d: Date | string): Date {
+  return d instanceof Date ? d : new Date(d)
+}
+
+function monthKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}`
+}
+
+// True if `curr` is exactly one calendar month after `prev` (both "YYYY-MM" with 0-indexed month).
+function isNextMonthKey(prev: string, curr: string): boolean {
+  const [py, pm] = prev.split('-').map(Number)
+  const [cy, cm] = curr.split('-').map(Number)
+  if (cy === py && cm === pm + 1) return true
+  if (cy === py + 1 && pm === 11 && cm === 0) return true
+  return false
+}
+
+// Day-of-month difference that tolerates month-end wrap (e.g., 31 vs 1 is 1 day apart).
+function dayOfMonthDiff(a: number, b: number): number {
+  const raw = Math.abs(a - b)
+  return Math.min(raw, 31 - raw)
+}
+
+function mode(values: number[]): number {
+  const counts = new Map<number, number>()
+  let best = values[0]
+  let bestCount = 0
+  for (const v of values) {
+    const c = (counts.get(v) ?? 0) + 1
+    counts.set(v, c)
+    if (c > bestCount) {
+      bestCount = c
+      best = v
+    }
+  }
+  return best
 }
 
 /**
- * Predict the next charge date based on observed intervals.
- * For monthly charges, uses the median day-of-month from past charges.
- * For irregular charges, adds the average interval to the most recent date.
+ * Detect the longest run of consecutive months where this merchant has
+ * exactly one transaction per month and each adjacent pair falls within
+ * +/- 2 days of each other by day-of-month. Returns null if no run reaches
+ * at least 2 consecutive months.
  */
-function predictNextDate(dates: Date[], frequency: 'monthly' | 'irregular'): Date | null {
-  if (dates.length < 2) return null
-  const sorted = [...dates].sort((a, b) => a.getTime() - b.getTime())
-  const mostRecent = sorted[sorted.length - 1]
-
-  if (frequency === 'monthly') {
-    // Use the median day-of-month for consistency
-    const days = sorted.map(d => d.getDate()).sort((a, b) => a - b)
-    const medianDay = days[Math.floor(days.length / 2)]
-    // Next month from the most recent charge
-    const next = new Date(mostRecent)
-    next.setMonth(next.getMonth() + 1)
-    // Clamp the day to the last day of that month
-    const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate()
-    next.setDate(Math.min(medianDay, lastDay))
-    return next
+function findBestChain<T extends TxLike>(txs: T[]): T[] | null {
+  // Group by calendar month
+  const byMonth = new Map<string, T[]>()
+  for (const t of txs) {
+    const key = monthKey(toDate(t.date))
+    if (!byMonth.has(key)) byMonth.set(key, [])
+    byMonth.get(key)!.push(t)
   }
 
-  // Irregular: compute average interval in ms and project forward
-  const intervals: number[] = []
-  for (let i = 1; i < sorted.length; i++) {
-    intervals.push(sorted[i].getTime() - sorted[i - 1].getTime())
+  const months = [...byMonth.keys()].sort()
+
+  let best: T[] = []
+  let current: T[] = []
+
+  for (let i = 0; i < months.length; i++) {
+    const key = months[i]
+    const inMonth = byMonth.get(key)!
+
+    // Multiple charges in one month disqualifies this month from the chain.
+    if (inMonth.length !== 1) {
+      if (current.length > best.length) best = current
+      current = []
+      continue
+    }
+
+    const tx = inMonth[0]
+    const day = toDate(tx.date).getDate()
+
+    if (current.length === 0) {
+      current = [tx]
+      continue
+    }
+
+    const prevKey = months[i - 1]
+    const prevTx = current[current.length - 1]
+    const prevDay = toDate(prevTx.date).getDate()
+
+    const consecutive = isNextMonthKey(prevKey, key)
+    const closeEnough = dayOfMonthDiff(day, prevDay) <= 2
+
+    if (consecutive && closeEnough) {
+      current.push(tx)
+    } else {
+      if (current.length > best.length) best = current
+      current = [tx]
+    }
   }
-  const avgInterval = intervals.reduce((s, v) => s + v, 0) / intervals.length
-  return new Date(mostRecent.getTime() + avgInterval)
+  if (current.length > best.length) best = current
+
+  return best.length >= 2 ? best : null
 }
 
 export async function GET(request: NextRequest) {
@@ -94,17 +152,16 @@ export async function GET(request: NextRequest) {
     const transactions = await prisma.transaction.findMany({
       where: { account: { userId: dbUser.id } },
       include: { account: true },
-      orderBy: { date: 'desc' },
+      orderBy: { date: 'asc' },
     })
 
-    // Fetch excluded merchants
     const exclusions = await prisma.recurringExclusion.findMany({
       where: { userId: dbUser.id },
       select: { merchantName: true },
     })
     const excludedSet = new Set(exclusions.map(e => e.merchantName.trim().toLowerCase()))
 
-    // Group by merchant name, case-insensitive and trimmed
+    // Group by normalized merchant name (lowercase, trimmed)
     const merchantMap = new Map<string, typeof transactions>()
     for (const tx of transactions) {
       if (!tx.merchantName) continue
@@ -117,46 +174,60 @@ export async function GET(request: NextRequest) {
     const recurring: RecurringMerchant[] = []
 
     for (const [, txs] of merchantMap) {
-      // Require appearances in at least 2 distinct calendar months (same logic as detectRecurringMerchants)
-      const months = new Set(txs.map(t => {
-        const d = t.date instanceof Date ? t.date : new Date(t.date)
-        return d.toISOString().slice(0, 7)
-      }))
-      if (months.size < 2) continue
+      // Sort ascending by date (defensive; query already returns asc)
+      const sorted = [...txs].sort((a, b) => toDate(a.date).getTime() - toDate(b.date).getTime())
 
-      // txs are already ordered desc by date from the query
-      const mostRecent = txs[0]
-      const name = mostRecent.merchantName!.trim()
-      const occurrences = txs.length
-      const lastAmount = mostRecent.amount
-      const lastDate = (mostRecent.date instanceof Date ? mostRecent.date : new Date(mostRecent.date)).toISOString()
-      const averageAmount = txs.reduce((s, t) => s + t.amount, 0) / txs.length
-      const totalSpent = txs.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0)
+      const chain = findBestChain(sorted)
+      if (!chain) continue
 
-      // Only keep expense merchants
-      if (totalSpent >= 0) continue
+      // Only keep expense merchants (chain sums must be negative)
+      const chainTotal = chain.reduce((s, t) => s + t.amount, 0)
+      if (chainTotal >= 0) continue
 
-      const category = normalizeCategory(mostRecent.category)
-      const dates = txs.map(t => t.date instanceof Date ? t.date : new Date(t.date))
-      const frequency = detectFrequency(dates)
+      const last = chain[chain.length - 1]
+      const displayName = last.merchantName!.trim()
+      const days = chain.map(t => toDate(t.date).getDate())
+      const expectedDay = mode(days)
+      const estimatedMonthlyAmount = chain.reduce((s, t) => s + t.amount, 0) / chain.length
+      const lastChargeDate = toDate(last.date).toISOString()
 
-      const charges: RecurringCharge[] = txs.map(t => ({
-        date: (t.date instanceof Date ? t.date : new Date(t.date)).toISOString(),
-        amount: t.amount,
-      }))
+      // Project the next expected date: next month after the last charge, clamped to that month's length.
+      const lastD = toDate(last.date)
+      const next = new Date(lastD)
+      next.setDate(1)
+      next.setMonth(next.getMonth() + 1)
+      const monthLen = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate()
+      next.setDate(Math.min(expectedDay, monthLen))
+      const nextExpectedDate = next.toISOString()
 
-      const predicted = predictNextDate(dates, frequency)
-      const nextExpectedDate = predicted ? predicted.toISOString() : null
+      const charges: RecurringCharge[] = chain
+        .slice()
+        .reverse()
+        .map(t => ({ date: toDate(t.date).toISOString(), amount: t.amount }))
 
-      recurring.push({ name, occurrences, lastAmount, lastDate, averageAmount, frequency, category, totalSpent, charges, nextExpectedDate })
+      recurring.push({
+        name: displayName,
+        merchantName: displayName,
+        occurrences: chain.length,
+        consecutiveMonths: chain.length,
+        lastAmount: last.amount,
+        lastDate: lastChargeDate,
+        lastChargeDate,
+        averageAmount: estimatedMonthlyAmount,
+        estimatedMonthlyAmount,
+        expectedDay,
+        frequency: 'monthly',
+        category: normalizeCategory(last.category),
+        totalSpent: chainTotal,
+        charges,
+        nextExpectedDate,
+      })
     }
 
     // Sort by absolute value of last amount, descending
     recurring.sort((a, b) => Math.abs(b.lastAmount) - Math.abs(a.lastAmount))
 
-    const totalMonthlyEstimate = recurring
-      .filter(r => r.frequency === 'monthly')
-      .reduce((s, r) => s + r.lastAmount, 0)
+    const totalMonthlyEstimate = recurring.reduce((s, r) => s + r.estimatedMonthlyAmount, 0)
 
     return NextResponse.json({
       recurring,

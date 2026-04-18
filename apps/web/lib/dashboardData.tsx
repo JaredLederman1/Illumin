@@ -138,43 +138,88 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       tok ? fetch('/api/user/benefits',   { headers: auth }).then(r => r.json()) : Promise.resolve(null),
     ])
 
-    if (nw.status === 'fulfilled' && nw.value?.netWorth !== undefined) {
-      setNetWorth({
-        current:          nw.value.netWorth,
-        lastMonth:        nw.value.previousNetWorth ?? nw.value.netWorth,
-        totalAssets:      nw.value.totalAssets,
-        totalLiabilities: nw.value.totalLiabilities,
-      })
+    // Each block is isolated so a thrown exception in one (e.g. transforming
+    // transactions) cannot skip the handlers that follow it, including the
+    // final setLoading(false). Previously a single throw here left accounts
+    // and transactions stuck as empty arrays with loading=true.
+    const safely = (label: string, fn: () => void) => {
+      try { fn() }
+      catch (err) { console.error(`[useDashboard] ${label} handler threw:`, err) }
     }
-    if (tx.status === 'fulfilled' && Array.isArray(tx.value?.transactions)) {
-      setTransactions(tx.value.transactions.map((t: Transaction) => ({
-        ...t,
-        category: normalizeCategory(t.category),
-      })))
-    }
-    if (accts.status === 'fulfilled' && Array.isArray(accts.value?.accounts)) {
-      setAccounts(accts.value.accounts)
-    }
-    if (cf.status === 'fulfilled') {
-      if (cf.value?.months?.length)             setMonthlyData(cf.value.months)
-      if (cf.value?.spendingByCategory?.length) setSpending(cf.value.spendingByCategory)
-    }
-    if (fc.status === 'fulfilled' && fc.value?.avgIncome !== undefined) {
-      setForecast(fc.value)
-    }
-    if (scoreRes.status === 'fulfilled' && scoreRes.value?.report) {
-      setScoreReport(scoreRes.value.report)
-    }
-    if (profileRes.status === 'fulfilled' && profileRes.value?.profile) {
-      setProfile(profileRes.value.profile)
-    }
-    if (benefitsRes.status === 'fulfilled' && benefitsRes.value?.benefits) {
-      setBenefits({
-        extracted:       benefitsRes.value.extracted,
-        crossCheck:      benefitsRes.value.crossCheck ?? [],
-        actionItemsDone: benefitsRes.value.actionItemsDone ?? [],
-      })
-    }
+
+    if (nw.status === 'rejected') console.error('[useDashboard] /api/networth rejected:', nw.reason)
+    else if (nw.value?.netWorth === undefined) console.warn('[useDashboard] /api/networth unexpected shape:', nw.value)
+
+    if (accts.status === 'rejected') console.error('[useDashboard] /api/accounts rejected:', accts.reason)
+    else if (!Array.isArray(accts.value?.accounts)) console.warn('[useDashboard] /api/accounts unexpected shape:', accts.value)
+
+    if (tx.status === 'rejected') console.error('[useDashboard] /api/transactions rejected:', tx.reason)
+    else if (!Array.isArray(tx.value?.transactions)) console.warn('[useDashboard] /api/transactions unexpected shape:', tx.value)
+
+    safely('networth', () => {
+      if (nw.status === 'fulfilled' && nw.value?.netWorth !== undefined) {
+        setNetWorth({
+          current:          nw.value.netWorth,
+          lastMonth:        nw.value.previousNetWorth ?? nw.value.netWorth,
+          totalAssets:      nw.value.totalAssets,
+          totalLiabilities: nw.value.totalLiabilities,
+        })
+      }
+    })
+
+    safely('accounts', () => {
+      if (accts.status === 'fulfilled' && Array.isArray(accts.value?.accounts)) {
+        setAccounts(accts.value.accounts)
+      }
+    })
+
+    safely('transactions', () => {
+      if (tx.status === 'fulfilled' && Array.isArray(tx.value?.transactions)) {
+        const normalized = tx.value.transactions.map((t: Transaction) => {
+          try {
+            return { ...t, category: normalizeCategory(t.category) }
+          } catch {
+            return { ...t, category: 'Other' }
+          }
+        })
+        setTransactions(normalized)
+      }
+    })
+
+    safely('cashflow', () => {
+      if (cf.status === 'fulfilled') {
+        if (cf.value?.months?.length)             setMonthlyData(cf.value.months)
+        if (cf.value?.spendingByCategory?.length) setSpending(cf.value.spendingByCategory)
+      }
+    })
+
+    safely('forecast', () => {
+      if (fc.status === 'fulfilled' && fc.value?.avgIncome !== undefined) {
+        setForecast(fc.value)
+      }
+    })
+
+    safely('score', () => {
+      if (scoreRes.status === 'fulfilled' && scoreRes.value?.report) {
+        setScoreReport(scoreRes.value.report)
+      }
+    })
+
+    safely('profile', () => {
+      if (profileRes.status === 'fulfilled' && profileRes.value?.profile) {
+        setProfile(profileRes.value.profile)
+      }
+    })
+
+    safely('benefits', () => {
+      if (benefitsRes.status === 'fulfilled' && benefitsRes.value?.benefits) {
+        setBenefits({
+          extracted:       benefitsRes.value.extracted,
+          crossCheck:      benefitsRes.value.crossCheck ?? [],
+          actionItemsDone: benefitsRes.value.actionItemsDone ?? [],
+        })
+      }
+    })
 
     setLoading(false)
   }, [])
