@@ -1,317 +1,276 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { usePlaidLink } from 'react-plaid-link'
 import { supabase } from '@/lib/supabase'
 
-interface PlaidOnSuccessMetadata {
-  institution: { name: string; institution_id: string } | null
-  accounts: Array<{
-    id: string
-    name: string
-    mask: string | null
-    type: string
-    subtype: string | null
-  }>
+import { DEFAULTS, STEP_LABELS, secondaryBtn } from '@/components/onboarding/shared'
+import type { OnboardingData } from '@/components/onboarding/shared'
+import { useIsMobile } from '@/components/onboarding/useIsMobile'
+import { ProgressBar } from '@/components/onboarding/ProgressBar'
+import { Step1Basics } from '@/components/onboarding/Step1Basics'
+import { Step2Employment } from '@/components/onboarding/Step2Employment'
+import { Step3Contract } from '@/components/onboarding/Step3Contract'
+import { Step4Goals } from '@/components/onboarding/Step4Goals'
+import { Step5Plaid, type LinkedAccount } from '@/components/onboarding/Step5Plaid'
+import { Step6Reveal } from '@/components/onboarding/Step6Reveal'
+import { DashboardPreview } from '@/components/onboarding/DashboardPreview'
+
+type Phase = 'welcome' | 'steps' | 'preview' | 'reveal'
+
+// Step-index to field-payload mapping. Each step only sends its own fields so
+// a partial save does not clobber later steps on refresh/resume.
+function payloadForStep(step: number, data: OnboardingData): Record<string, unknown> {
+  if (step === 0) {
+    return {
+      age: data.age === '' ? null : data.age,
+      annualIncome: data.annualIncome,
+      savingsRate: data.savingsRate,
+      retirementAge: data.retirementAge,
+      locationCity: data.locationCity,
+      locationState: data.locationState,
+    }
+  }
+  if (step === 1) {
+    return {
+      jobTitle: data.jobTitle,
+      employer: data.employer,
+      employerStartDate: data.employerStartDate || null,
+    }
+  }
+  if (step === 2) {
+    return {
+      contractParsedData: data.contractParsedData,
+    }
+  }
+  if (step === 3) {
+    return {
+      targetRetirementIncome: data.targetRetirementIncome,
+      emergencyFundMonthsTarget: data.emergencyFundMonthsTarget,
+      riskTolerance: data.riskTolerance,
+    }
+  }
+  return {}
 }
-
-interface LinkedAccount {
-  id?: string
-  institutionName?: string
-  accountType?: string
-  classification?: string
-  balance?: number
-  last4?: string | null
-}
-
-// ─── Helpers ───────────────────────────────────────────────────────────────
-
-function fv(monthlyPmt: number, months: number): number {
-  if (months <= 0 || monthlyPmt <= 0) return 0
-  const r = 0.07 / 12
-  return monthlyPmt * ((Math.pow(1 + r, months) - 1) / r)
-}
-
-function fmt(n: number) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(n)
-}
-
-function formatNumber(n: number) {
-  return new Intl.NumberFormat('en-US').format(n)
-}
-
-// ─── Shared styles ─────────────────────────────────────────────────────────
-
-const heading: React.CSSProperties = {
-  fontFamily: 'var(--font-serif)',
-  fontSize: '36px',
-  fontWeight: 300,
-  color: 'var(--color-text)',
-  lineHeight: 1.2,
-  marginBottom: '14px',
-}
-
-const body: React.CSSProperties = {
-  fontFamily: 'var(--font-mono)',
-  fontSize: '13px',
-  color: 'var(--color-text-mid)',
-  lineHeight: 1.7,
-  letterSpacing: '0.02em',
-}
-
-const muted: React.CSSProperties = {
-  fontFamily: 'var(--font-mono)',
-  fontSize: '10px',
-  color: 'var(--color-text-muted)',
-  letterSpacing: '0.14em',
-  textTransform: 'uppercase',
-}
-
-const continueBtn: React.CSSProperties = {
-  display: 'block',
-  margin: '48px auto 0',
-  padding: '13px 36px',
-  backgroundColor: 'var(--color-gold)',
-  border: 'none',
-  borderRadius: '2px',
-  color: 'var(--color-surface)',
-  fontSize: '12px',
-  fontFamily: 'var(--font-mono)',
-  letterSpacing: '0.12em',
-  textTransform: 'uppercase',
-  fontWeight: 500,
-  cursor: 'pointer',
-}
-
-const bigNumStyle: React.CSSProperties = {
-  fontFamily: 'var(--font-serif)',
-  fontWeight: 300,
-  color: 'var(--color-text)',
-  lineHeight: 1,
-  width: '100%',
-  background: 'transparent',
-  border: 'none',
-  borderBottom: '1px solid var(--color-border)',
-  outline: 'none',
-  padding: '0 0 10px',
-  textAlign: 'center',
-  display: 'block',
-  marginTop: '44px',
-}
-
-const sliderReadout: React.CSSProperties = {
-  fontFamily: 'var(--font-serif)',
-  fontWeight: 300,
-  color: 'var(--color-text)',
-  lineHeight: 1,
-  textAlign: 'right',
-  flexShrink: 0,
-}
-
-// ─── Page ──────────────────────────────────────────────────────────────────
-
-type Step = 0 | 1 | 2 | 3 | 4 | 'reveal'
-
-// Number of interactive steps in the onboarding funnel (profile + link step).
-const TOTAL_STEPS = 5
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const [step, setStep]               = useState<Step>(0)
-  const [age, setAge]                 = useState<number | ''>('')
-  const [ageRaw, setAgeRaw]           = useState('')
-  const [income, setIncome]           = useState(120000)
-  const [incomeDisplay, setIncomeDisplay] = useState('120,000')
-  const [savingsRate, setSavingsRate] = useState(5)
-  const [retirementAge, setRetirementAge] = useState(65)
-  const [posting, setPosting]         = useState(false)
-  const [postError, setPostError]     = useState<string | null>(null)
-  const [animPhase, setAnimPhase] = useState(0)
+  const isMobile = useIsMobile()
 
-  // Plaid link step state
-  const [linkToken, setLinkToken]                 = useState<string | null>(null)
-  const [linkError, setLinkError]                 = useState<string | null>(null)
-  const [exchanging, setExchanging]               = useState(false)
-  const [assetRequired, setAssetRequired]         = useState(false)
-  const [linkedAccounts, setLinkedAccounts]       = useState<LinkedAccount[]>([])
+  const [phase, setPhase] = useState<Phase>('welcome')
+  const [step, setStep]   = useState<number>(0)
+  const [data, setData]   = useState<OnboardingData>(DEFAULTS)
 
-  const stepRef = useRef<HTMLDivElement>(null)
+  const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([])
+  const [skippedPlaid, setSkippedPlaid]     = useState(false)
 
-  // Time-based welcome animation over 5 seconds
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set())
+  const [justCompleted, setJustCompleted]   = useState<number | null>(null)
+  const [busy, setBusy]                     = useState(false)
+  const [error, setError]                   = useState<string | null>(null)
+  const [animPhase, setAnimPhase]           = useState(0)
+
+  // Welcome reveal sequence — same timing as the original page
   useEffect(() => {
-    const t1 = setTimeout(() => setAnimPhase(1), 300)   // "Welcome to Illumin" fades in
-    const t2 = setTimeout(() => setAnimPhase(2), 2000)  // gold divider expands
-    const t3 = setTimeout(() => setAnimPhase(3), 3400)  // body line fades in
-    const t4 = setTimeout(() => setAnimPhase(4), 5000)  // scroll prompt appears
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4) }
+    const t1 = setTimeout(() => setAnimPhase(1), 300)
+    const t2 = setTimeout(() => setAnimPhase(2), 2000)
+    const t3 = setTimeout(() => setAnimPhase(3), 3400)
+    const t4 = setTimeout(() => setAnimPhase(4), 4800)
+    const advance = setTimeout(() => setPhase('steps'), 6000)
+    return () => { [t1, t2, t3, t4, advance].forEach(clearTimeout) }
   }, [])
 
-  const stepNum      = typeof step === 'number' ? step : null
-  const filledSegs   = step === 'reveal' ? TOTAL_STEPS : (step as number) + 1
-  const savingsPct   = (savingsRate / 50) * 100
-  const retirePct    = ((retirementAge - 45) / (75 - 45)) * 100
-
-  // ── Revenue calculations for reveal ──────────────────────────────────────
-  const ageNum           = typeof age === 'number' ? Math.max(16, Math.min(80, age)) : 0
-  const yearsToRetire    = Math.max(0, retirementAge - ageNum)
-  const monthlyInvest    = (income * savingsRate / 100) / 12
-  const months           = yearsToRetire * 12
-  const wealthNow        = fv(monthlyInvest, months)
-  const wealthMinus1Yr   = fv(monthlyInvest, Math.max(0, months - 12))
-  const opportunityCost  = Math.max(0, wealthNow - wealthMinus1Yr)
-  const wealthAt20       = fv((income * 0.20) / 12, months)
-
-  // ── Income input handler ─────────────────────────────────────────────────
-  const handleIncomeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/,/g, '').replace(/[^0-9]/g, '')
-    const num = parseInt(raw) || 0
-    setIncome(num)
-    setIncomeDisplay(num ? formatNumber(num) : '')
-  }
-
-  // Submit the profile + skip flag to the completion endpoint.
-  // The server rejects completion with `asset_account_required` if no
-  // asset-classified account is linked and the user has not opted to skip.
-  const finalizeOnboarding = useCallback(
-    async (opts: { skipped: boolean }): Promise<boolean> => {
-      setPosting(true)
-      setPostError(null)
-      try {
-        const res = await fetch('/api/user/onboarding', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            age: ageNum,
-            annualIncome: income,
-            savingsRate,
-            retirementAge,
-            skipped: opts.skipped,
-          }),
-        })
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}))
-          if (data?.error === 'asset_account_required') {
-            setAssetRequired(true)
-            setPostError(data.message ?? 'An asset account is required to continue.')
-          } else {
-            setPostError(data?.message ?? data?.error ?? 'Could not complete onboarding.')
-          }
-          return false
-        }
-        setAssetRequired(false)
-        setStep('reveal')
-        return true
-      } catch {
-        setPostError('Network error. Please try again.')
-        return false
-      } finally {
-        setPosting(false)
-      }
-    },
-    [ageNum, income, savingsRate, retirementAge]
-  )
-
-  // ── Step navigation ──────────────────────────────────────────────────────
-  const handleContinue = async () => {
-    if (typeof step !== 'number') return
-    if (step < 4) {
-      setStep((step + 1) as Step)
-      return
-    }
-  }
-
-  // ── Plaid link step wiring ──────────────────────────────────────────────
-  // Fetch a link token only when the user reaches step 4, so we do not make
-  // a Plaid round-trip for users who never reach the link step.
+  // Resume — load any existing profile and jump to the first step that still
+  // has missing data. If all core fields are filled we still land on Step 1
+  // so the user can review their info before seeing the reveal.
   useEffect(() => {
-    if (step !== 4 || linkToken) return
     let cancelled = false
     ;(async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
-        const headers: Record<string, string> = session?.access_token
-          ? { Authorization: `Bearer ${session.access_token}` }
-          : {}
-        const res = await fetch('/api/plaid/create-link-token', { headers })
-        const data = await res.json().catch(() => ({}))
-        if (cancelled) return
-        if (!res.ok || !data.linkToken) {
-          setLinkError(
-            data?.detail
-              ? typeof data.detail === 'string'
-                ? data.detail
-                : 'Could not initialize connection.'
-              : 'Could not initialize connection.'
-          )
-          return
-        }
-        setLinkToken(data.linkToken)
+        if (!session?.access_token) return
+        const res = await fetch('/api/user/onboarding', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        })
+        if (!res.ok) return
+        const { profile } = await res.json()
+        if (cancelled || !profile) return
+
+        setData(prev => ({
+          ...prev,
+          age:                        typeof profile.age === 'number' ? profile.age : '',
+          annualIncome:               profile.annualIncome ?? 0,
+          savingsRate:                profile.savingsRate ?? prev.savingsRate,
+          retirementAge:              profile.retirementAge ?? prev.retirementAge,
+          locationCity:               profile.locationCity ?? '',
+          locationState:              profile.locationState ?? '',
+          jobTitle:                   profile.jobTitle ?? '',
+          employer:                   profile.employer ?? '',
+          employerStartDate:          profile.employerStartDate
+            ? String(profile.employerStartDate).slice(0, 10)
+            : '',
+          contractParsedData:         profile.contractParsedData ?? null,
+          contractUploadedAt:         profile.contractUploadedAt ?? null,
+          targetRetirementIncome:     profile.targetRetirementIncome ?? null,
+          emergencyFundMonthsTarget:  profile.emergencyFundMonthsTarget ?? prev.emergencyFundMonthsTarget,
+          majorGoals:                 Array.isArray(profile.majorGoals) ? profile.majorGoals : [],
+          riskTolerance:              profile.riskTolerance ?? prev.riskTolerance,
+        }))
+
+        const resume: number =
+          profile.contractParsedData ? 3
+          : profile.jobTitle || profile.employer ? 2
+          : profile.age ? 1
+          : 0
+        setStep(resume)
+        setCompletedSteps(new Set(Array.from({ length: resume }, (_, i) => i)))
       } catch {
-        if (!cancelled) setLinkError('Could not initialize connection.')
+        // ignore — start fresh
       }
     })()
     return () => { cancelled = true }
-  }, [step, linkToken])
+  }, [])
 
-  const handlePlaidSuccess = useCallback(
-    async (publicToken: string, metadata: PlaidOnSuccessMetadata) => {
-      setExchanging(true)
-      setLinkError(null)
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-        }
-        const res = await fetch('/api/plaid/exchange-token', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            publicToken,
-            institutionName: metadata.institution?.name ?? 'Connected Institution',
-            accounts: metadata.accounts,
-          }),
-        })
-        const data = await res.json().catch(() => ({}))
-        if (!res.ok) {
-          setLinkError(data?.error ?? 'Could not link account.')
-          return
-        }
-        const newAccounts: LinkedAccount[] = Array.isArray(data.accounts) ? data.accounts : []
-        setLinkedAccounts(prev => [...prev, ...newAccounts])
+  const handlePatch = useCallback((patch: Partial<OnboardingData>) => {
+    setData(prev => ({ ...prev, ...patch }))
+  }, [])
 
-        const hasAsset = [...linkedAccounts, ...newAccounts].some(
-          a => a.classification === 'asset'
-        )
-        if (hasAsset) {
-          await finalizeOnboarding({ skipped: false })
-        } else {
-          setAssetRequired(true)
-        }
-      } catch {
-        setLinkError('Network error. Please try again.')
-      } finally {
-        setExchanging(false)
+  const persistStep = useCallback(async (stepIdx: number, extra: Record<string, unknown> = {}) => {
+    setError(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
       }
-    },
-    [linkedAccounts, finalizeOnboarding]
+      const body = { step: stepIdx, ...payloadForStep(stepIdx, data), ...extra }
+      const res = await fetch('/api/user/onboarding', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        setError(j?.message ?? j?.error ?? 'Could not save progress.')
+        return false
+      }
+      return true
+    } catch {
+      setError('Network error. Please try again.')
+      return false
+    }
+  }, [data])
+
+  const step1Complete = useMemo(
+    () => typeof data.age === 'number' && data.age > 0 && data.annualIncome > 0,
+    [data.age, data.annualIncome]
   )
 
-  const { open: openPlaid, ready: plaidReady } = usePlaidLink({
-    token: linkToken ?? '',
-    onSuccess: handlePlaidSuccess,
-  })
+  const advanceTo = useCallback((next: number) => {
+    setJustCompleted(step)
+    setCompletedSteps(prev => new Set(prev).add(step))
+    window.setTimeout(() => setJustCompleted(null), 650)
+    setStep(next)
+  }, [step])
 
-  const handleSkipAssetLink = async () => {
-    await finalizeOnboarding({ skipped: true })
-  }
+  // Advance handler for steps 0–3 (pure "Continue"). Step 4 uses the Plaid-
+  // specific handlers; step 5 triggers the preview then reveal.
+  const handleContinue = useCallback(async () => {
+    if (step === 0 && !step1Complete) {
+      setError('Fill in age and annual salary to continue.')
+      return
+    }
+    setBusy(true)
+    const ok = await persistStep(step)
+    setBusy(false)
+    if (!ok) return
+    advanceTo(step + 1)
+  }, [step, step1Complete, persistStep, advanceTo])
+
+  const finalize = useCallback(async (opts: { skipped: boolean }): Promise<boolean> => {
+    setBusy(true)
+    setError(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+      }
+      const body = {
+        finalize: true,
+        skipped:  opts.skipped,
+        age:              data.age === '' ? null : data.age,
+        annualIncome:     data.annualIncome,
+        savingsRate:      data.savingsRate,
+        retirementAge:    data.retirementAge,
+      }
+      const res = await fetch('/api/user/onboarding', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        if (j?.error === 'asset_account_required') {
+          setError(j.message ?? 'An asset account is required to continue.')
+        } else {
+          setError(j?.message ?? j?.error ?? 'Could not complete onboarding.')
+        }
+        return false
+      }
+      const j = await res.json()
+      setSkippedPlaid(Boolean(j?.skippedAssetLink))
+      return true
+    } catch {
+      setError('Network error. Please try again.')
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }, [data])
+
+  const showPreview = useCallback(() => {
+    setPhase('preview')
+  }, [])
+
+  const handlePreviewContinue = useCallback(() => {
+    setJustCompleted(5)
+    setCompletedSteps(prev => new Set(prev).add(5))
+    window.setTimeout(() => setJustCompleted(null), 650)
+    setPhase('reveal')
+    setStep(5)
+  }, [])
+
+  const handlePlaidAssetLinked = useCallback(async () => {
+    setJustCompleted(4)
+    setCompletedSteps(prev => new Set(prev).add(4))
+    window.setTimeout(() => setJustCompleted(null), 650)
+    const ok = await finalize({ skipped: false })
+    if (ok) showPreview()
+  }, [finalize, showPreview])
+
+  const handleSkipPlaid = useCallback(async () => {
+    setJustCompleted(4)
+    setCompletedSteps(prev => new Set(prev).add(4))
+    window.setTimeout(() => setJustCompleted(null), 650)
+    setSkippedPlaid(true)
+    const ok = await finalize({ skipped: true })
+    if (ok) showPreview()
+  }, [finalize, showPreview])
+
+  // "Skip to account overview" — available on Steps 2, 3, 4, 5. Enabled only
+  // once Step 1 required fields exist. Clicking it finalizes onboarding with
+  // whatever data has been entered and redirects straight to the dashboard.
+  const skipToOverview = useCallback(async () => {
+    if (!step1Complete) return
+    // Persist whatever the user has typed on the current step first.
+    await persistStep(step)
+    const ok = await finalize({ skipped: true })
+    if (ok) router.push('/dashboard')
+  }, [step, step1Complete, persistStep, finalize, router])
+
+  const showSkipButton = step >= 1 && step <= 4
 
   const stepVariants = {
     hidden:  { opacity: 0, y: 12 },
@@ -319,548 +278,304 @@ export default function OnboardingPage() {
     exit:    { opacity: 0, y: -8 },
   }
 
-  const transition = { duration: 0.25, ease: 'easeOut' as const }
+  // ── Between-step loss-aversion banner ────────────────────────────────────
+  const stepHeaderCopy: Record<number, string | null> = {
+    0: null,
+    1: 'The more you share, the more precise your opportunity cost and recommendations get.',
+    2: 'The more you share, the more precise your opportunity cost and recommendations get.',
+    3: 'You are 2 steps from seeing exactly how much money you are leaving on the table.',
+    4: 'You are 1 step from seeing exactly how much money you are leaving on the table.',
+  }
 
-  // ── Steps content ────────────────────────────────────────────────────────
-  const renderStep = () => {
-    if (step === 'reveal') return null
+  // ── Render ───────────────────────────────────────────────────────────────
+  if (phase === 'welcome') {
+    return <WelcomeSplash animPhase={animPhase} onSkip={() => setPhase('steps')} />
+  }
 
+  if (phase === 'preview') {
     return (
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={step}
-          variants={stepVariants}
-          initial="hidden"
-          animate="visible"
-          exit="exit"
-          transition={transition}
+      <div
+        style={{
+          minHeight: '100vh',
+          backgroundColor: 'var(--color-bg)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '40px 20px',
+        }}
+      >
+        <DashboardPreview
+          age={data.age}
+          annualIncome={data.annualIncome}
+          savingsRate={data.savingsRate}
+          retirementAge={data.retirementAge}
+          skippedPlaid={skippedPlaid}
+          onContinue={handlePreviewContinue}
+        />
+      </div>
+    )
+  }
+
+  if (phase === 'reveal') {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          backgroundColor: 'var(--color-bg)',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <div style={{ paddingTop: '20px' }}>
+          <ProgressBar
+            currentStep={5}
+            completedSteps={new Set([0, 1, 2, 3, 4, 5])}
+            justCompleted={justCompleted}
+            isMobile={isMobile}
+          />
+        </div>
+        <div
+          className="onboarding-step-padding"
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
-        <form onSubmit={e => { e.preventDefault(); handleContinue() }}>
-          {/* Step 0: Age */}
-          {step === 0 && (
-            <div>
-              <h1 style={heading}>How old are you?</h1>
-              <p style={body}>Your age determines how many compounding years remain.</p>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={ageRaw}
-                onChange={e => {
-                  const raw = e.target.value.replace(/[^0-9]/g, '')
-                  setAgeRaw(raw)
-                  const n = parseInt(raw)
-                  setAge(raw === '' || isNaN(n) ? '' : n)
-                }}
-                onBlur={() => {
-                  const n = typeof age === 'number' ? age : 0
-                  if (ageRaw !== '' && n < 16) { setAgeRaw('16'); setAge(16) }
-                  if (ageRaw !== '' && n > 80) { setAgeRaw('80'); setAge(80) }
-                }}
-                placeholder="enter your age"
-                className="onboarding-big-input"
-                style={{
-                  ...bigNumStyle,
-                  color: ageRaw === '' ? 'var(--color-text-muted)' : 'var(--color-text)',
-                }}
+          <Step6Reveal data={data} />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        backgroundColor: 'var(--color-bg)',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <div style={{ paddingTop: '20px' }}>
+        <ProgressBar
+          currentStep={step}
+          completedSteps={completedSteps}
+          justCompleted={justCompleted}
+          isMobile={isMobile}
+        />
+      </div>
+
+      <div
+        className="onboarding-top-bar"
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexShrink: 0,
+        }}
+      >
+        <div
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: '16px',
+            fontWeight: 400,
+            color: 'var(--color-gold)',
+            letterSpacing: '0.22em',
+            textTransform: 'uppercase',
+          }}
+        >
+          Illumin
+        </div>
+        {isMobile && (
+          <span
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '10.5px',
+              color: 'var(--color-text-muted)',
+              letterSpacing: '0.14em',
+            }}
+          >
+            {STEP_LABELS[step]}
+          </span>
+        )}
+      </div>
+
+      {stepHeaderCopy[step] && (
+        <div
+          style={{
+            padding: isMobile ? '0 20px 12px' : '0 40px 16px',
+          }}
+        >
+          <p
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '11.5px',
+              color: step === 3 || step === 4 ? 'var(--color-gold)' : 'var(--color-text-muted)',
+              letterSpacing: '0.04em',
+              lineHeight: 1.6,
+              margin: 0,
+            }}
+          >
+            {stepHeaderCopy[step]}
+          </p>
+        </div>
+      )}
+
+      <div
+        className="onboarding-step-padding"
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={step}
+            variants={stepVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            style={{ width: '100%', maxWidth: step === 0 && !isMobile ? '860px' : '520px' }}
+          >
+            {step === 0 && (
+              <Step1Basics
+                data={data}
+                onChange={handlePatch}
+                isMobile={isMobile}
+                onAdvance={handleContinue}
               />
-              <p style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '11px',
-                color: 'var(--color-text-muted)',
-                letterSpacing: '0.14em',
-                textTransform: 'uppercase',
-                textAlign: 'center',
-                marginTop: '10px',
-              }}>
-                years old
-              </p>
-            </div>
-          )}
+            )}
+            {step === 1 && <Step2Employment data={data} onChange={handlePatch} />}
+            {step === 2 && (
+              <Step3Contract
+                data={data}
+                onChange={handlePatch}
+                onAdvance={handleContinue}
+              />
+            )}
+            {step === 3 && <Step4Goals data={data} onChange={handlePatch} />}
+            {step === 4 && (
+              <Step5Plaid
+                linkedAccounts={linkedAccounts}
+                onLinked={accts => setLinkedAccounts(prev => [...prev, ...accts])}
+                onCompleteAssetLinked={handlePlaidAssetLinked}
+                onSkipForNow={handleSkipPlaid}
+                busy={busy}
+              />
+            )}
 
-          {/* Step 1: Income */}
-          {step === 1 && (
-            <div>
-              <h1 style={heading}>What is your annual income?</h1>
-              <p style={body}>Gross income before tax, including any reliable bonus.</p>
-              <div style={{
-                display: 'flex',
-                alignItems: 'baseline',
-                borderBottom: '1px solid var(--color-border)',
-                marginTop: '44px',
-                paddingBottom: '10px',
-              }}>
-                <span style={{
-                  fontFamily: 'var(--font-serif)',
-                  fontSize: '72px',
-                  fontWeight: 300,
-                  color: 'var(--color-text-muted)',
-                  lineHeight: 1,
-                  flexShrink: 0,
-                }}>$</span>
-                <input
-                  type="text"
-                  value={incomeDisplay}
-                  onChange={handleIncomeChange}
-                  inputMode="numeric"
-                  style={{
-                    flex: 1,
-                    fontSize: '72px',
-                    fontFamily: 'var(--font-serif)',
-                    fontWeight: 300,
-                    color: 'var(--color-text)',
-                    background: 'transparent',
-                    border: 'none',
-                    outline: 'none',
-                    padding: '0 0 0 6px',
-                    lineHeight: 1,
-                  }}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Savings rate */}
-          {step === 2 && (
-            <div>
-              <h1 style={heading}>What share of your income are you currently investing?</h1>
-              <p style={body}>Include 401(k) contributions.</p>
-              <div className="onboarding-slider-row" style={{ marginTop: '44px' }}>
-                <input
-                  type="range"
-                  min={0}
-                  max={50}
-                  value={savingsRate}
-                  onChange={e => setSavingsRate(Number(e.target.value))}
-                  style={{
-                    flex: 1,
-                    background: `linear-gradient(to right, var(--color-gold) ${savingsPct}%, var(--color-border) ${savingsPct}%)`,
-                  }}
-                />
-                <span className="onboarding-slider-readout" style={sliderReadout}>{savingsRate}%</span>
-              </div>
-
-              {/* Live dollar calculator */}
-              <div style={{
-                marginTop: '28px',
-                padding: '20px 22px',
-                backgroundColor: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '2px',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '10px' }}>
-                  <span style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '10px',
-                    color: 'var(--color-text-muted)',
-                    letterSpacing: '0.14em',
-                    textTransform: 'uppercase',
-                  }}>
-                    That&apos;s
-                  </span>
-                  <span style={{
-                    fontFamily: 'var(--font-serif)',
-                    fontSize: '32px',
-                    fontWeight: 300,
-                    color: 'var(--color-gold)',
-                    lineHeight: 1,
-                  }}>
-                    {fmt((income * savingsRate / 100) / 12)}
-                    <span style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: '11px',
-                      color: 'var(--color-text-muted)',
-                      letterSpacing: '0.08em',
-                      marginLeft: '6px',
-                    }}>/ month</span>
-                  </span>
-                </div>
-                <p style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: '11px',
-                  color: 'var(--color-text-muted)',
-                  lineHeight: 1.65,
-                  letterSpacing: '0.02em',
-                  margin: 0,
-                }}>
-                  This is what flows into your savings and investment accounts after every expense (rent, food, utilities, everything) is already paid.
-                </p>
-              </div>
-
-              <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                <p style={muted}>National median: 5%</p>
-                <p style={muted}>Recommended: 15–20%</p>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Retirement age */}
-          {step === 3 && (
-            <div>
-              <h1 style={heading}>At what age do you plan to retire?</h1>
-              <p style={body}>We will use this to project your long-term wealth trajectory.</p>
-              <div className="onboarding-slider-row" style={{ marginTop: '44px' }}>
-                <input
-                  type="range"
-                  min={45}
-                  max={75}
-                  value={retirementAge}
-                  onChange={e => setRetirementAge(Number(e.target.value))}
-                  style={{
-                    flex: 1,
-                    background: `linear-gradient(to right, var(--color-gold) ${retirePct}%, var(--color-border) ${retirePct}%)`,
-                  }}
-                />
-                <span className="onboarding-slider-readout" style={sliderReadout}>{retirementAge}</span>
-              </div>
-              <p style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '11px',
-                color: 'var(--color-text-muted)',
-                letterSpacing: '0.14em',
-                textTransform: 'uppercase',
-                textAlign: 'right',
-                marginTop: '8px',
-              }}>
-                years old
-              </p>
-            </div>
-          )}
-
-          {/* Step 4: Plaid link */}
-          {step === 4 && (
-            <div>
-              <h1 style={heading}>Connect your first account</h1>
-              <p style={body}>
-                Illumin needs at least one checking, savings, or investment account to show your full financial picture. Credit cards alone only tell half the story.
-              </p>
-
-              {assetRequired && (
-                <div style={{
-                  marginTop: '28px',
-                  padding: '18px 20px',
-                  backgroundColor: 'var(--color-negative-bg)',
-                  border: '1px solid var(--color-negative)',
-                  borderRadius: '2px',
-                }}>
-                  <p style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '10px',
-                    color: 'var(--color-negative)',
-                    letterSpacing: '0.14em',
-                    textTransform: 'uppercase',
-                    marginBottom: '8px',
-                  }}>
-                    Asset account required
-                  </p>
-                  <p style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '12px',
-                    color: 'var(--color-text-mid)',
-                    lineHeight: 1.7,
-                    letterSpacing: '0.02em',
-                    margin: 0,
-                  }}>
-                    We see the connection, but only credit cards came through. Link a checking, savings, or investment account to continue, or skip for now.
-                  </p>
-                </div>
-              )}
-
-              {linkedAccounts.length > 0 && (
-                <ul style={{
-                  marginTop: '20px',
-                  padding: 0,
-                  listStyle: 'none',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                }}>
-                  {linkedAccounts.map((a, i) => (
-                    <li
-                      key={(a.id ?? '') + i}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '12px 14px',
-                        border: '1px solid var(--color-border)',
-                        borderRadius: '2px',
-                        backgroundColor: 'var(--color-surface)',
-                      }}
-                    >
-                      <span style={{
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: '12px',
-                        color: 'var(--color-text)',
-                        letterSpacing: '0.02em',
-                      }}>
-                        {a.institutionName ?? 'Connected account'}
-                        {a.last4 ? ` •••• ${a.last4}` : ''}
-                      </span>
-                      <span style={{
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: '10px',
-                        color: a.classification === 'asset' ? 'var(--color-positive)' : 'var(--color-text-muted)',
-                        letterSpacing: '0.14em',
-                        textTransform: 'uppercase',
-                      }}>
-                        {a.classification === 'asset' ? 'Asset' : 'Credit'}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {linkError && (
-                <p style={{
+            {error && (
+              <p
+                style={{
                   marginTop: '16px',
                   fontSize: '12px',
                   color: 'var(--color-negative)',
                   fontFamily: 'var(--font-mono)',
-                }}>
-                  {linkError}
-                </p>
-              )}
+                }}
+              >
+                {error}
+              </p>
+            )}
 
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '14px',
-                marginTop: '40px',
-              }}>
+            {/* Desktop Step 1 + Steps 1 and 3 use their own advance. Step 2 (employment)
+                and Step 4 (goals) need a shared Continue button. */}
+            {(step === 1 || step === 3) && (
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '44px' }}>
                 <button
                   type="button"
-                  onClick={() => openPlaid()}
-                  disabled={!plaidReady || exchanging || posting}
+                  onClick={handleContinue}
+                  disabled={busy}
                   style={{
-                    ...continueBtn,
-                    margin: 0,
-                    opacity: (!plaidReady || exchanging || posting) ? 0.65 : 1,
-                    cursor: (!plaidReady || exchanging || posting) ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {exchanging
-                    ? 'Linking…'
-                    : posting
-                      ? 'Finishing…'
-                      : assetRequired
-                        ? 'Link another account'
-                        : 'Link with Plaid'}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleSkipAssetLink}
-                  disabled={exchanging || posting}
-                  style={{
-                    background: 'none',
+                    padding: '13px 36px',
+                    backgroundColor: 'var(--color-gold)',
                     border: 'none',
-                    padding: 0,
+                    borderRadius: '2px',
+                    color: 'var(--color-surface)',
+                    fontSize: '12px',
                     fontFamily: 'var(--font-mono)',
-                    fontSize: '11px',
-                    color: 'var(--color-text-muted)',
-                    letterSpacing: '0.14em',
+                    letterSpacing: '0.12em',
                     textTransform: 'uppercase',
-                    cursor: (exchanging || posting) ? 'not-allowed' : 'pointer',
-                    opacity: (exchanging || posting) ? 0.5 : 1,
+                    fontWeight: 500,
+                    cursor: busy ? 'not-allowed' : 'pointer',
+                    opacity: busy ? 0.65 : 1,
                   }}
                 >
-                  Skip for now
+                  {busy ? 'Saving…' : 'Continue'}
                 </button>
               </div>
-            </div>
-          )}
+            )}
 
-          {postError && step !== 4 && (
-            <p style={{
-              marginTop: '16px',
-              fontSize: '12px',
-              color: 'var(--color-negative)',
-              fontFamily: 'var(--font-mono)',
-            }}>
-              {postError}
-            </p>
-          )}
-
-          {step !== 4 && (
-            <button
-              type="submit"
-              disabled={posting}
-              style={{ ...continueBtn, opacity: posting ? 0.65 : 1, cursor: posting ? 'not-allowed' : 'pointer' }}
-            >
-              {posting ? 'Calculating…' : 'Continue'}
-            </button>
-          )}
-        </form>
-        </motion.div>
-      </AnimatePresence>
-    )
-  }
-
-  // ── Reveal ───────────────────────────────────────────────────────────────
-  const renderReveal = () => (
-    <motion.div
-      key="reveal"
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: 'easeOut' }}
-      style={{ width: '100%', maxWidth: '880px' }}
-    >
-      {/* Two-column */}
-      <div className="onboarding-reveal-grid" style={{ marginBottom: '52px', alignItems: 'start' }}>
-        {/* Left */}
-        <div>
-          <p style={{ ...muted, marginBottom: '20px' }}>Cost of waiting one year</p>
-          <p style={{
-            fontFamily: 'var(--font-serif)',
-            fontSize: '76px',
-            fontWeight: 300,
-            color: 'var(--color-text)',
-            lineHeight: 1,
-            letterSpacing: '-0.01em',
-            marginBottom: '28px',
-          }}>
-            {fmt(opportunityCost)}
-          </p>
-          {/* Annual urgency badge */}
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            backgroundColor: 'rgba(196,168,130,0.10)',
-            border: '1px solid var(--color-gold)',
-            borderRadius: '2px',
-            padding: '5px 12px',
-            marginBottom: '24px',
-          }}>
-            <span style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '10px',
-              color: 'var(--color-gold)',
-              letterSpacing: '0.14em',
-              textTransform: 'uppercase',
-              fontWeight: 500,
-            }}>
-              Every. Single. Year.
-            </span>
-          </div>
-          <p style={{
-            fontFamily: 'var(--font-serif)',
-            fontSize: '20px',
-            fontWeight: 300,
-            color: 'var(--color-text)',
-            lineHeight: 1.45,
-            marginBottom: '16px',
-          }}>
-            This is not a one-time loss. Every year you delay, you forfeit this amount in retirement wealth, permanently.
-          </p>
-          <p style={{
-            fontFamily: 'var(--font-serif)',
-            fontSize: '16px',
-            fontWeight: 300,
-            color: 'var(--color-text-mid)',
-            lineHeight: 1.5,
-            marginBottom: '20px',
-          }}>
-            Wait 5 years and the true cost is <strong style={{ color: 'var(--color-text)' }}>{fmt(opportunityCost * 5)}</strong>. Wait 10 years: <strong style={{ color: 'var(--color-text)' }}>{fmt(opportunityCost * 10)}</strong>. The clock does not pause.
-          </p>
-          <p style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '11px',
-            color: 'var(--color-text-muted)',
-            lineHeight: 1.7,
-            letterSpacing: '0.02em',
-          }}>
-            Based on 7% annualized real return. S&amp;P 500 historical average. Calculated in today&apos;s dollars.
-          </p>
-        </div>
-
-        {/* Right: breakdown card */}
-        <div style={{
-          backgroundColor: 'var(--color-surface)',
-          border: '1px solid var(--color-border)',
-          borderRadius: '2px',
-          padding: '28px',
-        }}>
-          {[
-            { label: 'Years to retirement',                      value: `${yearsToRetire} yrs` },
-            { label: 'Current monthly investment',               value: fmt(monthlyInvest) },
-            { label: 'Projected wealth at current savings rate', value: fmt(wealthNow) },
-            { label: 'Projected wealth at 20% savings rate',     value: fmt(wealthAt20) },
-          ].map(({ label, value }, i, arr) => (
-            <div
-              key={label}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'baseline',
-                paddingBottom: '18px',
-                marginBottom: i < arr.length - 1 ? '18px' : 0,
-                borderBottom: i < arr.length - 1 ? '1px solid var(--color-border)' : 'none',
-              }}
-            >
-              <span style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '11px',
-                color: 'var(--color-text-muted)',
-                letterSpacing: '0.04em',
-                maxWidth: '140px',
-                lineHeight: 1.5,
-              }}>
-                {label}
-              </span>
-              <span style={{
-                fontFamily: 'var(--font-serif)',
-                fontSize: '20px',
-                fontWeight: 400,
-                color: 'var(--color-text)',
-                flexShrink: 0,
-                marginLeft: '16px',
-              }}>
-                {value}
-              </span>
-            </div>
-          ))}
-        </div>
+            {/* Desktop Step 1: explicit Continue button since Step1Basics only auto-advances on mobile */}
+            {step === 0 && !isMobile && (
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '44px' }}>
+                <button
+                  type="button"
+                  onClick={handleContinue}
+                  disabled={busy || !step1Complete}
+                  style={{
+                    padding: '13px 36px',
+                    backgroundColor: 'var(--color-gold)',
+                    border: 'none',
+                    borderRadius: '2px',
+                    color: 'var(--color-surface)',
+                    fontSize: '12px',
+                    fontFamily: 'var(--font-mono)',
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    fontWeight: 500,
+                    cursor: busy || !step1Complete ? 'not-allowed' : 'pointer',
+                    opacity: busy || !step1Complete ? 0.55 : 1,
+                  }}
+                >
+                  {busy ? 'Saving…' : 'Continue'}
+                </button>
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
-      {/* CTA buttons */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
-        <Link
-          href="/dashboard/accounts"
+      {/* Persistent "Skip to account overview" — steps 2, 3, 4, 5 */}
+      {showSkipButton && (
+        <div
           style={{
-            display: 'block',
-            padding: '14px 48px',
-            backgroundColor: 'var(--color-gold)',
-            border: 'none',
-            borderRadius: '2px',
-            color: 'var(--color-surface)',
-            fontSize: '12px',
-            fontFamily: 'var(--font-mono)',
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
-            fontWeight: 500,
-            textDecoration: 'none',
-            textAlign: 'center',
+            padding: isMobile ? '16px 20px 24px' : '16px 40px 24px',
+            display: 'flex',
+            justifyContent: 'flex-start',
           }}
         >
-          Connect your accounts
-        </Link>
-      </div>
-    </motion.div>
+          <button
+            type="button"
+            onClick={skipToOverview}
+            disabled={!step1Complete || busy}
+            style={{
+              ...secondaryBtn,
+              opacity: !step1Complete || busy ? 0.45 : 1,
+              cursor: !step1Complete || busy ? 'not-allowed' : 'pointer',
+            }}
+          >
+            Skip to account overview
+          </button>
+        </div>
+      )}
+    </div>
   )
+}
 
-  // ── Shell ─────────────────────────────────────────────────────────────────
-  const showWelcome  = animPhase >= 1
-  const showDivider  = animPhase >= 2
-  const showLine3    = animPhase >= 3
-  const showScroll   = animPhase >= 4
+function WelcomeSplash({ animPhase, onSkip }: { animPhase: number; onSkip: () => void }) {
+  const showWelcome = animPhase >= 1
+  const showDivider = animPhase >= 2
+  const showLine3   = animPhase >= 3
+  const showScroll  = animPhase >= 4
 
   return (
-    <div>
-
-      {/* Welcome section */}
-      <div style={{
+    <div
+      style={{
         height: '100vh',
         backgroundColor: 'var(--color-bg)',
         display: 'flex',
@@ -870,168 +585,107 @@ export default function OnboardingPage() {
         padding: '40px',
         overflow: 'hidden',
         position: 'relative',
-      }}>
-          {/* Wordmark */}
-          <div style={{
-            position: 'absolute',
-            top: '40px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            fontFamily: 'var(--font-serif)',
-            fontSize: '13px',
-            fontWeight: 400,
-            color: 'var(--color-gold)',
-            letterSpacing: '0.32em',
-            textTransform: 'uppercase',
-            whiteSpace: 'nowrap',
-          }}>
-            Illumin
-          </div>
-
-          <div style={{ width: '100%', maxWidth: '560px', textAlign: 'center' }}>
-            {/* Line 1: fades in at 300ms */}
-            <h1 className="onboarding-headline" style={{
-              fontFamily: 'var(--font-serif)',
-              fontWeight: 300,
-              color: 'var(--color-text)',
-              lineHeight: 1.15,
-              letterSpacing: '-0.01em',
-              margin: 0,
-              opacity: showWelcome ? 1 : 0,
-              transform: showWelcome ? 'translateY(0)' : 'translateY(16px)',
-              transition: 'opacity 0.8s ease, transform 0.8s ease',
-            }}>
-              Welcome to <span style={{ color: 'var(--color-gold)' }}>Illumin</span>
-            </h1>
-
-            {/* Gold divider: expands from center at 2s */}
-            <div style={{
-              height: '1px',
-              backgroundColor: 'var(--color-gold)',
-              marginTop: '32px',
-              transformOrigin: 'center',
-              transform: showDivider ? 'scaleX(1)' : 'scaleX(0)',
-              transition: 'transform 0.7s ease',
-            }} />
-
-            {/* Body line: fades in at 3.4s */}
-            <p style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '13px',
-              color: 'var(--color-text-muted)',
-              lineHeight: 1.75,
-              letterSpacing: '0.02em',
-              marginTop: '28px',
-              marginBottom: 0,
-              opacity: showLine3 ? 1 : 0,
-              transform: showLine3 ? 'translateY(0)' : 'translateY(20px)',
-              transition: 'opacity 0.65s ease, transform 0.65s ease',
-            }}>
-              Enter a few details below and Illumin&apos;s financial engine will begin calibrating your experience.
-            </p>
-          </div>
-
-          {/* Scroll affordance: fades out once user has scrolled past line 3 */}
-          <div style={{
-            position: 'absolute',
-            bottom: '40px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '6px',
-            opacity: showScroll ? 1 : 0,
-            transition: 'opacity 0.4s ease',
-            pointerEvents: 'none',
-          }}>
-            <span style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '9px',
-              letterSpacing: '0.16em',
-              textTransform: 'uppercase',
-              color: 'var(--color-text-muted)',
-            }}>
-              Scroll
-            </span>
-            <motion.div
-              animate={{ y: [0, 4, 0] }}
-              transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-              style={{ color: 'var(--color-text-muted)' }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </motion.div>
-          </div>
-      </div>
-
-      {/* Step shell */}
-      <div ref={stepRef} style={{
-        minHeight: '100vh',
-        backgroundColor: 'var(--color-bg)',
-        display: 'flex',
-        flexDirection: 'column',
-      }}>
-      {/* Progress bar: one segment per interactive step */}
-      <div style={{ height: '2px', display: 'flex', gap: '2px', flexShrink: 0 }}>
-        {Array.from({ length: TOTAL_STEPS }, (_, i) => i).map(i => (
-          <div
-            key={i}
-            style={{
-              flex: 1,
-              backgroundColor: i < filledSegs ? 'var(--color-gold)' : 'var(--color-border)',
-              transition: 'background-color 350ms ease',
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Top bar */}
-      <div className="onboarding-top-bar" style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexShrink: 0,
-      }}>
-        <div style={{
-          fontFamily: 'var(--font-serif)',
-          fontSize: '16px',
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          top: '40px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          fontFamily: 'var(--font-display)',
+          fontSize: '13px',
           fontWeight: 400,
           color: 'var(--color-gold)',
-          letterSpacing: '0.22em',
+          letterSpacing: '0.32em',
           textTransform: 'uppercase',
-        }}>
-          Illumin
-        </div>
-        {stepNum !== null && (
-          <span style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '11px',
-            color: 'var(--color-text-muted)',
-            letterSpacing: '0.1em',
-          }}>
-            {stepNum + 1} / {TOTAL_STEPS}
-          </span>
-        )}
+          whiteSpace: 'nowrap',
+        }}
+      >
+        Illumin
       </div>
 
-      {/* Content area */}
-      <div className="onboarding-step-padding" style={{
-        flex: 1,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
-        {step === 'reveal' ? (
-          renderReveal()
-        ) : (
-          <div style={{ width: '100%', maxWidth: '480px' }}>
-            {renderStep()}
-          </div>
-        )}
+      <div style={{ width: '100%', maxWidth: '560px', textAlign: 'center' }}>
+        <h1
+          className="onboarding-headline"
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontWeight: 300,
+            color: 'var(--color-text)',
+            lineHeight: 1.15,
+            letterSpacing: '-0.01em',
+            margin: 0,
+            opacity: showWelcome ? 1 : 0,
+            transform: showWelcome ? 'translateY(0)' : 'translateY(16px)',
+            transition: 'opacity 0.8s ease, transform 0.8s ease',
+          }}
+        >
+          Welcome to <span style={{ color: 'var(--color-gold)' }}>Illumin</span>
+        </h1>
+
+        <div
+          style={{
+            height: '1px',
+            backgroundColor: 'var(--color-gold)',
+            marginTop: '32px',
+            transformOrigin: 'center',
+            transform: showDivider ? 'scaleX(1)' : 'scaleX(0)',
+            transition: 'transform 0.7s ease',
+          }}
+        />
+
+        <p
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '13px',
+            color: 'var(--color-text-muted)',
+            lineHeight: 1.75,
+            letterSpacing: '0.02em',
+            marginTop: '28px',
+            marginBottom: 0,
+            opacity: showLine3 ? 1 : 0,
+            transform: showLine3 ? 'translateY(0)' : 'translateY(20px)',
+            transition: 'opacity 0.65s ease, transform 0.65s ease',
+          }}
+        >
+          Six steps. Calibrated for your numbers. Skip anything you are not ready to share.
+        </p>
       </div>
-      </div>
+
+      <button
+        type="button"
+        onClick={onSkip}
+        style={{
+          position: 'absolute',
+          bottom: '40px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '6px',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          opacity: showScroll ? 1 : 0,
+          transition: 'opacity 0.4s ease',
+        }}
+      >
+        <span
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '9px',
+            letterSpacing: '0.16em',
+            textTransform: 'uppercase',
+            color: 'var(--color-text-muted)',
+          }}
+        >
+          Begin
+        </span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-text-muted)' }}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
     </div>
   )
 }

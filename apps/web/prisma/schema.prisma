@@ -151,15 +151,26 @@ model NetWorthSnapshot {
 }
 
 model OnboardingProfile {
-  id            String   @id @default(cuid())
-  userId        String   @unique @map("user_id")
-  age           Int
-  annualIncome  Float    @map("annual_income")
-  savingsRate   Float    @map("savings_rate")
-  retirementAge Int      @map("retirement_age")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-  user          User     @relation(fields: [userId], references: [id])
+  id                         String    @id @default(cuid())
+  userId                     String    @unique @map("user_id")
+  age                        Int
+  annualIncome               Float     @map("annual_income")
+  savingsRate                Float     @map("savings_rate")
+  retirementAge              Int       @map("retirement_age")
+  locationCity               String?   @map("location_city")
+  locationState              String?   @map("location_state")
+  jobTitle                   String?   @map("job_title")
+  employer                   String?
+  employerStartDate          DateTime? @map("employer_start_date")
+  targetRetirementIncome     Float?    @map("target_retirement_income")
+  emergencyFundMonthsTarget  Int?      @default(6) @map("emergency_fund_months_target")
+  majorGoals                 String[]  @default([]) @map("major_goals")
+  riskTolerance              Int?      @map("risk_tolerance")
+  contractParsedData         Json?     @map("contract_parsed_data")
+  contractUploadedAt         DateTime? @map("contract_uploaded_at")
+  createdAt                  DateTime  @default(now()) @map("created_at")
+  updatedAt                  DateTime  @updatedAt @map("updated_at")
+  user                       User      @relation(fields: [userId], references: [id])
 
   @@map("onboarding_profiles")
 }

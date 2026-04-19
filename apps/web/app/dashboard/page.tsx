@@ -16,6 +16,8 @@ import { colors, fonts, spacing, mobileLabelText } from '@/lib/theme'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useDashboard } from '@/lib/dashboardData'
 import { detectRecurringMerchants } from '@/lib/data'
+import HeroRow from '@/components/dashboard/HeroRow'
+import { useDashboardHeroState } from '@/components/dashboard/useDashboardHeroState'
 
 interface HistoryPoint { date: string; netWorth: number }
 interface NWHistory {
@@ -50,6 +52,7 @@ function fmtChange(n: number): string {
 
 function DashboardDesktop() {
   const { loading, netWorth, transactions, accounts, monthlyData, spendingByCategory, authToken } = useDashboard()
+  const hero = useDashboardHeroState()
   const [nwHistory, setNwHistory] = useState<NWHistory | null>(null)
 
   useEffect(() => {
@@ -80,70 +83,90 @@ function DashboardDesktop() {
     hasFullBalanceSheet ||
     (!!nwHistory && nwHistory.history.length >= 2 && nwHistory.hasAssetAccount && !nwHistory.hasLiabilityAccount)
 
+  // The HeroLiabilityOnly already tells the user to link a bank/investment
+  // account, so suppress the legacy in-grid placeholder to avoid duplication.
   const showLiabilityOnlyPlaceholder =
-    !!nwHistory && nwHistory.hasLiabilityAccount && !nwHistory.hasAssetAccount
+    !!nwHistory && nwHistory.hasLiabilityAccount && !nwHistory.hasAssetAccount &&
+    hero.state !== 'LIABILITY_ONLY'
+
+  const heroBlock = hero.failed
+    ? null
+    : (
+      <HeroRow
+        state={hero.state}
+        metrics={hero.metrics}
+        loading={hero.loading || loading}
+      />
+    )
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '320px' }}>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: '#6B7A8D', letterSpacing: '0.06em' }}>
-          Loading…
-        </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {heroBlock}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '320px' }}>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: '#6B7A8D', letterSpacing: '0.06em' }}>
+            Loading…
+          </p>
+        </div>
       </div>
     )
   }
 
   if (!hasData) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: 'easeOut' }}
-        style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          minHeight: '400px', gap: '20px', textAlign: 'center',
-        }}
-      >
-        <div style={{
-          width: '48px', height: '48px', borderRadius: '50%',
-          border: '1px solid rgba(184,145,58,0.25)',
-          backgroundColor: 'rgba(184,145,58,0.08)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '24px',
-        }}>
-          ◈
-        </div>
-        <div>
-          <p style={{ fontFamily: 'var(--font-serif)', fontSize: '26px', fontWeight: 400, color: '#F0F2F8', marginBottom: '8px' }}>
-            No data yet
-          </p>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: '#6B7A8D', lineHeight: 1.7 }}>
-            Connect a bank account to see your net worth, spending, and transactions here.
-          </p>
-        </div>
-        <Link
-          href="/dashboard/accounts"
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {heroBlock}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
           style={{
-            padding: '10px 24px',
-            backgroundColor: '#B8913A',
-            border: 'none',
-            borderRadius: '2px',
-            color: '#F0F2F8',
-            fontFamily: 'var(--font-mono)',
-            fontSize: '13px',
-            letterSpacing: '0.08em',
-            textDecoration: 'none',
-            display: 'inline-block',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            minHeight: '400px', gap: '20px', textAlign: 'center',
           }}
         >
-          Connect an Account
-        </Link>
-      </motion.div>
+          <div style={{
+            width: '48px', height: '48px', borderRadius: '50%',
+            border: '1px solid rgba(184,145,58,0.25)',
+            backgroundColor: 'rgba(184,145,58,0.08)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '24px',
+          }}>
+            ◈
+          </div>
+          <div>
+            <p style={{ fontFamily: 'var(--font-serif)', fontSize: '26px', fontWeight: 400, color: '#F0F2F8', marginBottom: '8px' }}>
+              No data yet
+            </p>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: '#6B7A8D', lineHeight: 1.7 }}>
+              Connect a bank account to see your net worth, spending, and transactions here.
+            </p>
+          </div>
+          <Link
+            href="/dashboard/accounts"
+            style={{
+              padding: '10px 24px',
+              backgroundColor: '#B8913A',
+              border: 'none',
+              borderRadius: '2px',
+              color: '#F0F2F8',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '13px',
+              letterSpacing: '0.08em',
+              textDecoration: 'none',
+              display: 'inline-block',
+            }}
+          >
+            Connect an Account
+          </Link>
+        </motion.div>
+      </div>
     )
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {heroBlock}
       <NetWorthCard
         current={netWorth.current}
         lastMonth={netWorth.lastMonth}
@@ -296,6 +319,7 @@ const fmt = (n: number) =>
 // ── Mobile layout ─────────────────────────────────────────────────────────────
 function DashboardMobile() {
   const { loading, netWorth, transactions, accounts, monthlyData, spendingByCategory, authToken } = useDashboard()
+  const hero = useDashboardHeroState()
   const [nwHistory, setNwHistory] = useState<NWHistory | null>(null)
 
   useEffect(() => {
@@ -325,67 +349,84 @@ function DashboardMobile() {
     (!!nwHistory && nwHistory.history.length >= 2 && nwHistory.hasAssetAccount && !nwHistory.hasLiabilityAccount)
 
   const showLiabilityOnlyPlaceholder =
-    !!nwHistory && nwHistory.hasLiabilityAccount && !nwHistory.hasAssetAccount
+    !!nwHistory && nwHistory.hasLiabilityAccount && !nwHistory.hasAssetAccount &&
+    hero.state !== 'LIABILITY_ONLY'
+
+  const heroBlock = hero.failed
+    ? null
+    : (
+      <HeroRow
+        state={hero.state}
+        metrics={hero.metrics}
+        loading={hero.loading || loading}
+      />
+    )
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '320px' }}>
-        <p style={{ fontFamily: fonts.mono, fontSize: '14px', color: colors.textMuted, letterSpacing: '0.06em' }}>
-          Loading...
-        </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.sectionGap }}>
+        {heroBlock}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '320px' }}>
+          <p style={{ fontFamily: fonts.mono, fontSize: '14px', color: colors.textMuted, letterSpacing: '0.06em' }}>
+            Loading...
+          </p>
+        </div>
       </div>
     )
   }
 
   if (!hasData) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: 'easeOut' }}
-        style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          minHeight: '400px', gap: '20px', textAlign: 'center',
-          paddingLeft: spacing.pagePad, paddingRight: spacing.pagePad,
-        }}
-      >
-        <div style={{
-          width: '48px', height: '48px', borderRadius: '50%',
-          border: `1px solid ${colors.goldBorder}`,
-          backgroundColor: colors.goldSubtle,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '24px',
-        }}>
-          ◈
-        </div>
-        <div>
-          <p style={{ fontFamily: fonts.serif, fontSize: '26px', fontWeight: 400, color: colors.text, marginBottom: '8px' }}>
-            No data yet
-          </p>
-          <p style={{ fontFamily: fonts.mono, fontSize: '14px', color: colors.textMuted, lineHeight: 1.7 }}>
-            Connect a bank account to see your net worth, spending, and transactions here.
-          </p>
-        </div>
-        <Link
-          href="/dashboard/accounts"
+      <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.sectionGap }}>
+        {heroBlock}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
           style={{
-            padding: '12px 24px',
-            minHeight: spacing.tapTarget,
-            backgroundColor: colors.gold,
-            border: 'none',
-            borderRadius: '2px',
-            color: colors.text,
-            fontFamily: fonts.mono,
-            fontSize: '13px',
-            letterSpacing: '0.08em',
-            textDecoration: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            minHeight: '400px', gap: '20px', textAlign: 'center',
+            paddingLeft: spacing.pagePad, paddingRight: spacing.pagePad,
           }}
         >
-          Connect an Account
-        </Link>
-      </motion.div>
+          <div style={{
+            width: '48px', height: '48px', borderRadius: '50%',
+            border: `1px solid ${colors.goldBorder}`,
+            backgroundColor: colors.goldSubtle,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '24px',
+          }}>
+            ◈
+          </div>
+          <div>
+            <p style={{ fontFamily: fonts.serif, fontSize: '26px', fontWeight: 400, color: colors.text, marginBottom: '8px' }}>
+              No data yet
+            </p>
+            <p style={{ fontFamily: fonts.mono, fontSize: '14px', color: colors.textMuted, lineHeight: 1.7 }}>
+              Connect a bank account to see your net worth, spending, and transactions here.
+            </p>
+          </div>
+          <Link
+            href="/dashboard/accounts"
+            style={{
+              padding: '12px 24px',
+              minHeight: spacing.tapTarget,
+              backgroundColor: colors.gold,
+              border: 'none',
+              borderRadius: '2px',
+              color: colors.text,
+              fontFamily: fonts.mono,
+              fontSize: '13px',
+              letterSpacing: '0.08em',
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+            }}
+          >
+            Connect an Account
+          </Link>
+        </motion.div>
+      </div>
     )
   }
 
@@ -525,6 +566,7 @@ function DashboardMobile() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.sectionGap }}>
+      {heroBlock}
       {sections}
     </div>
   )

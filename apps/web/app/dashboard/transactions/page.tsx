@@ -15,7 +15,6 @@ import { CATEGORIES as CANONICAL_CATEGORIES, isMaskedMerchant } from '@/lib/cate
 
 const CATEGORIES = ['All', ...CANONICAL_CATEGORIES]
 const TX_CATEGORIES = [...CANONICAL_CATEGORIES]
-const PAGE_SIZE = 10
 
 const controlStyle = {
   padding: '8px 12px',
@@ -262,7 +261,8 @@ function TransactionsDesktop() {
   const [search,        setSearch]        = useState('')
   const [category,      setCategory]      = useState('All')
   const [accountFilter, setAccountFilter] = useState('All')
-  const [tagFilter,     setTagFilter]     = useState('')
+  const [needsLabelingOnly, setNeedsLabelingOnly] = useState(false)
+  const [pageSize,      setPageSize]      = useState(25)
   const [page,          setPage]          = useState(1)
 
   // Modal state
@@ -394,20 +394,28 @@ function TransactionsDesktop() {
 
   const recurringMerchants = useMemo(() => detectRecurringMerchants(transactions, excludedMerchants), [transactions, excludedMerchants])
 
+  const needsLabelingCount = useMemo(() =>
+    transactions.filter(tx => {
+      const m = merchantOverrides[tx.id] ?? tx.merchantName
+      const c = categoryOverrides[tx.id] ?? tx.category
+      return isMaskedMerchant(m) || c === 'Other'
+    }).length,
+  [transactions, merchantOverrides, categoryOverrides])
+
   const filtered = useMemo(() => {
-    const tagQuery = tagFilter.trim().toLowerCase()
     return transactions.filter(tx => {
+      const displayMerchant = merchantOverrides[tx.id] ?? tx.merchantName
+      const displayCategory = categoryOverrides[tx.id] ?? tx.category
       const matchSearch   = !search || (tx.merchantName ?? '').toLowerCase().includes(search.toLowerCase())
       const matchCategory = category === 'All' || (tx.category ?? '') === category
       const matchAccount  = accountFilter === 'All' || tx.accountId === accountFilter
-      const txTags = tagOverrides[tx.id] ?? (tx as { tags?: string[] }).tags ?? []
-      const matchTag = !tagQuery || txTags.some((t: string) => t.includes(tagQuery))
-      return matchSearch && matchCategory && matchAccount && matchTag
+      const matchNeedsLabeling = !needsLabelingOnly || isMaskedMerchant(displayMerchant) || displayCategory === 'Other'
+      return matchSearch && matchCategory && matchAccount && matchNeedsLabeling
     })
-  }, [transactions, search, category, accountFilter, tagFilter, tagOverrides])
+  }, [transactions, search, category, accountFilter, needsLabelingOnly, merchantOverrides, categoryOverrides])
 
-  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+  const paginated  = filtered.slice((page - 1) * pageSize, page * pageSize)
+  const totalPages = Math.ceil(filtered.length / pageSize)
 
   const handleSubmit = async () => {
     if (!form.amount || isNaN(Number(form.amount))) {
@@ -490,16 +498,29 @@ function TransactionsDesktop() {
             <option key={a.id} value={a.id}>{a.institutionName}{a.last4 ? ` .... ${a.last4}` : ''}</option>
           ))}
         </select>
-        <input
-          type="text"
-          placeholder="Filter by tag..."
-          value={tagFilter}
-          onChange={e => { setTagFilter(e.target.value); setPage(1) }}
-          style={{ ...controlStyle, minWidth: '140px' }}
-        />
-        {(search || category !== 'All' || accountFilter !== 'All' || tagFilter) && (
+        <button
+          onClick={() => { setNeedsLabelingOnly(v => !v); setPage(1) }}
+          disabled={needsLabelingCount === 0 && !needsLabelingOnly}
+          style={{
+            padding: '8px 12px',
+            backgroundColor: needsLabelingOnly ? '#B8913A' : 'transparent',
+            border: `1px solid ${needsLabelingOnly ? '#B8913A' : 'rgba(184,145,58,0.25)'}`,
+            borderRadius: '2px',
+            color: needsLabelingOnly ? '#F0F2F8' : (needsLabelingCount === 0 ? '#4A5565' : '#B8913A'),
+            fontSize: '13px',
+            fontFamily: 'var(--font-mono)',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            cursor: needsLabelingCount === 0 && !needsLabelingOnly ? 'not-allowed' : 'pointer',
+            opacity: needsLabelingCount === 0 && !needsLabelingOnly ? 0.5 : 1,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Needs Labeling{needsLabelingCount > 0 ? ` (${needsLabelingCount})` : ''}
+        </button>
+        {(search || category !== 'All' || accountFilter !== 'All' || needsLabelingOnly) && (
           <button
-            onClick={() => { setSearch(''); setCategory('All'); setAccountFilter('All'); setTagFilter(''); setPage(1) }}
+            onClick={() => { setSearch(''); setCategory('All'); setAccountFilter('All'); setNeedsLabelingOnly(false); setPage(1) }}
             style={{
               padding: '8px 12px',
               backgroundColor: 'transparent',
@@ -520,6 +541,14 @@ function TransactionsDesktop() {
         <span style={{ fontSize: '13px', color: '#6B7A8D', fontFamily: 'var(--font-mono)', marginLeft: 'auto', letterSpacing: '0.04em' }}>
           {filtered.length} transactions
         </span>
+        <select
+          value={pageSize}
+          onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }}
+          style={controlStyle}
+          aria-label="Transactions per page"
+        >
+          {[25, 50, 100].map(n => <option key={n} value={n}>{n} / page</option>)}
+        </select>
         <button
           onClick={() => setModalOpen(true)}
           style={{
@@ -562,7 +591,7 @@ function TransactionsDesktop() {
         ) : (
           <AnimatePresence mode="wait">
             <motion.div
-              key={`${category}-${accountFilter}-${search}-${page}`}
+              key={`${category}-${accountFilter}-${search}-${needsLabelingOnly}-${pageSize}-${page}`}
               initial="hidden"
               animate="visible"
               variants={{ visible: { transition: { staggerChildren: 0.025 } } }}
@@ -657,6 +686,8 @@ function TransactionsMobile() {
 
   const [search,   setSearch]   = useState('')
   const [category, setCategory] = useState('All')
+  const [needsLabelingOnly, setNeedsLabelingOnly] = useState(false)
+  const [pageSize, setPageSize] = useState(25)
   const [page,     setPage]     = useState(1)
 
   // Modal state
@@ -787,16 +818,27 @@ function TransactionsMobile() {
     detectRecurringMerchants(transactions, excludedMerchants),
   [transactions, excludedMerchants])
 
+  const needsLabelingCount = useMemo(() =>
+    transactions.filter(tx => {
+      const m = merchantOverrides[tx.id] ?? tx.merchantName
+      const c = categoryOverrides[tx.id] ?? tx.category
+      return isMaskedMerchant(m) || c === 'Other'
+    }).length,
+  [transactions, merchantOverrides, categoryOverrides])
+
   const filtered = useMemo(() => {
     return transactions.filter(tx => {
+      const displayMerchant = merchantOverrides[tx.id] ?? tx.merchantName
+      const displayCategory = categoryOverrides[tx.id] ?? tx.category
       const matchSearch   = !search || (tx.merchantName ?? '').toLowerCase().includes(search.toLowerCase())
       const matchCategory = category === 'All' || (tx.category ?? '') === category
-      return matchSearch && matchCategory
+      const matchNeedsLabeling = !needsLabelingOnly || isMaskedMerchant(displayMerchant) || displayCategory === 'Other'
+      return matchSearch && matchCategory && matchNeedsLabeling
     })
-  }, [transactions, search, category])
+  }, [transactions, search, category, needsLabelingOnly, merchantOverrides, categoryOverrides])
 
-  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+  const paginated  = filtered.slice((page - 1) * pageSize, page * pageSize)
+  const totalPages = Math.ceil(filtered.length / pageSize)
 
   const handleSubmit = async () => {
     if (!form.amount || isNaN(Number(form.amount))) {
@@ -926,10 +968,51 @@ function TransactionsMobile() {
         })}
       </div>
 
-      {/* Transaction count */}
-      <span style={{ fontFamily: fonts.mono, fontSize: 12, color: colors.textMuted }}>
-        {filtered.length} transactions
-      </span>
+      {/* Needs-labeling toggle + per-page */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: spacing.tightGap, flexWrap: 'wrap' }}>
+        <button
+          onClick={() => { setNeedsLabelingOnly(v => !v); setPage(1) }}
+          disabled={needsLabelingCount === 0 && !needsLabelingOnly}
+          style={{
+            height: 36,
+            borderRadius: radius.badge,
+            padding: '0 12px',
+            fontFamily: fonts.mono,
+            fontSize: 12,
+            letterSpacing: '0.06em',
+            border: `1px solid ${needsLabelingOnly ? colors.gold : colors.border}`,
+            backgroundColor: needsLabelingOnly ? colors.goldSubtle : 'transparent',
+            color: needsLabelingOnly ? colors.gold : colors.textMuted,
+            cursor: needsLabelingCount === 0 && !needsLabelingOnly ? 'not-allowed' : 'pointer',
+            opacity: needsLabelingCount === 0 && !needsLabelingOnly ? 0.5 : 1,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Needs labeling{needsLabelingCount > 0 ? ` (${needsLabelingCount})` : ''}
+        </button>
+        <select
+          value={pageSize}
+          onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }}
+          aria-label="Transactions per page"
+          style={{
+            height: 36,
+            borderRadius: radius.badge,
+            padding: '0 12px',
+            fontFamily: fonts.mono,
+            fontSize: 12,
+            letterSpacing: '0.06em',
+            border: `1px solid ${colors.border}`,
+            backgroundColor: 'transparent',
+            color: colors.textMuted,
+            cursor: 'pointer',
+          }}
+        >
+          {[25, 50, 100].map(n => <option key={n} value={n}>{n} / page</option>)}
+        </select>
+        <span style={{ fontFamily: fonts.mono, fontSize: 12, color: colors.textMuted, marginLeft: 'auto' }}>
+          {filtered.length} transactions
+        </span>
+      </div>
 
       {/* Transaction list */}
       {transactions.length === 0 ? (
@@ -964,7 +1047,7 @@ function TransactionsMobile() {
       ) : (
         <AnimatePresence mode="wait">
           <motion.div
-            key={`${category}-${search}-${page}`}
+            key={`${category}-${search}-${needsLabelingOnly}-${pageSize}-${page}`}
             initial="hidden"
             animate="visible"
             variants={{ visible: { transition: { staggerChildren: 0.025 } } }}
