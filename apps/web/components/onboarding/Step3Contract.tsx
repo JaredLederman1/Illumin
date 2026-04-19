@@ -188,23 +188,33 @@ export function Step3Contract({ data, onChange, onAdvance }: Props) {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '32px' }}>
-        <button
-          type="button"
-          onClick={onAdvance}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: '10px 22px',
-            fontFamily: 'var(--font-mono)',
-            fontSize: '11px',
-            color: 'var(--color-text-muted)',
-            letterSpacing: '0.14em',
-            textTransform: 'uppercase',
-            cursor: 'pointer',
-          }}
-        >
-          {state === 'done' ? 'Continue' : 'Skip this step'}
-        </button>
+        {state === 'done' ? (
+          <button
+            type="button"
+            onClick={onAdvance}
+            style={{ ...continueBtn, padding: '13px 36px' }}
+          >
+            Continue
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onAdvance}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: '10px 22px',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '11px',
+              color: 'var(--color-text-muted)',
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              cursor: 'pointer',
+            }}
+          >
+            Skip this step
+          </button>
+        )}
       </div>
     </div>
   )

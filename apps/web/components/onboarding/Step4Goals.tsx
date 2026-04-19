@@ -18,7 +18,6 @@ const RISK_LABELS: Record<number, string> = {
 }
 
 const EMERGENCY_FUND_MAX = 24
-const EMERGENCY_FUND_RECOMMENDED = 6
 
 export function Step4Goals({ data, onChange }: Props) {
   const currentIncome = data.targetRetirementIncome ?? 0
@@ -31,7 +30,6 @@ export function Step4Goals({ data, onChange }: Props) {
   }
 
   const emergencyPct = (data.emergencyFundMonthsTarget / EMERGENCY_FUND_MAX) * 100
-  const recommendedPct = (EMERGENCY_FUND_RECOMMENDED / EMERGENCY_FUND_MAX) * 100
 
   return (
     <div>
@@ -57,36 +55,17 @@ export function Step4Goals({ data, onChange }: Props) {
         <div>
           <label style={label}>Emergency fund target</label>
           <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-            <div style={{ flex: 1, position: 'relative', paddingTop: '14px', paddingBottom: '6px' }}>
-              <span
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: `calc(${recommendedPct}% )`,
-                  transform: 'translateX(-50%)',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: '9.5px',
-                  color: 'var(--color-gold)',
-                  letterSpacing: '0.14em',
-                  textTransform: 'uppercase',
-                  whiteSpace: 'nowrap',
-                  pointerEvents: 'none',
-                }}
-              >
-                Recommended
-              </span>
-              <input
-                type="range"
-                min={0}
-                max={EMERGENCY_FUND_MAX}
-                value={data.emergencyFundMonthsTarget}
-                onChange={e => onChange({ emergencyFundMonthsTarget: Number(e.target.value) })}
-                style={{
-                  width: '100%',
-                  background: `linear-gradient(to right, var(--color-gold) ${emergencyPct}%, var(--color-border) ${emergencyPct}%)`,
-                }}
-              />
-            </div>
+            <input
+              type="range"
+              min={0}
+              max={EMERGENCY_FUND_MAX}
+              value={data.emergencyFundMonthsTarget}
+              onChange={e => onChange({ emergencyFundMonthsTarget: Number(e.target.value) })}
+              style={{
+                flex: 1,
+                background: `linear-gradient(to right, var(--color-gold) ${emergencyPct}%, var(--color-border) ${emergencyPct}%)`,
+              }}
+            />
             <span
               style={{
                 fontFamily: 'var(--font-display)',

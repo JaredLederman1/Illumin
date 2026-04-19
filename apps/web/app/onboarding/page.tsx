@@ -241,12 +241,8 @@ export default function OnboardingPage() {
   }, [])
 
   const handlePreviewContinue = useCallback(() => {
-    setJustCompleted(5)
-    setCompletedSteps(prev => new Set(prev).add(5))
-    window.setTimeout(() => setJustCompleted(null), 650)
-    setPhase('reveal')
-    setStep(5)
-  }, [])
+    router.push('/dashboard/accounts')
+  }, [router])
 
   const handlePlaidAssetLinked = useCallback(async () => {
     setJustCompleted(4)

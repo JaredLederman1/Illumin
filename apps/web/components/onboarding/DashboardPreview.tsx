@@ -40,19 +40,6 @@ export function DashboardPreview({
         margin: '0 auto',
       }}
     >
-      <p
-        style={{
-          textAlign: 'center',
-          fontFamily: 'var(--font-mono)',
-          fontSize: '10.5px',
-          color: 'var(--color-gold)',
-          letterSpacing: '0.24em',
-          textTransform: 'uppercase',
-          marginBottom: '14px',
-        }}
-      >
-        Building your overview
-      </p>
       <h2
         style={{
           textAlign: 'center',
@@ -65,7 +52,7 @@ export function DashboardPreview({
           marginBottom: '30px',
         }}
       >
-        A preview of what Illumin just calibrated for you.
+        Link accounts to unlock Illumin&apos;s complete financial analysis.
       </h2>
 
       <div
