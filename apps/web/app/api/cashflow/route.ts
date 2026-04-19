@@ -23,17 +23,22 @@ export async function GET() {
     const transactions = await prisma.transaction.findMany({
       where: { account: { userId: dbUser.id }, date: { gte: since } },
       orderBy: { date: 'asc' },
+      include: { account: { select: { classification: true } } },
     })
 
-    // Aggregate income and expenses by calendar month
+    // Aggregate income and expenses by calendar month.
+    // Positive amounts on liability accounts (e.g. a credit card payment or
+    // refund posted to the card) are transfers, not income, so they are
+    // excluded from the income total.
     const byMonth: Record<string, { income: number; expenses: number; year: number; monthIdx: number }> = {}
     for (const tx of transactions) {
       const d = new Date(tx.date)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
       if (!byMonth[key]) byMonth[key] = { income: 0, expenses: 0, year: d.getFullYear(), monthIdx: d.getMonth() }
-      if (tx.amount > 0) {
+      const isLiabilityAccount = tx.account.classification === 'liability'
+      if (tx.amount > 0 && !isLiabilityAccount) {
         byMonth[key].income += tx.amount
-      } else {
+      } else if (tx.amount < 0) {
         byMonth[key].expenses += Math.abs(tx.amount)
       }
     }

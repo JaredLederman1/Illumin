@@ -16,6 +16,7 @@ import {
   mockPortfolio,
   mockAnalyticsHoldings,
 } from '@/lib/mockData'
+import { findRecurringChain, groupByMerchant, type RecurringTxInput } from '@/lib/recurring'
 
 export const USE_MOCK_DATA = false
 
@@ -77,24 +78,41 @@ export async function fetchTransactions(params?: {
   return { transactions: data.transactions ?? [], total: data.total ?? 0 }
 }
 
-// Returns a Set of merchant names that appear in 2+ distinct calendar months
-// excludedMerchants: optional set of merchant names (lowercase) to exclude
+/**
+ * Returns the set of merchant names that qualify as recurring under the same
+ * rules used by the recurring dashboard page: at least 2 consecutive calendar
+ * months with exactly one charge each, days within +/- 2 of each other, and
+ * (when amounts are provided) a negative net over the matched chain.
+ *
+ * The returned set contains merchant names in the original casing found on
+ * the transactions, so callers can do `set.has(tx.merchantName)` directly.
+ */
 export function detectRecurringMerchants(
-  transactions: { merchantName: string | null; date: string | Date }[],
+  transactions: RecurringTxInput[],
   excludedMerchants?: Set<string>
 ): Set<string> {
-  const merchantMonths: Record<string, Set<string>> = {}
-  for (const tx of transactions) {
-    if (!tx.merchantName) continue
-    if (excludedMerchants?.has(tx.merchantName.trim().toLowerCase())) continue
-    const month = new Date(tx.date).toISOString().slice(0, 7)
-    if (!merchantMonths[tx.merchantName]) merchantMonths[tx.merchantName] = new Set()
-    merchantMonths[tx.merchantName].add(month)
-  }
+  const merchantMap = groupByMerchant(transactions, excludedMerchants)
   const recurring = new Set<string>()
-  for (const [merchant, months] of Object.entries(merchantMonths)) {
-    if (months.size >= 2) recurring.add(merchant)
+
+  for (const [, txs] of merchantMap) {
+    const chain = findRecurringChain(txs)
+    if (!chain) continue
+
+    // Expense-only, matching the recurring page. If any chain tx lacks an
+    // amount (e.g., callers that don't pass it), skip the expense filter.
+    const amounts = chain.map(t => t.amount).filter((a): a is number => typeof a === 'number')
+    if (amounts.length === chain.length) {
+      const chainTotal = amounts.reduce((s, v) => s + v, 0)
+      if (chainTotal >= 0) continue
+    }
+
+    // Add every casing of this merchant's name seen in the input so that
+    // `set.has(tx.merchantName)` matches regardless of which variant the row uses.
+    for (const t of txs) {
+      if (t.merchantName) recurring.add(t.merchantName)
+    }
   }
+
   return recurring
 }
 

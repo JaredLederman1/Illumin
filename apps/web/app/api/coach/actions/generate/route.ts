@@ -61,20 +61,24 @@ export async function POST() {
     prisma.account.findMany({ where: { userId: dbUser.id } }),
     prisma.transaction.findMany({
       where: { account: { userId: dbUser.id }, date: { gte: ninetyDaysAgo } },
-      select: { amount: true, date: true, category: true },
+      select: { amount: true, date: true, category: true, accountId: true },
     }),
     prisma.onboardingProfile.findUnique({ where: { userId: dbUser.id } }),
   ])
 
+  // Positive amounts on liability accounts are credit card payments or
+  // refunds, not income, so they are excluded from the income total.
+  const classificationByAccountId = new Map(accounts.map(a => [a.id, a.classification]))
   const incomeByMonth: Record<string, number> = {}
   const expenseByMonth: Record<string, number> = {}
   const categoryTotals: Record<string, number> = {}
 
   for (const tx of recentTxs) {
     const key = `${new Date(tx.date).getFullYear()}-${new Date(tx.date).getMonth()}`
-    if (tx.amount > 0) {
+    const isLiabilityAccount = classificationByAccountId.get(tx.accountId) === 'liability'
+    if (tx.amount > 0 && !isLiabilityAccount) {
       incomeByMonth[key] = (incomeByMonth[key] ?? 0) + tx.amount
-    } else {
+    } else if (tx.amount < 0) {
       expenseByMonth[key] = (expenseByMonth[key] ?? 0) + Math.abs(tx.amount)
       const cat = normalizeCategory(tx.category).toLowerCase()
       categoryTotals[cat] = (categoryTotals[cat] ?? 0) + Math.abs(tx.amount)

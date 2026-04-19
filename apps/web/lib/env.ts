@@ -19,6 +19,7 @@ function requireEnv(name: string): string {
 }
 
 export const DATABASE_URL = requireEnv('DATABASE_URL')
+export const DIRECT_URL = requireEnv('DIRECT_URL')
 export const NEXT_PUBLIC_SUPABASE_URL = requireEnv('NEXT_PUBLIC_SUPABASE_URL')
 export const NEXT_PUBLIC_SUPABASE_ANON_KEY = requireEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY')
 export const SUPABASE_SERVICE_ROLE_KEY = requireEnv('SUPABASE_SERVICE_ROLE_KEY')
