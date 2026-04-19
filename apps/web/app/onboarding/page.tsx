@@ -16,6 +16,7 @@ import { Step4Goals } from '@/components/onboarding/Step4Goals'
 import { Step5Plaid, type LinkedAccount } from '@/components/onboarding/Step5Plaid'
 import { Step6Reveal } from '@/components/onboarding/Step6Reveal'
 import { DashboardPreview } from '@/components/onboarding/DashboardPreview'
+import { WelcomeIntro } from '@/components/onboarding/WelcomeIntro'
 
 type Phase = 'welcome' | 'steps' | 'preview' | 'reveal'
 
@@ -69,16 +70,20 @@ export default function OnboardingPage() {
   const [justCompleted, setJustCompleted]   = useState<number | null>(null)
   const [busy, setBusy]                     = useState(false)
   const [error, setError]                   = useState<string | null>(null)
-  const [animPhase, setAnimPhase]           = useState(0)
 
-  // Welcome reveal sequence — same timing as the original page
+  // Wait until we have checked localStorage before choosing between the
+  // cinematic intro and jumping straight to Step 1. Prevents a flash of the
+  // intro for returning users.
+  const [introChecked, setIntroChecked] = useState(false)
   useEffect(() => {
-    const t1 = setTimeout(() => setAnimPhase(1), 300)
-    const t2 = setTimeout(() => setAnimPhase(2), 2000)
-    const t3 = setTimeout(() => setAnimPhase(3), 3400)
-    const t4 = setTimeout(() => setAnimPhase(4), 4800)
-    const advance = setTimeout(() => setPhase('steps'), 6000)
-    return () => { [t1, t2, t3, t4, advance].forEach(clearTimeout) }
+    try {
+      if (window.localStorage.getItem('illumin_onboarding_intro_seen') === 'true') {
+        setPhase('steps')
+      }
+    } catch {
+      // ignore — fall through to intro
+    }
+    setIntroChecked(true)
   }, [])
 
   // Resume — load any existing profile and jump to the first step that still
@@ -281,8 +286,14 @@ export default function OnboardingPage() {
   }
 
   // ── Render ───────────────────────────────────────────────────────────────
+  if (!introChecked) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-bg)' }} />
+    )
+  }
+
   if (phase === 'welcome') {
-    return <WelcomeSplash animPhase={animPhase} onSkip={() => setPhase('steps')} />
+    return <WelcomeIntro onStart={() => setPhase('steps')} />
   }
 
   if (phase === 'preview') {
@@ -553,125 +564,3 @@ export default function OnboardingPage() {
   )
 }
 
-function WelcomeSplash({ animPhase, onSkip }: { animPhase: number; onSkip: () => void }) {
-  const showWelcome = animPhase >= 1
-  const showDivider = animPhase >= 2
-  const showLine3   = animPhase >= 3
-  const showScroll  = animPhase >= 4
-
-  return (
-    <div
-      style={{
-        height: '100vh',
-        backgroundColor: 'var(--color-bg)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '40px',
-        overflow: 'hidden',
-        position: 'relative',
-      }}
-    >
-      <div
-        style={{
-          position: 'absolute',
-          top: '40px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          fontFamily: 'var(--font-display)',
-          fontSize: '13px',
-          fontWeight: 400,
-          color: 'var(--color-gold)',
-          letterSpacing: '0.32em',
-          textTransform: 'uppercase',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        Illumin
-      </div>
-
-      <div style={{ width: '100%', maxWidth: '560px', textAlign: 'center' }}>
-        <h1
-          className="onboarding-headline"
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontWeight: 300,
-            color: 'var(--color-text)',
-            lineHeight: 1.15,
-            letterSpacing: '-0.01em',
-            margin: 0,
-            opacity: showWelcome ? 1 : 0,
-            transform: showWelcome ? 'translateY(0)' : 'translateY(16px)',
-            transition: 'opacity 0.8s ease, transform 0.8s ease',
-          }}
-        >
-          Welcome to <span style={{ color: 'var(--color-gold)' }}>Illumin</span>
-        </h1>
-
-        <div
-          style={{
-            height: '1px',
-            backgroundColor: 'var(--color-gold)',
-            marginTop: '32px',
-            transformOrigin: 'center',
-            transform: showDivider ? 'scaleX(1)' : 'scaleX(0)',
-            transition: 'transform 0.7s ease',
-          }}
-        />
-
-        <p
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '13px',
-            color: 'var(--color-text-muted)',
-            lineHeight: 1.75,
-            letterSpacing: '0.02em',
-            marginTop: '28px',
-            marginBottom: 0,
-            opacity: showLine3 ? 1 : 0,
-            transform: showLine3 ? 'translateY(0)' : 'translateY(20px)',
-            transition: 'opacity 0.65s ease, transform 0.65s ease',
-          }}
-        >
-          Six steps. Calibrated for your numbers. Skip anything you are not ready to share.
-        </p>
-      </div>
-
-      <button
-        type="button"
-        onClick={onSkip}
-        style={{
-          position: 'absolute',
-          bottom: '40px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '6px',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          opacity: showScroll ? 1 : 0,
-          transition: 'opacity 0.4s ease',
-        }}
-      >
-        <span
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '9px',
-            letterSpacing: '0.16em',
-            textTransform: 'uppercase',
-            color: 'var(--color-text-muted)',
-          }}
-        >
-          Begin
-        </span>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-text-muted)' }}>
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </button>
-    </div>
-  )
-}
