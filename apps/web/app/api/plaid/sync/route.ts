@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
-import { syncAccountBalances, getTransactions, getHoldings } from '@/lib/plaid'
+import { syncAccountBalances, getTransactions, getHoldings, getLiabilitiesApr } from '@/lib/plaid'
 import { prisma } from '@/lib/prisma'
 import { categorizeTransaction } from '@/lib/categories'
 
@@ -147,6 +147,22 @@ export async function POST(request: NextRequest) {
           }
         } catch (txErr) {
           console.error('[Plaid sync] transaction fetch failed:', txErr)
+        }
+
+        // Refresh APR from /liabilities/get. Silently no-ops when the item
+        // has no liability accounts.
+        try {
+          const aprInfo = await getLiabilitiesApr(accessToken)
+          for (const info of aprInfo) {
+            const match = accountGroup.find(a => a.plaidAccountId === info.plaidAccountId)
+            if (!match) continue
+            await prisma.account.update({
+              where: { id: match.id },
+              data: { apr: info.apr },
+            })
+          }
+        } catch (aprErr) {
+          console.log('[Plaid sync] liabilities APR step failed:', aprErr)
         }
 
         // Sync holdings

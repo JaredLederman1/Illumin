@@ -6,6 +6,8 @@ import { normalizeCategory } from '@/lib/categories'
 import {
   classifyHoldingKind,
   detectDashboardState,
+  computeHeroMetrics,
+  computePriorityMetrics,
   DashboardStateInput,
   StateAccount,
   StateHolding,
@@ -72,7 +74,8 @@ export async function GET() {
       classification: (a.classification === 'liability' ? 'liability' : 'asset'),
       accountType: a.accountType,
       balance: a.balance,
-      apr: null,
+      apr: typeof a.apr === 'number' ? a.apr : null,
+      institutionName: a.institutionName ?? null,
     }))
 
     // ── Holdings ──────────────────────────────────────────────────────────
@@ -113,36 +116,53 @@ export async function GET() {
       (holdingsByKind.get('ira') ?? 0) +
       (holdingsByKind.get('roth_ira') ?? 0)
 
+    const traditionalIraBalance = holdingsByKind.get('ira') ?? 0
     const iraBalance =
-      (holdingsByKind.get('ira') ?? 0) + (holdingsByKind.get('roth_ira') ?? 0)
+      traditionalIraBalance + (holdingsByKind.get('roth_ira') ?? 0)
     const hsaBalance = holdingsByKind.get('hsa') ?? 0
+    const employerRetirementBalance = holdingsByKind.get('401k') ?? 0
 
     // ── Transactions summary (trailing ~3 months → averaged per month) ───
     const MONTHS_WINDOW = 3
     let income = 0
     let expenseTotal = 0
-    let retirementContrib = 0
+    let retirementContribFromCanonical = 0
+    let retirementContribFromFallback = 0
     const byCategory = new Map<string, number>()
 
     for (const tx of transactions) {
       const isLiability = tx.account.classification === 'liability'
+      const cat = normalizeCategory(tx.category)
+
+      // Retirement Contributions show up as outflows from checking (negative
+      // amounts) or inflows to a retirement account (positive amounts). They
+      // should not count toward income or expenses — they are transfers.
+      if (cat === 'Retirement Contribution') {
+        retirementContribFromCanonical += Math.abs(tx.amount)
+        continue
+      }
+
       if (tx.amount > 0 && !isLiability) {
         income += tx.amount
       } else if (tx.amount < 0) {
         const spent = Math.abs(tx.amount)
         expenseTotal += spent
-        const cat = normalizeCategory(tx.category)
         byCategory.set(cat, (byCategory.get(cat) ?? 0) + spent)
 
-        // Detect retirement contributions: either Plaid-tagged category hints
-        // at retirement or the merchant name matches common broker patterns.
+        // Fallback: legacy substring / merchant match. Only used if the
+        // canonical category path produced nothing by the end of the loop.
         const rawCat = (tx.category ?? '').toLowerCase()
         const retirementTagged = RETIREMENT_CATEGORY_HINTS.some(h => rawCat.includes(h))
         if (retirementTagged || isRetirementMerchant(tx.merchantName)) {
-          retirementContrib += spent
+          retirementContribFromFallback += spent
         }
       }
     }
+
+    const retirementContrib =
+      retirementContribFromCanonical > 0
+        ? retirementContribFromCanonical
+        : retirementContribFromFallback
 
     const monthlyIncome = income / MONTHS_WINDOW
     const monthlyRetirementContributions = retirementContrib / MONTHS_WINDOW
@@ -157,13 +177,20 @@ export async function GET() {
       .reduce((s, [, amt]) => s + amt, 0)
     const monthlyDiscretionary = discretionarySpend / MONTHS_WINDOW
 
-    const top3DiscretionaryTotal = Array.from(byCategory.entries())
+    const top3DiscretionaryEntries = Array.from(byCategory.entries())
       .filter(([cat]) => DISCRETIONARY_CATEGORIES.has(cat))
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3)
-      .reduce((s, [, amt]) => s + amt, 0)
+    const top3DiscretionaryTotal = top3DiscretionaryEntries.reduce(
+      (s, [, amt]) => s + amt,
+      0,
+    )
     const top3DiscretionaryShare =
       variableSpend > 0 ? top3DiscretionaryTotal / variableSpend : 0
+    const topDiscretionaryCategories = top3DiscretionaryEntries.map(([category, amount]) => ({
+      category,
+      amount: Math.round(amount / MONTHS_WINDOW),
+    }))
 
     const monthlyExpenses = expenseTotal / MONTHS_WINDOW
     const emergencyFundMonths =
@@ -181,6 +208,7 @@ export async function GET() {
       monthlyVariableSpend,
       top3DiscretionaryShare,
       monthlyRetirementContributions,
+      retirementContributionsFromCategory: retirementContribFromCanonical > 0,
     }
 
     const totals: StateTotals = {
@@ -188,7 +216,9 @@ export async function GET() {
       totalDebt,
       retirementBalance,
       iraBalance,
+      traditionalIraBalance,
       hsaBalance,
+      employerRetirementBalance,
       emergencyFundMonths,
       equityAllocationPct,
     }
@@ -226,6 +256,23 @@ export async function GET() {
       }
     }
 
+    const heroMetrics = computeHeroMetrics(input)
+    const priorityMetricsFull = computePriorityMetrics(
+      input,
+      topDiscretionaryCategories,
+      detected.state,
+    )
+    // Only expose the rich matchDetail in states where the MatchGapCard or a
+    // related match widget is rendered. Elsewhere drop it to keep the payload
+    // lean and avoid tempting callers to re-use match data out of context.
+    const MATCH_DETAIL_STATES = new Set(['MATCH_GAP', 'OPTIMIZING', 'FOUNDATION'])
+    const priorityMetrics = {
+      ...priorityMetricsFull,
+      matchDetail: MATCH_DETAIL_STATES.has(detected.state)
+        ? priorityMetricsFull.matchDetail
+        : null,
+    }
+
     console.log('[dashboard:state]', {
       userId: dbUser.id,
       state: detected.state,
@@ -235,6 +282,8 @@ export async function GET() {
     return NextResponse.json({
       state: detected.state,
       rationale: detected.rationale,
+      heroMetrics,
+      priorityMetrics,
       computedAt: new Date().toISOString(),
     })
   } catch (error) {

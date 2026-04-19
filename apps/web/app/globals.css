@@ -162,6 +162,12 @@ input[type="number"] {
   .dashboard-main {
     padding: 16px 16px 130px 16px;
   }
+
+  .dashboard-priority-row,
+  .dashboard-context-row,
+  .dashboard-reference-row {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 ::-webkit-scrollbar {

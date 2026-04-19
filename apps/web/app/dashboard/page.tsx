@@ -9,7 +9,6 @@ import NetWorthChartPlaceholder from '@/components/ui/NetWorthChartPlaceholder'
 import DonutChart from '@/components/ui/DonutChart'
 import BarChart from '@/components/ui/BarChart'
 import TransactionRow from '@/components/ui/TransactionRow'
-import DataTooltip from '@/components/ui/DataTooltip'
 import MobileCard from '@/components/ui/MobileCard'
 import MobileMetricCard from '@/components/ui/MobileMetricCard'
 import { colors, fonts, spacing, mobileLabelText } from '@/lib/theme'
@@ -17,6 +16,7 @@ import { useIsMobile } from '@/hooks/useIsMobile'
 import { useDashboard } from '@/lib/dashboardData'
 import { detectRecurringMerchants } from '@/lib/data'
 import HeroRow from '@/components/dashboard/HeroRow'
+import DashboardGrid from '@/components/dashboard/DashboardGrid'
 import { useDashboardHeroState } from '@/components/dashboard/useDashboardHeroState'
 
 interface HistoryPoint { date: string; netWorth: number }
@@ -29,29 +29,13 @@ interface NWHistory {
   hasLiabilityAccount: boolean
 }
 
-const card = {
-  backgroundColor: '#0F1318',
-  border: '1px solid rgba(184,145,58,0.15)',
-  borderRadius: '2px',
-  padding: '28px',
-} as const
-
-const label = {
-  fontFamily: 'var(--font-mono)',
-  fontSize: '12px',
-  color: '#6B7A8D',
-  textTransform: 'uppercase' as const,
-  letterSpacing: '0.16em',
-  marginBottom: '22px',
-} as const
-
 function fmtChange(n: number): string {
   const abs = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Math.abs(n))
   return n >= 0 ? `+${abs}` : `-${abs}`
 }
 
 function DashboardDesktop() {
-  const { loading, netWorth, transactions, accounts, monthlyData, spendingByCategory, authToken } = useDashboard()
+  const { loading, netWorth, accounts, authToken } = useDashboard()
   const hero = useDashboardHeroState()
   const [nwHistory, setNwHistory] = useState<NWHistory | null>(null)
 
@@ -63,28 +47,10 @@ function DashboardDesktop() {
       .catch(() => {})
   }, [authToken])
 
-  const accountMap = useMemo(() =>
-    Object.fromEntries(accounts.map(a => [a.id, a])),
-  [accounts])
-
-  const recurringMerchants = useMemo(() => detectRecurringMerchants(transactions), [transactions])
-
   const hasData = netWorth !== null && (netWorth.totalAssets > 0 || netWorth.totalLiabilities > 0)
 
-  const hasFullBalanceSheet =
-    !!nwHistory &&
-    nwHistory.history.length >= 2 &&
-    nwHistory.hasAssetAccount === true &&
-    nwHistory.hasLiabilityAccount === true
-
-  // Assets-only with enough history is still a coherent net worth view, so
-  // the chart renders there too. The placeholder is only for liability-only.
-  const showNetWorthChart =
-    hasFullBalanceSheet ||
-    (!!nwHistory && nwHistory.history.length >= 2 && nwHistory.hasAssetAccount && !nwHistory.hasLiabilityAccount)
-
-  // The HeroLiabilityOnly already tells the user to link a bank/investment
-  // account, so suppress the legacy in-grid placeholder to avoid duplication.
+  // HeroLiabilityOnly already tells the user to link a bank/investment
+  // account, so suppress the legacy in-grid placeholder for that state.
   const showLiabilityOnlyPlaceholder =
     !!nwHistory && nwHistory.hasLiabilityAccount && !nwHistory.hasAssetAccount &&
     hero.state !== 'LIABILITY_ONLY'
@@ -94,7 +60,7 @@ function DashboardDesktop() {
     : (
       <HeroRow
         state={hero.state}
-        metrics={hero.metrics}
+        metrics={hero.heroMetrics}
         loading={hero.loading || loading}
       />
     )
@@ -165,7 +131,7 @@ function DashboardDesktop() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {heroBlock}
       <NetWorthCard
         current={netWorth.current}
@@ -174,11 +140,6 @@ function DashboardDesktop() {
         totalLiabilities={netWorth.totalLiabilities}
         accounts={accounts}
       />
-
-      <div style={{
-        height: '1px',
-        background: 'linear-gradient(90deg, transparent, rgba(184,145,58,0.35) 25%, rgba(184,145,58,0.35) 75%, transparent)',
-      }} />
 
       {showLiabilityOnlyPlaceholder && (
         <motion.div
@@ -190,123 +151,11 @@ function DashboardDesktop() {
         </motion.div>
       )}
 
-      {showNetWorthChart && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: 'easeOut', delay: 0.1 }}
-          style={{ backgroundColor: '#0F1318', border: '1px solid rgba(184,145,58,0.15)', borderRadius: '2px', padding: '28px' }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
-            <div>
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#6B7A8D', textTransform: 'uppercase', letterSpacing: '0.16em', marginBottom: '4px' }}>
-                Net Worth Over Time
-              </p>
-              <div style={{ display: 'flex', gap: '24px', marginTop: '12px' }}>
-                <div>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '4px' }}>
-                    30d Change
-                  </p>
-                  <p style={{
-                    fontFamily: 'var(--font-serif)',
-                    fontSize: '16px',
-                    color: nwHistory.change30d >= 0 ? 'var(--color-positive)' : 'var(--color-negative)',
-                  }}>
-                    {fmtChange(nwHistory.change30d)}
-                  </p>
-                </div>
-                <div>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '4px' }}>
-                    All Time
-                  </p>
-                  <p style={{
-                    fontFamily: 'var(--font-serif)',
-                    fontSize: '16px',
-                    color: nwHistory.changeAllTime >= 0 ? 'var(--color-positive)' : 'var(--color-negative)',
-                  }}>
-                    {fmtChange(nwHistory.changeAllTime)}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-          <NetWorthChart data={nwHistory.history} height={220} />
-        </motion.div>
-      )}
-
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: 'easeOut', delay: 0.08 }}
-        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}
-      >
-        <div style={card}>
-          <p style={label}>Spending by Category</p>
-          {spendingByCategory.length > 0 && (() => {
-            const totalSpend = spendingByCategory.reduce((s, c) => s + c.amount, 0)
-            return (
-              <p style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '13px',
-                color: 'var(--color-text-muted)',
-                marginBottom: '16px',
-                marginTop: '-10px',
-              }}>
-                Total this month:{' '}
-                <DataTooltip
-                  value={totalSpend}
-                  title="Monthly Spending"
-                  computationNote="Sum of all categorized expenses in the last 30 days"
-                  sources={spendingByCategory.map(c => ({
-                    label: c.category,
-                    value: c.amount,
-                    type: 'computed' as const,
-                  }))}
-                  style={{ color: 'var(--color-text)', fontFamily: 'var(--font-serif)', fontSize: '15px' }}
-                />
-              </p>
-            )
-          })()}
-          <DonutChart data={spendingByCategory} />
-        </div>
-        <div style={card}>
-          <p style={label}>Income vs Expenses, Last 6 Months</p>
-          <BarChart data={monthlyData} />
-        </div>
-      </motion.div>
-
-      {transactions.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: 'easeOut', delay: 0.16 }}
-          style={card}
-        >
-          <p style={label}>Recent Transactions</p>
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={{ visible: { transition: { staggerChildren: 0.03 } } }}
-          >
-            {transactions.slice(0, 10).map((tx) => {
-              const acct = accountMap[tx.accountId]
-              return (
-                <TransactionRow
-                  key={tx.id}
-                  id={tx.id}
-                  merchantName={tx.merchantName}
-                  amount={tx.amount}
-                  category={tx.category}
-                  date={tx.date}
-                  pending={tx.pending}
-                  accountName={acct?.institutionName ?? null}
-                  last4={acct?.last4 ?? null}
-                  recurring={tx.merchantName ? recurringMerchants.has(tx.merchantName) : false}
-                />
-              )
-            })}
-          </motion.div>
-        </motion.div>
+      {hero.state && !hero.failed && (
+        <DashboardGrid
+          state={hero.state}
+          priorityMetrics={hero.priorityMetrics}
+        />
       )}
     </div>
   )
@@ -357,7 +206,7 @@ function DashboardMobile() {
     : (
       <HeroRow
         state={hero.state}
-        metrics={hero.metrics}
+        metrics={hero.heroMetrics}
         loading={hero.loading || loading}
       />
     )

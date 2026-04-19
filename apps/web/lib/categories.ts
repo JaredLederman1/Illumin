@@ -26,6 +26,7 @@ export const CATEGORIES = [
   'Taxes',
   'Debt Payment',
   'Savings',
+  'Retirement Contribution',
   'Fees',
   'Other',
 ] as const
@@ -213,6 +214,23 @@ const SAVINGS_ACCOUNT_TYPES = new Set([
   'pension', 'retirement', 'sep ira', 'simple ira', 'hsa',
 ])
 
+const RETIREMENT_ACCOUNT_TYPES = new Set([
+  '401k', 'roth 401k', '403b', 'ira', 'roth', 'roth ira',
+  'pension', 'retirement', 'sep ira', 'simple ira', 'hsa',
+])
+
+const BROKER_CONTRIBUTION_MERCHANTS = [
+  'fidelity', 'vanguard', 'schwab', 'empower', 'principal',
+  't. rowe price', 't rowe price', 'trowe', 'tiaa', 'voya',
+  'merrill', 'john hancock', 'transamerica',
+]
+
+function isBrokerContribution(merchant: string | null): boolean {
+  if (!merchant) return false
+  const m = merchant.toLowerCase()
+  return BROKER_CONTRIBUTION_MERCHANTS.some(b => m.includes(b))
+}
+
 const LIABILITY_ACCOUNT_TYPES = new Set([
   'credit', 'credit card', 'loan', 'mortgage', 'student',
   'auto', 'home equity',
@@ -247,6 +265,25 @@ export function categorizeTransaction(opts: {
   const detailed = (detailedCategory ?? '').toLowerCase().replace(/_/g, ' ')
 
   let result: Category = base
+
+  // Retirement contributions take precedence over Savings when the
+  // destination account is a retirement vehicle, or when the merchant is a
+  // known broker/recordkeeper and Plaid detailed is a transfer. This covers
+  // employer payroll 401k deductions that land on a retirement account as
+  // positive, and out-of-band ACH contributions from checking to Fidelity.
+  if (
+    amount > 0 &&
+    RETIREMENT_ACCOUNT_TYPES.has(acctType)
+  ) {
+    return 'Retirement Contribution'
+  }
+  if (
+    amount < 0 &&
+    (detailed.includes('transfer out') || detailed.includes('account transfer')) &&
+    isBrokerContribution(merchantName ?? null)
+  ) {
+    return 'Retirement Contribution'
+  }
 
   // If the base category is Other (the only ambiguous base remaining after
   // Transfer was retired from the canonical list), use account context to

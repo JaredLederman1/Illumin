@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
-import { exchangePublicToken, getAccounts, getTransactions, getHoldings } from '@/lib/plaid'
+import { exchangePublicToken, getAccounts, getTransactions, getHoldings, getLiabilitiesApr } from '@/lib/plaid'
 import { prisma } from '@/lib/prisma'
 import { categorizeTransaction } from '@/lib/categories'
 
@@ -144,6 +144,23 @@ export async function POST(request: NextRequest) {
     console.log(`[Plaid exchange] saved ${savedCount}/${transactions.length} transactions`)
   } catch (txErr) {
     console.error('[Plaid exchange] transaction fetch failed:', txErr)
+  }
+
+  // Pull APR from /liabilities/get for credit cards, student loans, and
+  // mortgages. No-op for checking-only items. Any account without a liability
+  // row simply keeps apr = null and the detector falls back to 0.24.
+  try {
+    const aprInfo = await getLiabilitiesApr(accessToken)
+    for (const info of aprInfo) {
+      const match = createdAccounts.find(a => a.plaidAccountId === info.plaidAccountId)
+      if (!match) continue
+      await prisma.account.update({
+        where: { id: match.id },
+        data: { apr: info.apr },
+      })
+    }
+  } catch (aprErr) {
+    console.log('[Plaid exchange] liabilities APR step failed:', aprErr)
   }
 
   // Sync holdings for investment accounts

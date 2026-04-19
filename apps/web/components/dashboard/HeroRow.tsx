@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import type { DashboardState } from '@/lib/dashboardState'
+import type { DashboardState, HeroMetrics } from '@/lib/dashboardState'
 import HeroPreLink from './hero/HeroPreLink'
 import HeroLiabilityOnly from './hero/HeroLiabilityOnly'
 import HeroDebtDominant from './hero/HeroDebtDominant'
@@ -10,20 +10,6 @@ import HeroMatchGap from './hero/HeroMatchGap'
 import HeroOptimizing from './hero/HeroOptimizing'
 import HeroSpendingLeak from './hero/HeroSpendingLeak'
 import HeroOptimized from './hero/HeroOptimized'
-
-/**
- * Per-hero data bundle. HeroRow consumers precompute these numbers from the
- * dashboard context so the hero components stay presentational.
- */
-export interface HeroMetrics {
-  annualInterestCost: number
-  emergencyFundMonths: number
-  emergencyFundTargetMonths: number
-  annualMatchGap: number
-  remainingTaxAdvantagedCapacity: number
-  top3DiscretionaryShare: number
-  netWorth: number
-}
 
 interface HeroRowProps {
   state: DashboardState | null
@@ -71,31 +57,33 @@ export default function HeroRow({ state, metrics, loading }: HeroRowProps) {
       return <HeroLiabilityOnly />
     case 'DEBT_DOMINANT':
       return (
-        <HeroDebtDominant annualInterestCost={metrics.annualInterestCost} />
+        <HeroDebtDominant
+          annualInterestCost={metrics.annualInterestCost ?? 0}
+        />
       )
     case 'FOUNDATION':
       return (
         <HeroFoundation
-          emergencyFundMonths={metrics.emergencyFundMonths}
-          emergencyFundTargetMonths={metrics.emergencyFundTargetMonths}
+          emergencyFundMonths={metrics.emergencyFundMonths ?? 0}
+          emergencyFundTargetMonths={metrics.emergencyFundTargetMonths ?? 6}
         />
       )
     case 'MATCH_GAP':
-      return <HeroMatchGap annualMatchGap={metrics.annualMatchGap} />
+      return <HeroMatchGap annualMatchGap={metrics.matchGapAnnual ?? 0} />
     case 'OPTIMIZING':
       return (
         <HeroOptimizing
-          remainingTaxAdvantagedCapacity={metrics.remainingTaxAdvantagedCapacity}
+          remainingTaxAdvantagedCapacity={metrics.remainingTaxAdvantagedCapacity ?? 0}
         />
       )
     case 'SPENDING_LEAK':
       return (
         <HeroSpendingLeak
-          top3DiscretionaryShare={metrics.top3DiscretionaryShare}
+          top3DiscretionaryShare={metrics.discretionaryConcentrationPct ?? 0}
         />
       )
     case 'OPTIMIZED':
-      return <HeroOptimized netWorth={metrics.netWorth} />
+      return <HeroOptimized netWorth={metrics.netWorth ?? 0} />
     default:
       return null
   }

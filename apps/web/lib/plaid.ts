@@ -122,3 +122,60 @@ export async function getInvestmentTransactions(
   })
   return response.data
 }
+
+export interface AccountAprInfo {
+  plaidAccountId: string
+  apr: number | null
+}
+
+/**
+ * Call Plaid /liabilities/get and return a map of account_id → APR as a
+ * decimal (0.2399 for 23.99%). Returns [] if the item does not support
+ * liabilities (e.g., checking-only items). For credit cards, prefers the
+ * purchase APR over promotional/balance-transfer APRs. For student loans,
+ * returns interest_rate_percentage / 100.
+ */
+export async function getLiabilitiesApr(accessToken: string): Promise<AccountAprInfo[]> {
+  try {
+    const response = await plaidClient.liabilitiesGet({ access_token: accessToken })
+    const liabilities = response.data.liabilities
+    const results: AccountAprInfo[] = []
+
+    for (const card of liabilities.credit ?? []) {
+      if (!card.account_id) continue
+      const aprs = card.aprs ?? []
+      const purchase = aprs.find(a => a.apr_type === 'purchase_apr')
+      const fallback = aprs.find(a => typeof a.apr_percentage === 'number')
+      const pct = purchase?.apr_percentage ?? fallback?.apr_percentage ?? null
+      results.push({
+        plaidAccountId: card.account_id,
+        apr: typeof pct === 'number' ? pct / 100 : null,
+      })
+    }
+
+    for (const loan of liabilities.student ?? []) {
+      if (!loan.account_id) continue
+      const rate = loan.interest_rate_percentage
+      results.push({
+        plaidAccountId: loan.account_id,
+        apr: typeof rate === 'number' ? rate / 100 : null,
+      })
+    }
+
+    for (const loan of liabilities.mortgage ?? []) {
+      if (!loan.account_id) continue
+      const rate = loan.interest_rate?.percentage
+      results.push({
+        plaidAccountId: loan.account_id,
+        apr: typeof rate === 'number' ? rate / 100 : null,
+      })
+    }
+
+    return results
+  } catch (err) {
+    // Plaid returns PRODUCT_NOT_READY or NO_LIABILITY_ACCOUNTS for items that
+    // have no liabilities. Swallow — the caller just gets no APR updates.
+    console.log('[plaid] liabilities/get skipped:', err instanceof Error ? err.message : err)
+    return []
+  }
+}

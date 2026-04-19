@@ -59,6 +59,7 @@ model Account {
   balance         Float         @default(0)
   last4           String?
   classification  String        @default("asset")
+  apr             Float?
   plaidAccountId  String?       @unique @map("plaid_account_id")
   plaidAccessToken String?       @map("plaid_access_token")
   plaidItemId     String?       @map("plaid_item_id")
