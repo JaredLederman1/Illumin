@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-import { DEFAULTS, STEP_LABELS, secondaryBtn } from '@/components/onboarding/shared'
+import { DEFAULTS, secondaryBtn } from '@/components/onboarding/shared'
 import type { OnboardingData } from '@/components/onboarding/shared'
 import { useIsMobile } from '@/components/onboarding/useIsMobile'
 import { ProgressBar } from '@/components/onboarding/ProgressBar'
@@ -174,6 +174,12 @@ export default function OnboardingPage() {
     setStep(next)
   }, [step])
 
+  const handleBack = useCallback(() => {
+    if (step <= 0) return
+    setError(null)
+    setStep(step - 1)
+  }, [step])
+
   // Advance handler for steps 0–3 (pure "Continue"). Step 4 uses the Plaid-
   // specific handlers; step 5 triggers the preview then reveal.
   const handleContinue = useCallback(async () => {
@@ -278,15 +284,6 @@ export default function OnboardingPage() {
     exit:    { opacity: 0, y: -8 },
   }
 
-  // ── Between-step loss-aversion banner ────────────────────────────────────
-  const stepHeaderCopy: Record<number, string | null> = {
-    0: null,
-    1: 'The more you share, the more precise your opportunity cost and recommendations get.',
-    2: 'The more you share, the more precise your opportunity cost and recommendations get.',
-    3: 'You are 2 steps from seeing exactly how much money you are leaving on the table.',
-    4: 'You are 1 step from seeing exactly how much money you are leaving on the table.',
-  }
-
   // ── Render ───────────────────────────────────────────────────────────────
   if (phase === 'welcome') {
     return <WelcomeSplash animPhase={animPhase} onSkip={() => setPhase('steps')} />
@@ -376,6 +373,31 @@ export default function OnboardingPage() {
           flexShrink: 0,
         }}
       >
+        <button
+          type="button"
+          onClick={handleBack}
+          aria-label="Back"
+          disabled={step <= 0 || busy}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '32px',
+            height: '32px',
+            background: 'transparent',
+            border: 'none',
+            padding: 0,
+            cursor: step <= 0 || busy ? 'default' : 'pointer',
+            opacity: step <= 0 ? 0 : 1,
+            visibility: step <= 0 ? 'hidden' : 'visible',
+            color: 'var(--color-text-muted)',
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+        </button>
         <div
           style={{
             fontFamily: 'var(--font-display)',
@@ -388,40 +410,8 @@ export default function OnboardingPage() {
         >
           Illumin
         </div>
-        {isMobile && (
-          <span
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '10.5px',
-              color: 'var(--color-text-muted)',
-              letterSpacing: '0.14em',
-            }}
-          >
-            {STEP_LABELS[step]}
-          </span>
-        )}
+        <div style={{ width: '32px' }} />
       </div>
-
-      {stepHeaderCopy[step] && (
-        <div
-          style={{
-            padding: isMobile ? '0 20px 12px' : '0 40px 16px',
-          }}
-        >
-          <p
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '11.5px',
-              color: step === 3 || step === 4 ? 'var(--color-gold)' : 'var(--color-text-muted)',
-              letterSpacing: '0.04em',
-              lineHeight: 1.6,
-              margin: 0,
-            }}
-          >
-            {stepHeaderCopy[step]}
-          </p>
-        </div>
-      )}
 
       <div
         className="onboarding-step-padding"

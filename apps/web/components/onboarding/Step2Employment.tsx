@@ -1,7 +1,7 @@
 'use client'
 
 import type { OnboardingData } from './shared'
-import { heading, body, label, helperText, precisionCta } from './shared'
+import { heading, label } from './shared'
 import { DefaultedInput } from './DefaultedInput'
 
 interface Props {
@@ -9,17 +9,10 @@ interface Props {
   onChange: (patch: Partial<OnboardingData>) => void
 }
 
-const UNLOCK_COPY: Record<'jobTitle' | 'employer' | 'employerStartDate', string> = {
-  jobTitle:          'Add your job title to unlock career-trajectory benchmarks.',
-  employer:          'Add your employer to unlock benefits analysis.',
-  employerStartDate: 'Add your start date to calculate vesting schedules.',
-}
-
 export function Step2Employment({ data, onChange }: Props) {
   return (
     <div>
       <h1 style={heading}>Your current employment</h1>
-      <p style={body}>All optional. {precisionCta}</p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginTop: '36px' }}>
         <div>
@@ -30,7 +23,6 @@ export function Step2Employment({ data, onChange }: Props) {
             placeholder="Software Engineer"
             ariaLabel="Job title"
           />
-          <p style={helperText}>{UNLOCK_COPY.jobTitle}</p>
         </div>
 
         <div>
@@ -41,18 +33,16 @@ export function Step2Employment({ data, onChange }: Props) {
             placeholder="Company name"
             ariaLabel="Employer"
           />
-          <p style={helperText}>{UNLOCK_COPY.employer}</p>
         </div>
 
         <div>
-          <label style={label}>Start date with current employer</label>
+          <label style={label}>Start date</label>
           <DefaultedInput
             value={data.employerStartDate}
             onChange={v => onChange({ employerStartDate: v })}
             type="date"
             ariaLabel="Employer start date"
           />
-          <p style={helperText}>{UNLOCK_COPY.employerStartDate}</p>
         </div>
       </div>
     </div>

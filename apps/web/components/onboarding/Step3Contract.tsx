@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import type { OnboardingData } from './shared'
-import { heading, body, helperText, continueBtn, precisionCta } from './shared'
+import { heading, body, continueBtn } from './shared'
 import { supabase } from '@/lib/supabase'
 
 interface Props {
@@ -67,10 +67,7 @@ export function Step3Contract({ data, onChange, onAdvance }: Props) {
   return (
     <div>
       <h1 style={heading}>Upload your contract</h1>
-      <p style={body}>
-        Upload your offer letter or benefits summary and we will fill out the
-        next 12 questions for you.
-      </p>
+      <p style={body}>Offer letter or benefits summary.</p>
 
       <input
         ref={inputRef}
@@ -190,9 +187,7 @@ export function Step3Contract({ data, onChange, onAdvance }: Props) {
         )}
       </div>
 
-      <p style={{ ...helperText, marginTop: '24px' }}>{precisionCta}</p>
-
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '40px' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '32px' }}>
         <button
           type="button"
           onClick={onAdvance}

@@ -128,24 +128,7 @@ export function Step5Plaid({
   return (
     <div>
       <h1 style={heading}>Connect your first account</h1>
-      <p style={body}>
-        Illumin needs at least one checking, savings, or investment account to
-        show your full financial picture. Credit cards alone only tell half the
-        story.
-      </p>
-
-      <p
-        style={{
-          marginTop: '18px',
-          fontFamily: 'var(--font-mono)',
-          fontSize: '12px',
-          color: 'var(--color-gold)',
-          letterSpacing: '0.04em',
-          lineHeight: 1.6,
-        }}
-      >
-        You are 1 step from seeing exactly how much money you are leaving on the table.
-      </p>
+      <p style={body}>Link a checking, savings, or investment account.</p>
 
       {assetRequired && (
         <div
@@ -277,23 +260,8 @@ export function Step5Plaid({
               ? 'Finishing…'
               : assetRequired
                 ? 'Link another account'
-                : 'See my opportunity cost'}
+                : 'Continue'}
         </button>
-
-        <p
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '10.5px',
-            color: 'var(--color-text-muted)',
-            letterSpacing: '0.04em',
-            lineHeight: 1.6,
-            textAlign: 'center',
-            maxWidth: '380px',
-          }}
-        >
-          Without linked accounts, Illumin cannot calculate your opportunity cost
-          or health score. You can link anytime from your dashboard.
-        </p>
 
         <button
           type="button"

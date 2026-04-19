@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import type { OnboardingData } from './shared'
-import { heading, body, label, helperText, formatNumber } from './shared'
+import { heading, label, formatNumber } from './shared'
 import { LiveProjection } from './LiveProjection'
 import { DefaultedInput } from './DefaultedInput'
 
@@ -21,12 +21,12 @@ interface Props {
 type SubStep = 'age' | 'location' | 'income' | 'savings' | 'retirement'
 const ORDER: SubStep[] = ['age', 'location', 'income', 'savings', 'retirement']
 
-const FIELD_LABELS: Record<SubStep, { heading: string; sub: string }> = {
-  age:        { heading: 'How old are you?',                 sub: 'Your age determines how many compounding years remain.' },
-  location:   { heading: 'Where do you live?',               sub: 'City and state. Used for cost-of-living context.' },
-  income:     { heading: 'What is your annual salary?',      sub: 'Gross income before tax, including reliable bonus.' },
-  savings:    { heading: 'What share do you invest?',        sub: 'Include 401(k) contributions. Default is set at 20%.' },
-  retirement: { heading: 'Retirement target age',            sub: 'We will project your wealth trajectory to this year.' },
+const FIELD_HEADINGS: Record<SubStep, string> = {
+  age:        'How old are you?',
+  location:   'Where do you live?',
+  income:     'What is your annual salary?',
+  savings:    'What share do you invest?',
+  retirement: 'Retirement target age',
 }
 
 export function Step1Basics({ data, onChange, isMobile, onAdvance }: Props) {
@@ -151,7 +151,6 @@ export function Step1Basics({ data, onChange, isMobile, onAdvance }: Props) {
           {data.savingsRate}%
         </span>
       </div>
-      <p style={helperText}>National median: 5%. Recommended: 15 to 20%.</p>
     </div>
   )
 
@@ -196,7 +195,6 @@ export function Step1Basics({ data, onChange, isMobile, onAdvance }: Props) {
   }
 
   if (isMobile) {
-    const copy = FIELD_LABELS[subStep]
     return (
       <div>
         <div
@@ -219,8 +217,7 @@ export function Step1Basics({ data, onChange, isMobile, onAdvance }: Props) {
           />
         </div>
 
-        <h1 style={heading}>{copy.heading}</h1>
-        <p style={body}>{copy.sub}</p>
+        <h1 style={heading}>{FIELD_HEADINGS[subStep]}</h1>
 
         <div style={{ marginTop: '32px' }}>{fieldByKey[subStep]}</div>
 
@@ -264,7 +261,6 @@ export function Step1Basics({ data, onChange, isMobile, onAdvance }: Props) {
   return (
     <div>
       <h1 style={heading}>Tell us the basics</h1>
-      <p style={body}>A few numbers let us project your long-term wealth trajectory.</p>
 
       <div
         style={{

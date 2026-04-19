@@ -1,7 +1,7 @@
 'use client'
 
 import type { OnboardingData } from './shared'
-import { heading, body, label, helperText, precisionCta, formatNumber } from './shared'
+import { heading, label, helperText, formatNumber } from './shared'
 import { DefaultedInput } from './DefaultedInput'
 
 interface Props {
@@ -20,12 +20,6 @@ const RISK_LABELS: Record<number, string> = {
 const EMERGENCY_FUND_MAX = 24
 const EMERGENCY_FUND_RECOMMENDED = 6
 
-const UNLOCK_COPY = {
-  targetRetirementIncome:
-    'The yearly income you want to live on in retirement, before tax. Set a target to see your gap closing live.',
-  riskTolerance: 'Share your tolerance to get allocation recommendations.',
-}
-
 export function Step4Goals({ data, onChange }: Props) {
   const currentIncome = data.targetRetirementIncome ?? 0
   const incomeDisplay = currentIncome > 0 ? formatNumber(currentIncome) : ''
@@ -42,7 +36,6 @@ export function Step4Goals({ data, onChange }: Props) {
   return (
     <div>
       <h1 style={heading}>Your financial goals</h1>
-      <p style={body}>All optional. {precisionCta}</p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', marginTop: '36px' }}>
         {/* Target retirement income */}
@@ -57,7 +50,7 @@ export function Step4Goals({ data, onChange }: Props) {
             prefix="$"
             ariaLabel="Target retirement income"
           />
-          <p style={helperText}>{UNLOCK_COPY.targetRetirementIncome}</p>
+          <p style={helperText}>Yearly income you want in retirement, before tax.</p>
         </div>
 
         {/* Emergency fund */}
@@ -107,7 +100,6 @@ export function Step4Goals({ data, onChange }: Props) {
               {data.emergencyFundMonthsTarget} mo
             </span>
           </div>
-          <p style={helperText}>Recommended: {EMERGENCY_FUND_RECOMMENDED} months of expenses.</p>
         </div>
 
         {/* Risk tolerance */}
@@ -136,10 +128,9 @@ export function Step4Goals({ data, onChange }: Props) {
                 minWidth: '150px',
               }}
             >
-              {data.riskTolerance} · {RISK_LABELS[data.riskTolerance] ?? ''}
+              {RISK_LABELS[data.riskTolerance] ?? ''}
             </span>
           </div>
-          <p style={helperText}>{UNLOCK_COPY.riskTolerance}</p>
         </div>
       </div>
     </div>

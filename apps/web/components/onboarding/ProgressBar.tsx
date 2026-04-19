@@ -1,7 +1,7 @@
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
-import { STEP_LABELS, TOTAL_STEPS } from './shared'
+import { TOTAL_STEPS } from './shared'
 
 interface Props {
   currentStep: number
@@ -13,40 +13,6 @@ interface Props {
 export function ProgressBar({ currentStep, completedSteps, justCompleted, isMobile }: Props) {
   return (
     <div style={{ width: '100%' }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'baseline',
-          padding: isMobile ? '0 20px' : '0 40px',
-          marginBottom: '10px',
-        }}
-      >
-        <span
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '10.5px',
-            color: 'var(--color-text-muted)',
-            letterSpacing: '0.18em',
-            textTransform: 'uppercase',
-          }}
-        >
-          Step {currentStep + 1} of {TOTAL_STEPS}
-        </span>
-        {!isMobile && (
-          <span
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '10.5px',
-              color: 'var(--color-text)',
-              letterSpacing: '0.14em',
-            }}
-          >
-            {STEP_LABELS[currentStep]}
-          </span>
-        )}
-      </div>
-
       <div
         style={{
           display: 'flex',
