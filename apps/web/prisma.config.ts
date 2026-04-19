@@ -10,5 +10,9 @@ export default defineConfig({
   },
   datasource: {
     url: process.env["DATABASE_URL"],
-  },
+    // Prisma 7's runtime honors directUrl for migrations/introspection, but
+    // the @prisma/config Datasource type only declares { url, shadowDatabaseUrl }.
+    // Cast via `as any` so TypeScript accepts the known-good runtime field.
+    directUrl: process.env["DIRECT_URL"],
+  } as any,
 });
