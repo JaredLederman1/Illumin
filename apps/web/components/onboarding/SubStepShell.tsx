@@ -52,7 +52,12 @@ export function SubStepShell({
         display: 'flex',
         flexDirection: 'column',
         gap: isMobile ? '24px' : '36px',
-        alignItems: centered ? 'center' : 'stretch',
+        // Children always stretch to the full 620px form width so the input
+        // row keeps a constant shape regardless of typed content. When
+        // `centered`, the visual centering comes from textAlign on the form
+        // plus margin: auto on the block itself, not from shrinking children
+        // to their content box.
+        alignItems: 'stretch',
         textAlign: centered ? 'center' : 'left',
         marginLeft: centered ? 'auto' : undefined,
         marginRight: centered ? 'auto' : undefined,
@@ -78,7 +83,9 @@ export function SubStepShell({
           flexDirection: 'column',
           gap: '14px',
           width: '100%',
-          alignItems: centered ? 'center' : 'stretch',
+          // Stretch children to full width so the input box stays a fixed
+          // shape; the context paragraph gets textAlign via its own style.
+          alignItems: 'stretch',
         }}
       >
         {children}
