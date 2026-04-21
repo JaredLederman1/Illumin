@@ -387,7 +387,7 @@ export function WelcomeIntro({ onStart }: Props) {
           <div
             style={{
               position: 'absolute',
-              top: 'calc(50% + clamp(80px, 12vh, 140px))',
+              top: 'calc(50% + clamp(170px, 24vh, 260px))',
               left: '50%',
               transform: 'translate(-50%, -50%)',
             }}
