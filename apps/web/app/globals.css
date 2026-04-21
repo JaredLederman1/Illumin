@@ -130,9 +130,12 @@ html, body {
   transition: border-color 150ms ease, background-color 150ms ease;
 }
 
+/* !important is needed because card callers set `border` as an inline
+ * shorthand (higher specificity than a class selector). Without it, the
+ * hover color cannot override the inline base border. */
 .card-hoverable:hover {
-  border-color: var(--color-border-hover);
-  background-color: var(--color-surface-hover);
+  border-color: var(--color-border-hover) !important;
+  background-color: var(--color-surface-hover) !important;
 }
 
 button {
@@ -450,5 +453,36 @@ input[type="number"] {
     margin: 0 -20px;
     padding: 0 20px;
     width: calc(100% + 40px);
+  }
+}
+
+/* Onboarding typewriter cursor blink, used by WelcomeIntro. */
+@keyframes illuminTypewriterCursorBlink {
+  0%, 50% { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+.illumin-typewriter-cursor-blink {
+  animation: illuminTypewriterCursorBlink 1s steps(1, end) infinite;
+}
+
+/* Hide native number-input spinners on onboarding numeric fields. */
+.illumin-no-spin::-webkit-outer-spin-button,
+.illumin-no-spin::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.illumin-no-spin {
+  -moz-appearance: textfield;
+}
+
+/* Reveal CTAs: horizontal on desktop, stacked full-width on mobile with the
+   primary button on top. */
+@media (max-width: 768px) {
+  .reveal-cta-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .reveal-cta-row > a {
+    width: 100%;
   }
 }

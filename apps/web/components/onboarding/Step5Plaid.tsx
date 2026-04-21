@@ -1,8 +1,15 @@
 'use client'
 
 import { useCallback, useState } from 'react'
+import { motion } from 'framer-motion'
 import { usePlaidLink } from 'react-plaid-link'
-import { heading, body, continueBtn } from './shared'
+import {
+  questionHeading,
+  contextCopy,
+  continueBtn,
+  fmt,
+  opportunityCostOneYear,
+} from './shared'
 import { usePlaidLinkTokenQuery, usePlaidExchangeMutation } from '@/lib/queries'
 
 export interface LinkedAccount {
@@ -31,6 +38,11 @@ interface Props {
   onCompleteAssetLinked: () => Promise<void> | void
   onSkipForNow: () => Promise<void> | void
   busy?: boolean
+  age: number | ''
+  annualIncome: number
+  savingsRate: number
+  retirementAge: number
+  isMobile: boolean
 }
 
 export function Step5Plaid({
@@ -39,6 +51,11 @@ export function Step5Plaid({
   onCompleteAssetLinked,
   onSkipForNow,
   busy = false,
+  age,
+  annualIncome,
+  savingsRate,
+  retirementAge,
+  isMobile,
 }: Props) {
   const { data: linkToken, error: linkTokenError } = usePlaidLinkTokenQuery()
   const exchange = usePlaidExchangeMutation()
@@ -47,6 +64,9 @@ export function Step5Plaid({
   const exchanging = exchange.isPending
   const linkError = exchangeError ?? (linkTokenError ? 'Could not initialize connection.' : null)
   const setLinkError = setExchangeError
+
+  const ageNum = typeof age === 'number' ? age : 0
+  const oppCost = opportunityCostOneYear(ageNum, annualIncome, savingsRate, retirementAge)
 
   const handlePlaidSuccess = useCallback(
     async (publicToken: string, metadata: PlaidOnSuccessMetadata) => {
@@ -73,7 +93,7 @@ export function Step5Plaid({
         setLinkError(err instanceof Error ? err.message : 'Could not link account.')
       }
     },
-    [linkedAccounts, onLinked, onCompleteAssetLinked, exchange]
+    [linkedAccounts, onLinked, onCompleteAssetLinked, exchange, setLinkError],
   )
 
   const { open: openPlaid, ready: plaidReady } = usePlaidLink({
@@ -82,44 +102,116 @@ export function Step5Plaid({
   })
 
   return (
-    <div>
-      <h1 style={heading}>Connect your first account</h1>
-      <p style={body}>Link a checking, savings, or investment account.</p>
+    <div
+      style={{
+        width: '100%',
+        maxWidth: '620px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: isMobile ? '28px' : '40px',
+      }}
+    >
+      <motion.h1
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+        style={questionHeading}
+      >
+        Turn estimate into fact.
+      </motion.h1>
+
+      {oppCost > 0 ? (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '14px',
+            padding: '22px 24px',
+            backgroundColor: 'var(--color-surface)',
+            border: '1px solid var(--color-gold-border)',
+            borderRadius: '2px',
+          }}
+        >
+          <span
+            style={{
+              fontFamily: 'var(--font-sans)',
+              fontSize: '11px',
+              color: 'var(--color-text-muted)',
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              fontWeight: 500,
+            }}
+          >
+            Estimated annual opportunity cost
+          </span>
+          <span
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'clamp(40px, 6vw, 56px)',
+              fontWeight: 400,
+              color: 'var(--color-negative)',
+              lineHeight: 1,
+              letterSpacing: '-0.01em',
+            }}
+          >
+            {fmt(oppCost)}
+          </span>
+          <p
+            style={{
+              ...contextCopy,
+              color: 'var(--color-text)',
+              fontSize: '15px',
+              margin: 0,
+            }}
+          >
+            Linking your accounts is what turns that number from estimate to fact.
+          </p>
+        </motion.div>
+      ) : (
+        <p style={contextCopy}>
+          Link a checking, savings, or investment account so Illumin can run
+          against real balances instead of estimates.
+        </p>
+      )}
 
       {assetRequired && (
         <div
           style={{
-            marginTop: '28px',
             padding: '18px 20px',
             backgroundColor: 'var(--color-negative-bg)',
             border: '1px solid var(--color-negative-border)',
             borderRadius: '2px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '6px',
           }}
         >
-          <p
+          <span
             style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '10px',
+              fontFamily: 'var(--font-sans)',
+              fontSize: '11px',
               color: 'var(--color-negative)',
               letterSpacing: '0.14em',
               textTransform: 'uppercase',
-              marginBottom: '8px',
+              fontWeight: 600,
             }}
           >
             Asset account required
-          </p>
+          </span>
           <p
             style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '12px',
+              fontFamily: 'var(--font-sans)',
+              fontSize: '14px',
               color: 'var(--color-text-mid)',
-              lineHeight: 1.7,
-              letterSpacing: '0.02em',
+              lineHeight: 1.6,
               margin: 0,
             }}
           >
-            We see the connection, but only credit cards came through. Link a
-            checking, savings, or investment account to continue, or skip for now.
+            Only credit cards came through on that connection. Link a checking,
+            savings, or investment account to continue.
           </p>
         </div>
       )}
@@ -127,7 +219,6 @@ export function Step5Plaid({
       {linkedAccounts.length > 0 && (
         <ul
           style={{
-            marginTop: '20px',
             padding: 0,
             listStyle: 'none',
             display: 'flex',
@@ -142,7 +233,7 @@ export function Step5Plaid({
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                padding: '12px 14px',
+                padding: '14px 16px',
                 border: '1px solid var(--color-border)',
                 borderRadius: '2px',
                 backgroundColor: 'var(--color-surface)',
@@ -150,10 +241,9 @@ export function Step5Plaid({
             >
               <span
                 style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: '12px',
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: '13px',
                   color: 'var(--color-text)',
-                  letterSpacing: '0.02em',
                 }}
               >
                 {a.institutionName ?? 'Connected account'}
@@ -161,14 +251,12 @@ export function Step5Plaid({
               </span>
               <span
                 style={{
-                  fontFamily: 'var(--font-mono)',
+                  fontFamily: 'var(--font-sans)',
                   fontSize: '10px',
-                  color:
-                    a.classification === 'asset'
-                      ? 'var(--color-positive)'
-                      : 'var(--color-text-muted)',
+                  color: a.classification === 'asset' ? 'var(--color-positive)' : 'var(--color-text-muted)',
                   letterSpacing: '0.14em',
                   textTransform: 'uppercase',
+                  fontWeight: 600,
                 }}
               >
                 {a.classification === 'asset' ? 'Asset' : 'Credit'}
@@ -181,10 +269,10 @@ export function Step5Plaid({
       {linkError && (
         <p
           style={{
-            marginTop: '16px',
-            fontSize: '12px',
+            fontFamily: 'var(--font-sans)',
+            fontSize: '13px',
             color: 'var(--color-negative)',
-            fontFamily: 'var(--font-mono)',
+            margin: 0,
           }}
         >
           {linkError}
@@ -195,9 +283,7 @@ export function Step5Plaid({
         style={{
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center',
           gap: '14px',
-          marginTop: '40px',
         }}
       >
         <button
@@ -206,8 +292,8 @@ export function Step5Plaid({
           disabled={!plaidReady || exchanging || busy}
           style={{
             ...continueBtn,
-            opacity: (!plaidReady || exchanging || busy) ? 0.65 : 1,
-            cursor: (!plaidReady || exchanging || busy) ? 'not-allowed' : 'pointer',
+            opacity: !plaidReady || exchanging || busy ? 0.65 : 1,
+            cursor: !plaidReady || exchanging || busy ? 'not-allowed' : 'pointer',
           }}
         >
           {exchanging
@@ -216,7 +302,13 @@ export function Step5Plaid({
               ? 'Finishing…'
               : assetRequired
                 ? 'Link another account'
-                : 'Continue'}
+                : 'Connect your accounts'}
+          {!exchanging && !busy && (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="12 5 19 12 12 19" />
+            </svg>
+          )}
         </button>
 
         <button
@@ -226,19 +318,55 @@ export function Step5Plaid({
           style={{
             background: 'none',
             border: 'none',
-            padding: 0,
-            fontFamily: 'var(--font-mono)',
-            fontSize: '11px',
+            padding: '10px 0',
+            fontFamily: 'var(--font-sans)',
+            fontSize: '12px',
             color: 'var(--color-text-muted)',
-            letterSpacing: '0.14em',
-            textTransform: 'uppercase',
-            cursor: (exchanging || busy) ? 'not-allowed' : 'pointer',
-            opacity: (exchanging || busy) ? 0.5 : 1,
+            letterSpacing: '0.08em',
+            cursor: exchanging || busy ? 'not-allowed' : 'pointer',
+            opacity: exchanging || busy ? 0.5 : 1,
+            textAlign: 'left',
+            minHeight: '44px',
           }}
         >
-          Skip for now
+          Connect later, show me what you have so far
         </button>
       </div>
+
+      <ul
+        style={{
+          listStyle: 'none',
+          padding: 0,
+          margin: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+        }}
+      >
+        {[
+          'Bank-level encryption via Plaid.',
+          'Your credentials are never stored by Illumin.',
+          'Read-only access. We cannot move money.',
+        ].map(text => (
+          <li
+            key={text}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              fontFamily: 'var(--font-sans)',
+              fontSize: '12.5px',
+              color: 'var(--color-text-muted)',
+              letterSpacing: '0.01em',
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-gold)', flexShrink: 0 }}>
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            {text}
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

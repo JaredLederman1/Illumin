@@ -12,7 +12,7 @@ import OpportunityCostWidget from './widgets/OpportunityCostWidget'
 import PortfolioWidget from './widgets/PortfolioWidget'
 import RecentTransactionsWidget from './widgets/RecentTransactionsWidget'
 import GoalsProgressWidget from './widgets/GoalsProgressWidget'
-import HealthScoreWidget from './widgets/HealthScoreWidget'
+import RecoveryWidget from './widgets/RecoveryWidget'
 import AccountBalancesWidget from './widgets/AccountBalancesWidget'
 
 import DebtTrajectoryCard from './placeholders/DebtTrajectoryCard'
@@ -43,8 +43,8 @@ export function renderWidget(id: WidgetId, metrics: PriorityMetrics): ReactNode 
       return <RecentTransactionsWidget />
     case 'goals-progress':
       return <GoalsProgressWidget />
-    case 'health-score':
-      return <HealthScoreWidget />
+    case 'recovery':
+      return <RecoveryWidget />
     case 'account-balances':
       return <AccountBalancesWidget />
     case 'debt-trajectory':

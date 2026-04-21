@@ -12,7 +12,7 @@ export type WidgetId =
   | 'portfolio'
   | 'recent-transactions'
   | 'goals-progress'
-  | 'health-score'
+  | 'recovery'
   | 'account-balances'
   | 'debt-trajectory'
   | 'emergency-fund-gauge'
@@ -49,7 +49,7 @@ export const CONTEXT_ROW: WidgetId[] = [
   'recent-transactions',
   'goals-progress',
   'cash-flow',
-  'health-score',
+  'recovery',
 ]
 
 /**

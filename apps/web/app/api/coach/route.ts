@@ -3,7 +3,11 @@ import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { normalizeCategory } from '@/lib/categories'
 import { sanitizeForPrompt, buildDataBlock } from '@/lib/sanitize'
+import { evaluateGaps, summarize } from '@/lib/recovery'
 import Anthropic from '@anthropic-ai/sdk'
+
+const RECOVERY_HYSA_RATE = 0.045
+const RECOVERY_CHECKING_RATE = 0.0001
 
 export const maxDuration = 60
 
@@ -34,7 +38,7 @@ export async function POST(request: NextRequest) {
 
   const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
 
-  const [accounts, recentTxs, profile, nwSnapshots] = await Promise.all([
+  const [accounts, recentTxs, profile, nwSnapshots, benefits, recoveryEvents] = await Promise.all([
     prisma.account.findMany({
       where: { userId: dbUser.id },
       include: { holdings: { include: { security: true } } },
@@ -55,6 +59,8 @@ export async function POST(request: NextRequest) {
       orderBy: { recordedAt: 'desc' },
       take: 6,
     }),
+    prisma.employmentBenefits.findUnique({ where: { userId: dbUser.id } }),
+    prisma.recoveryEvent.findMany({ where: { userId: dbUser.id } }),
   ])
 
   // Compute balances
@@ -164,6 +170,38 @@ Savings rate: ${pct(savingsRate)}`
   const idleCashData = `Liquid cash above emergency buffer: ${fmt(idleCash)}
 Estimated annual opportunity cost: ${fmt(opportunityCost)}`
 
+  // Recovery counter context: Illumin frames every gap as a dollar figure that
+  // is either open (still on the table) or recovered. The coach must mirror
+  // this framing rather than any prior score-based language.
+  const recoveryGaps = evaluateGaps(
+    {
+      accounts,
+      transactions: recentTxs,
+      holdings: accounts.flatMap(a =>
+        a.holdings.map(h => ({ ...h, account: { accountType: a.accountType } })),
+      ),
+      benefits,
+      profile,
+      existingEvents: recoveryEvents.map(e => ({
+        gapId: e.gapId,
+        annualValue: e.annualValue,
+        recoveredAt: e.recoveredAt,
+      })),
+    },
+    { hysaRate: RECOVERY_HYSA_RATE, checkingRate: RECOVERY_CHECKING_RATE },
+  )
+  const recoverySummary = summarize(recoveryGaps)
+  const topOpenGaps = recoverySummary.gaps
+    .filter(g => g.status === 'open')
+    .sort((a, b) => b.annualValue - a.annualValue)
+    .slice(0, 3)
+  const recoveryStatusData = `Total recovered to date: ${fmt(recoverySummary.recovered)}
+Total open: ${fmt(recoverySummary.open)}
+Top open gaps:
+${topOpenGaps.length > 0
+    ? topOpenGaps.map(g => `  ${g.label}: ${fmt(g.annualValue)}/yr`).join('\n')
+    : '  None detected'}`
+
   const profileData = profile ? `Age: ${profile.age}
 Annual income (self-reported): ${fmt(profile.annualIncome)}
 Savings rate target: ${(profile.savingsRate * 100).toFixed(0)}%
@@ -176,6 +214,8 @@ You are NOT a general-purpose assistant. You only answer questions about persona
 Your tone is direct, specific, and institutional. No filler phrases. No excessive encouragement. No em dashes. Never refer to yourself as Claude, an AI, or a chatbot. You are the Illumin Engine.
 
 When referencing numbers, always use the user's actual data below. Be specific. "Your dining spending" not "dining spending in general."
+
+Frame financial progress in Recovery Counter terms: dollars recovered and dollars still on the table. Do not use a 0 to 100 score, ratings, or health-grade language. The recovery_status block below is the canonical source for these figures.
 
 Here is the user's current financial picture:
 
@@ -192,6 +232,8 @@ ${buildDataBlock('accounts', accountsData)}
 ${buildDataBlock('investments', investmentsData)}
 
 ${buildDataBlock('idle_cash', idleCashData)}
+
+${buildDataBlock('recovery_status', recoveryStatusData)}
 
 ${profileData ? buildDataBlock('profile', profileData) : ''}
 

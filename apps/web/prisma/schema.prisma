@@ -22,6 +22,7 @@ model User {
   recurringExclusions RecurringExclusion[]
   budgetRollovers     BudgetRollover[]
   analyticsHoldings   AnalyticsHolding[]
+  recoveryEvents      RecoveryEvent[]
 }
 
 model FinancialAction {
@@ -271,4 +272,18 @@ model EmploymentBenefits {
   user                 User     @relation(fields: [userId], references: [id])
 
   @@map("employment_benefits")
+}
+
+model RecoveryEvent {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  gapId       String   @map("gap_id")
+  domain      String
+  annualValue Float    @map("annual_value")
+  recoveredAt DateTime @default(now()) @map("recovered_at")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gapId])
+  @@index([userId])
+  @@map("recovery_events")
 }

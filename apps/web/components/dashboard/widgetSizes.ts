@@ -49,7 +49,7 @@ const CONTEXT_SIZES: Partial<Record<WidgetId, WidgetSize>> = {
   'recent-transactions':      { colSpan: 3, rowSpan: 2 },
   'goals-progress':           { colSpan: 3, rowSpan: 1 },
   'cash-flow':                { colSpan: 3, rowSpan: 1 },
-  'health-score':             { colSpan: 3, rowSpan: 1 },
+  'recovery':                 { colSpan: 3, rowSpan: 1 },
 }
 
 const REFERENCE_SIZES: Partial<Record<WidgetId, WidgetSize>> = {

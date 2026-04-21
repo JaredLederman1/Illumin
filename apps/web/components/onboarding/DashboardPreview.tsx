@@ -13,7 +13,7 @@ interface Props {
 }
 
 // Blurred-teaser preview shown between Step 5 and Step 6. Not a full dashboard
-// load — renders stylized placeholder cards with the user's projected net
+// load: renders stylized placeholder cards with the user's projected net
 // worth and top opportunity cost visible. If the user skipped Plaid link,
 // account-dependent sections get a "Link accounts to unlock this" overlay.
 export function DashboardPreview({
@@ -63,7 +63,7 @@ export function DashboardPreview({
           filter: 'blur(0.3px)',
         }}
       >
-        {/* Net worth card — visible */}
+        {/* Net worth card, visible */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -102,7 +102,7 @@ export function DashboardPreview({
           </p>
         </motion.div>
 
-        {/* Opportunity cost card — visible */}
+        {/* Opportunity cost card, visible */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -152,7 +152,7 @@ export function DashboardPreview({
           </p>
         </motion.div>
 
-        {/* Account-dependent cards — blurred */}
+        {/* Account-dependent cards, blurred */}
         {[
           'Linked accounts',
           'Monthly cash flow',

@@ -18,7 +18,7 @@ interface Props {
 
 // Input that renders its value in muted color until the user focuses or edits.
 // Use hasDefault=true when the displayed value is a pre-fill the user can
-// accept without changing. The muted state is local to each mount — interact
+// accept without changing. The muted state is local to each mount. Interact
 // once and the active state persists through the remainder of the session.
 export function DefaultedInput({
   value,

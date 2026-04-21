@@ -52,11 +52,6 @@ function DashboardDesktop() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {heroBlock}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '320px' }}>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: '#6B7A8D', letterSpacing: '0.06em' }}>
-            Loading…
-          </p>
-        </div>
       </div>
     )
   }
@@ -190,11 +185,6 @@ function DashboardMobile() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.sectionGap }}>
         {heroBlock}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '320px' }}>
-          <p style={{ fontFamily: fonts.mono, fontSize: '14px', color: colors.textMuted, letterSpacing: '0.06em' }}>
-            Loading...
-          </p>
-        </div>
       </div>
     )
   }

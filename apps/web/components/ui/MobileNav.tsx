@@ -64,7 +64,7 @@ const NAV_CATEGORIES: NavCategory[] = [
     label: 'Intel',
     icon: '\u2609',
     items: [
-      { href: '/dashboard/score',       label: 'Score',      icon: '\u2606' },
+      { href: '/dashboard/recovery',    label: 'Recovery',      icon: '\u2606' },
       { href: '/dashboard/benefits',    label: 'Benefits',   icon: '\u2726' },
       { href: '/dashboard/opportunity', label: 'Opp. Cost',  icon: '\u2234' },
     ],

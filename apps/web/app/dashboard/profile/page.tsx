@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useDashboard } from '@/lib/dashboardData'
-import { useSaveOnboardingMutation } from '@/lib/queries'
+import { useResetOnboardingMutation, useSaveOnboardingMutation } from '@/lib/queries'
 import { calcTotals } from '@/lib/benefitsAnalysis'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import MobileCard from '@/components/ui/MobileCard'
@@ -44,6 +45,98 @@ const inputStyle: React.CSSProperties = {
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
+}
+
+const IS_DEV = process.env.NODE_ENV !== 'production'
+
+/**
+ * Dev panel: wipes the OnboardingProfile + EmploymentBenefits rows and the
+ * client-side onboarding flags, then sends the user back to /onboarding. Hidden
+ * in production. The server DELETE endpoint also refuses to run in prod.
+ */
+function RestartOnboardingPanel({ variant }: { variant: 'desktop' | 'mobile' }) {
+  const router = useRouter()
+  const reset = useResetOnboardingMutation()
+  const [error, setError] = useState<string | null>(null)
+
+  const handleRestart = () => {
+    if (!window.confirm('Reset onboarding? This wipes your profile, benefits, and onboarding flags. Accounts and transactions are kept.')) {
+      return
+    }
+    setError(null)
+    reset.mutate(undefined, {
+      onSuccess: () => {
+        try {
+          window.localStorage.removeItem('illumin_onboarding_intro_seen')
+          window.localStorage.removeItem('illumin_accounts_animated')
+        } catch {}
+        router.push('/onboarding')
+      },
+      onError: err => setError(err instanceof Error ? err.message : 'Reset failed'),
+    })
+  }
+
+  const isMobile = variant === 'mobile'
+  const container: React.CSSProperties = {
+    backgroundColor: 'var(--color-surface)',
+    border: '1px dashed var(--color-negative-border)',
+    borderRadius: '2px',
+    padding: isMobile ? '20px' : '28px',
+    display: 'flex',
+    flexDirection: isMobile ? 'column' : 'row',
+    alignItems: isMobile ? 'stretch' : 'center',
+    justifyContent: 'space-between',
+    gap: '16px',
+  }
+
+  return (
+    <div style={container}>
+      <div>
+        <p style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: '11px',
+          color: 'var(--color-negative)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.14em',
+          marginBottom: '6px',
+        }}>
+          Dev tools
+        </p>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--color-text)', marginBottom: '2px' }}>
+          Restart onboarding
+        </p>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+          Wipes profile, benefits, and onboarding flags. Accounts and transactions are preserved.
+        </p>
+        {error && (
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-negative)', marginTop: '8px' }}>
+            {error}
+          </p>
+        )}
+      </div>
+      <button
+        onClick={handleRestart}
+        disabled={reset.isPending}
+        style={{
+          padding: '10px 18px',
+          backgroundColor: 'transparent',
+          border: '1px solid var(--color-negative-border)',
+          borderRadius: '2px',
+          color: 'var(--color-negative)',
+          fontFamily: 'var(--font-mono)',
+          fontSize: '12px',
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          cursor: reset.isPending ? 'not-allowed' : 'pointer',
+          opacity: reset.isPending ? 0.65 : 1,
+          whiteSpace: 'nowrap',
+          flexShrink: 0,
+        }}
+      >
+        {reset.isPending ? 'Resetting...' : 'Restart'}
+      </button>
+    </div>
+  )
 }
 
 function fmtIncome(n: number) {
@@ -279,6 +372,16 @@ function ProfileDesktop() {
           View
         </Link>
       </motion.div>
+
+      {IS_DEV && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.18 }}
+        >
+          <RestartOnboardingPanel variant="desktop" />
+        </motion.div>
+      )}
     </div>
   )
 }
@@ -589,6 +692,8 @@ function ProfileMobile() {
           </Link>
         </div>
       </MobileCard>
+
+      {IS_DEV && <RestartOnboardingPanel variant="mobile" />}
     </motion.div>
   )
 }

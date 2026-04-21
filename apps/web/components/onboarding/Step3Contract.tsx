@@ -3,21 +3,21 @@
 import { useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import type { OnboardingData } from './shared'
-import { heading, body, continueBtn } from './shared'
+import { questionHeading, contextCopy, continueBtn } from './shared'
 import { useUploadBenefitsMutation } from '@/lib/queries'
 
 interface Props {
   data: OnboardingData
   onChange: (patch: Partial<OnboardingData>) => void
   onAdvance: () => void
+  isMobile: boolean
 }
 
-// Wires into the existing /api/user/benefits/extract route, which uploads a
-// PDF to Claude for structured JSON extraction and writes the result to the
-// EmploymentBenefits table. After a successful parse we ALSO stash the same
-// JSON on the OnboardingProfile (contract_parsed_data / contract_uploaded_at)
-// so Step 4 can pre-fill.
-export function Step3Contract({ data, onChange, onAdvance }: Props) {
+// Wires into /api/user/benefits/extract. Kept at its current position in the
+// flow because the resume logic in /api/user/onboarding depends on
+// contractParsedData being populated before Step 4, and the file-upload state
+// is not straightforward to defer until after the reveal.
+export function Step3Contract({ data, onChange, onAdvance, isMobile }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const upload = useUploadBenefitsMutation()
   const [state, setState] = useState<'idle' | 'uploading' | 'done' | 'error'>(
@@ -45,9 +45,28 @@ export function Step3Contract({ data, onChange, onAdvance }: Props) {
   }
 
   return (
-    <div>
-      <h1 style={heading}>Upload your contract</h1>
-      <p style={body}>Offer letter or benefits summary.</p>
+    <div
+      style={{
+        width: '100%',
+        maxWidth: '620px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: isMobile ? '24px' : '36px',
+      }}
+    >
+      <motion.h1
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+        style={questionHeading}
+      >
+        Do you have an offer letter or benefits summary?
+      </motion.h1>
+
+      <p style={contextCopy}>
+        Upload it and Illumin extracts your 401k match, equity grants, and every
+        benefit line you would otherwise miss. Everything stays private.
+      </p>
 
       <input
         ref={inputRef}
@@ -62,12 +81,14 @@ export function Step3Contract({ data, onChange, onAdvance }: Props) {
 
       <div
         style={{
-          marginTop: '36px',
-          padding: '40px 24px',
+          padding: '32px 28px',
           border: '1px dashed var(--color-border-strong)',
-          borderRadius: '4px',
-          backgroundColor: 'var(--color-gold-subtle)',
-          textAlign: 'center',
+          borderRadius: '2px',
+          backgroundColor: 'var(--color-surface)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-start',
+          gap: '14px',
         }}
       >
         {state === 'done' ? (
@@ -75,48 +96,35 @@ export function Step3Contract({ data, onChange, onAdvance }: Props) {
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '14px', alignItems: 'flex-start' }}
           >
             <div
               style={{
-                margin: '0 auto 14px',
-                width: '36px',
-                height: '36px',
-                borderRadius: '50%',
-                backgroundColor: 'var(--color-positive-bg)',
-                border: '1px solid var(--color-positive-border)',
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
-                justifyContent: 'center',
+                gap: '10px',
+                fontFamily: 'var(--font-sans)',
+                fontSize: '13px',
                 color: 'var(--color-positive)',
+                letterSpacing: '0.04em',
               }}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
+              Document analyzed. Benefits profile pre-filled.
             </div>
-            <p
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '13px',
-                color: 'var(--color-text)',
-                letterSpacing: '0.04em',
-                margin: 0,
-              }}
-            >
-              Contract analyzed. We have pre-filled your benefits profile.
-            </p>
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
               style={{
-                marginTop: '14px',
                 background: 'none',
                 border: 'none',
                 padding: 0,
-                fontFamily: 'var(--font-mono)',
-                fontSize: '10.5px',
+                fontFamily: 'var(--font-sans)',
+                fontSize: '12px',
                 color: 'var(--color-text-muted)',
-                letterSpacing: '0.14em',
+                letterSpacing: '0.12em',
                 textTransform: 'uppercase',
                 cursor: 'pointer',
               }}
@@ -128,13 +136,13 @@ export function Step3Contract({ data, onChange, onAdvance }: Props) {
           <>
             <p
               style={{
-                fontFamily: 'var(--font-mono)',
+                fontFamily: 'var(--font-sans)',
                 fontSize: '11px',
                 color: 'var(--color-text-muted)',
                 letterSpacing: '0.14em',
                 textTransform: 'uppercase',
                 margin: 0,
-                marginBottom: '14px',
+                fontWeight: 500,
               }}
             >
               PDF, up to 10 MB
@@ -154,10 +162,10 @@ export function Step3Contract({ data, onChange, onAdvance }: Props) {
             {error && (
               <p
                 style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: '11.5px',
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: '12px',
                   color: 'var(--color-negative)',
-                  marginTop: '14px',
+                  margin: 0,
                 }}
               >
                 {error}
@@ -167,32 +175,18 @@ export function Step3Contract({ data, onChange, onAdvance }: Props) {
         )}
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '32px' }}>
-        {state === 'done' ? (
+      <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+        {state === 'done' && (
           <button
             type="button"
             onClick={onAdvance}
-            style={{ ...continueBtn, padding: '13px 36px' }}
+            style={continueBtn}
           >
             Continue
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={onAdvance}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: '10px 22px',
-              fontFamily: 'var(--font-mono)',
-              fontSize: '11px',
-              color: 'var(--color-text-muted)',
-              letterSpacing: '0.14em',
-              textTransform: 'uppercase',
-              cursor: 'pointer',
-            }}
-          >
-            Skip this step
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="12 5 19 12 12 19" />
+            </svg>
           </button>
         )}
       </div>

@@ -138,6 +138,32 @@ function buildWritableFields(body: Body) {
   return fields
 }
 
+/**
+ * Dev-only reset. Drops the user's OnboardingProfile and EmploymentBenefits so
+ * the onboarding flow starts from a blank slate. Refuses to run when
+ * NODE_ENV === 'production' to keep this out of reach in live deploys.
+ */
+export async function DELETE(request: NextRequest) {
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not available in production' }, { status: 403 })
+  }
+
+  try {
+    const user = await getUser(request)
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    await prisma.$transaction([
+      prisma.onboardingProfile.deleteMany({ where: { userId: user.id } }),
+      prisma.employmentBenefits.deleteMany({ where: { userId: user.id } }),
+    ])
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('[onboarding DELETE]', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
 export async function POST(request: NextRequest) {
   let body: Body
   try {

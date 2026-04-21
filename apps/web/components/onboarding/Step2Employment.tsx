@@ -1,50 +1,94 @@
 'use client'
 
 import type { OnboardingData } from './shared'
-import { heading, label } from './shared'
-import { DefaultedInput } from './DefaultedInput'
+import { textInput } from './shared'
+import { SubStepShell } from './SubStepShell'
 
 interface Props {
   data: OnboardingData
   onChange: (patch: Partial<OnboardingData>) => void
+  subIndex: number
+  onSubAdvance: () => void
+  isMobile: boolean
 }
 
-export function Step2Employment({ data, onChange }: Props) {
+const FIELDS = ['title', 'employer', 'startDate'] as const
+type FieldKey = typeof FIELDS[number]
+
+const QUESTION: Record<FieldKey, string> = {
+  title: 'What do you do for a living?',
+  employer: 'Who do you work for?',
+  startDate: 'When did you start there?',
+}
+
+const CONTEXT: Record<FieldKey, string> = {
+  title: 'Your role tells Illumin which compensation patterns to look for.',
+  employer: 'We use this to match typical benefits and match rates for your employer size.',
+  startDate: 'Tenure determines vesting, bonus timing, and match eligibility.',
+}
+
+export function Step2Employment({ data, onChange, subIndex, onSubAdvance, isMobile }: Props) {
+  const key: FieldKey = FIELDS[Math.max(0, Math.min(FIELDS.length - 1, subIndex))]
+
+  const canAdvance = (() => {
+    switch (key) {
+      case 'title':     return data.jobTitle.trim().length > 0
+      case 'employer':  return data.employer.trim().length > 0
+      case 'startDate': return data.employerStartDate.trim().length > 0
+    }
+  })()
+
+  let field: React.ReactNode = null
+  switch (key) {
+    case 'title':
+      field = (
+        <input
+          type="text"
+          autoFocus
+          value={data.jobTitle}
+          onChange={e => onChange({ jobTitle: e.target.value })}
+          placeholder="Software Engineer"
+          aria-label="Job title"
+          style={textInput}
+        />
+      )
+      break
+    case 'employer':
+      field = (
+        <input
+          type="text"
+          autoFocus
+          value={data.employer}
+          onChange={e => onChange({ employer: e.target.value })}
+          placeholder="Company name"
+          aria-label="Employer"
+          style={textInput}
+        />
+      )
+      break
+    case 'startDate':
+      field = (
+        <input
+          type="date"
+          autoFocus
+          value={data.employerStartDate}
+          onChange={e => onChange({ employerStartDate: e.target.value })}
+          aria-label="Employer start date"
+          style={textInput}
+        />
+      )
+      break
+  }
+
   return (
-    <div>
-      <h1 style={heading}>Your current employment</h1>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginTop: '36px' }}>
-        <div>
-          <label style={label}>Job title</label>
-          <DefaultedInput
-            value={data.jobTitle}
-            onChange={v => onChange({ jobTitle: v })}
-            placeholder="Software Engineer"
-            ariaLabel="Job title"
-          />
-        </div>
-
-        <div>
-          <label style={label}>Employer</label>
-          <DefaultedInput
-            value={data.employer}
-            onChange={v => onChange({ employer: v })}
-            placeholder="Company name"
-            ariaLabel="Employer"
-          />
-        </div>
-
-        <div>
-          <label style={label}>Start date</label>
-          <DefaultedInput
-            value={data.employerStartDate}
-            onChange={v => onChange({ employerStartDate: v })}
-            type="date"
-            ariaLabel="Employer start date"
-          />
-        </div>
-      </div>
-    </div>
+    <SubStepShell
+      question={QUESTION[key]}
+      context={CONTEXT[key]}
+      canAdvance={canAdvance}
+      onAdvance={onSubAdvance}
+      isMobile={isMobile}
+    >
+      {field}
+    </SubStepShell>
   )
 }

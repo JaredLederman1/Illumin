@@ -88,6 +88,7 @@ export const queryKeys = {
   recurringExclusions: () => ['recurring', 'exclusions'] as const,
   opportunity: () => ['opportunity'] as const,
   score: () => ['user', 'score'] as const,
+  recovery: () => ['user', 'recovery'] as const,
   onboarding: () => ['user', 'onboarding'] as const,
   benefits: () => ['user', 'benefits'] as const,
   checklist: () => ['checklist'] as const,
@@ -263,6 +264,49 @@ export function useForecastQuery(opts?: QueryOpts<ForecastData | null>) {
       if (data?.avgIncome === undefined) return null
       return data
     },
+    staleTime: STALE_TIMES.long,
+    ...opts,
+  })
+}
+
+export type RecoveryDomain =
+  | 'match'
+  | 'idle_cash'
+  | 'debt'
+  | 'subscription'
+  | 'benefits'
+  | 'hysa'
+  | 'tax_advantaged'
+
+export interface RecoveryGap {
+  id: string
+  domain: RecoveryDomain
+  label: string
+  annualValue: number
+  lifetimeValue?: number
+  status: 'open' | 'recovered'
+  recoveredAt?: string
+  actionPath?: string
+  description: string
+}
+
+export interface RecoverySummary {
+  recovered: number
+  open: number
+  gaps: RecoveryGap[]
+  lastUpdated: string
+}
+
+export function useRecoveryQuery(opts?: QueryOpts<RecoverySummary | null>) {
+  const token = useAuthToken()
+  return useQuery({
+    queryKey: queryKeys.recovery(),
+    queryFn: async (): Promise<RecoverySummary | null> => {
+      if (!token) return null
+      const data = await getJson<RecoverySummary>('/api/user/recovery', token)
+      return data ?? null
+    },
+    enabled: !!token,
     staleTime: STALE_TIMES.long,
     ...opts,
   })
@@ -592,6 +636,33 @@ export function useSaveOnboardingMutation() {
   })
 }
 
+/**
+ * Dev-only reset. Drops OnboardingProfile and EmploymentBenefits server-side,
+ * then invalidates the whole cache so the next page render pulls fresh state.
+ * The caller is responsible for clearing any onboarding-related localStorage
+ * flags and navigating to /onboarding.
+ */
+export function useResetOnboardingMutation() {
+  const token = useAuthToken()
+  const inv = useInvalidate()
+  return useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/user/onboarding', {
+        method: 'DELETE',
+        headers: authHeaders(token),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.error ?? `HTTP ${res.status}`)
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      void inv.everything()
+    },
+  })
+}
+
 export function useUploadBenefitsMutation() {
   const token = useAuthToken()
   const inv = useInvalidate()
@@ -707,6 +778,7 @@ export function useInvalidate() {
     benefits: () => qc.invalidateQueries({ queryKey: queryKeys.benefits() }),
     onboarding: () => qc.invalidateQueries({ queryKey: queryKeys.onboarding() }),
     score: () => qc.invalidateQueries({ queryKey: queryKeys.score() }),
+    recovery: () => qc.invalidateQueries({ queryKey: queryKeys.recovery() }),
     checklist: () => qc.invalidateQueries({ queryKey: queryKeys.checklist() }),
     merchants: () => qc.invalidateQueries({ queryKey: queryKeys.merchants() }),
     everything: () => qc.invalidateQueries(),

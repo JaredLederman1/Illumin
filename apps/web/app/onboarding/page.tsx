@@ -2,12 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useRouter } from 'next/navigation'
 import { useAuthToken, useSaveOnboardingMutation } from '@/lib/queries'
 
-import { DEFAULTS, secondaryBtn } from '@/components/onboarding/shared'
+import {
+  DEFAULTS,
+  SUB_STEP_COUNTS,
+  TOTAL_SUB_STEPS,
+  globalSubIndex,
+  secondaryBtn,
+} from '@/components/onboarding/shared'
 import type { OnboardingData } from '@/components/onboarding/shared'
-import { useIsMobile } from '@/components/onboarding/useIsMobile'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import { ProgressBar } from '@/components/onboarding/ProgressBar'
 import { Step1Basics } from '@/components/onboarding/Step1Basics'
 import { Step2Employment } from '@/components/onboarding/Step2Employment'
@@ -15,10 +20,11 @@ import { Step3Contract } from '@/components/onboarding/Step3Contract'
 import { Step4Goals } from '@/components/onboarding/Step4Goals'
 import { Step5Plaid, type LinkedAccount } from '@/components/onboarding/Step5Plaid'
 import { Step6Reveal } from '@/components/onboarding/Step6Reveal'
-import { DashboardPreview } from '@/components/onboarding/DashboardPreview'
+import { LiveProjection } from '@/components/onboarding/LiveProjection'
 import { WelcomeIntro } from '@/components/onboarding/WelcomeIntro'
+import { OnboardingDevRestart } from '@/components/onboarding/OnboardingDevRestart'
 
-type Phase = 'welcome' | 'steps' | 'preview' | 'reveal'
+type Phase = 'welcome' | 'steps' | 'reveal'
 
 // Step-index to field-payload mapping. Each step only sends its own fields so
 // a partial save does not clobber later steps on refresh/resume.
@@ -56,22 +62,27 @@ function payloadForStep(step: number, data: OnboardingData): Record<string, unkn
 }
 
 export default function OnboardingPage() {
-  const router = useRouter()
   const isMobile = useIsMobile()
   const authToken = useAuthToken()
   const saveOnboarding = useSaveOnboardingMutation()
 
   const [phase, setPhase] = useState<Phase>('welcome')
   const [step, setStep]   = useState<number>(0)
+  const [subIndex, setSubIndex] = useState<number>(0)
   const [data, setData]   = useState<OnboardingData>(DEFAULTS)
 
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([])
-  const [skippedPlaid, setSkippedPlaid]     = useState(false)
 
-  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set())
-  const [justCompleted, setJustCompleted]   = useState<number | null>(null)
   const [busy, setBusy]                     = useState(false)
   const [error, setError]                   = useState<string | null>(null)
+
+  // Once the user has ever typed a salary in this session, the LiveProjection
+  // card is eligible to render. Before that, the sidecar column and the
+  // mobile sticky wrapper are both skipped so the step content doesn't sit
+  // beside an empty slot. Conditional setState during render is the
+  // canonical pattern for mirroring props.
+  const [salaryEverEntered, setSalaryEverEntered] = useState<boolean>(data.annualIncome > 0)
+  if (data.annualIncome > 0 && !salaryEverEntered) setSalaryEverEntered(true)
 
   // Wait until we have checked localStorage before choosing between the
   // cinematic intro and jumping straight to Step 1. Prevents a flash of the
@@ -83,14 +94,13 @@ export default function OnboardingPage() {
         setPhase('steps')
       }
     } catch {
-      // ignore — fall through to intro
+      // ignore, fall through to intro
     }
     setIntroChecked(true)
   }, [])
 
-  // Resume — load any existing profile and jump to the first step that still
-  // has missing data. If all core fields are filled we still land on Step 1
-  // so the user can review their info before seeing the reveal.
+  // Resume logic preserved. Jumps to the first step that still has missing
+  // data; sub-step always resets to 0 within that step.
   useEffect(() => {
     if (!authToken) return
     let cancelled = false
@@ -130,9 +140,9 @@ export default function OnboardingPage() {
           : profile.age ? 1
           : 0
         setStep(resume)
-        setCompletedSteps(new Set(Array.from({ length: resume }, (_, i) => i)))
+        setSubIndex(0)
       } catch {
-        // ignore — start fresh
+        // ignore, start fresh
       }
     })()
     return () => { cancelled = true }
@@ -155,37 +165,35 @@ export default function OnboardingPage() {
     }
   }, [data, saveOnboarding])
 
-  const step1Complete = useMemo(
-    () => typeof data.age === 'number' && data.age > 0 && data.annualIncome > 0,
-    [data.age, data.annualIncome]
-  )
-
-  const advanceTo = useCallback((next: number) => {
-    setJustCompleted(step)
-    setCompletedSteps(prev => new Set(prev).add(step))
-    window.setTimeout(() => setJustCompleted(null), 650)
-    setStep(next)
-  }, [step])
-
   const handleBack = useCallback(() => {
-    if (step <= 0) return
     setError(null)
-    setStep(step - 1)
-  }, [step])
+    if (subIndex > 0) {
+      setSubIndex(subIndex - 1)
+      return
+    }
+    if (step > 0) {
+      const prevStep = step - 1
+      const prevSubCount = SUB_STEP_COUNTS[prevStep] ?? 1
+      setStep(prevStep)
+      setSubIndex(Math.max(0, prevSubCount - 1))
+    }
+  }, [step, subIndex])
 
-  // Advance handler for steps 0–3 (pure "Continue"). Step 4 uses the Plaid-
-  // specific handlers; step 5 triggers the preview then reveal.
-  const handleContinue = useCallback(async () => {
-    if (step === 0 && !step1Complete) {
-      setError('Fill in age and annual salary to continue.')
+  // Internal sub-advance. If more sub-steps remain in this step, bump the
+  // sub-index. Otherwise persist the step and roll over to the next step.
+  const handleSubAdvance = useCallback(async () => {
+    const subCount = SUB_STEP_COUNTS[step] ?? 1
+    if (subIndex + 1 < subCount) {
+      setSubIndex(subIndex + 1)
       return
     }
     setBusy(true)
     const ok = await persistStep(step)
     setBusy(false)
     if (!ok) return
-    advanceTo(step + 1)
-  }, [step, step1Complete, persistStep, advanceTo])
+    setStep(step + 1)
+    setSubIndex(0)
+  }, [step, subIndex, persistStep])
 
   const finalize = useCallback(async (opts: { skipped: boolean }): Promise<boolean> => {
     setBusy(true)
@@ -199,8 +207,7 @@ export default function OnboardingPage() {
         savingsRate:      data.savingsRate,
         retirementAge:    data.retirementAge,
       }
-      const j = await saveOnboarding.mutateAsync(body)
-      setSkippedPlaid(Boolean(j?.skippedAssetLink))
+      await saveOnboarding.mutateAsync(body)
       return true
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Network error. Please try again.'
@@ -211,43 +218,57 @@ export default function OnboardingPage() {
     }
   }, [data, saveOnboarding])
 
-  const showPreview = useCallback(() => {
-    setPhase('preview')
+  const showReveal = useCallback(() => {
+    setPhase('reveal')
   }, [])
 
-  const handlePreviewContinue = useCallback(() => {
-    router.push('/dashboard/accounts')
-  }, [router])
-
   const handlePlaidAssetLinked = useCallback(async () => {
-    setJustCompleted(4)
-    setCompletedSteps(prev => new Set(prev).add(4))
-    window.setTimeout(() => setJustCompleted(null), 650)
     const ok = await finalize({ skipped: false })
-    if (ok) showPreview()
-  }, [finalize, showPreview])
+    if (ok) showReveal()
+  }, [finalize, showReveal])
 
   const handleSkipPlaid = useCallback(async () => {
-    setJustCompleted(4)
-    setCompletedSteps(prev => new Set(prev).add(4))
-    window.setTimeout(() => setJustCompleted(null), 650)
-    setSkippedPlaid(true)
     const ok = await finalize({ skipped: true })
-    if (ok) showPreview()
-  }, [finalize, showPreview])
+    if (ok) showReveal()
+  }, [finalize, showReveal])
 
-  // "Skip to account overview" — available on Steps 2, 3, 4, 5. Enabled only
-  // once Step 1 required fields exist. Clicking it finalizes onboarding with
-  // whatever data has been entered and redirects straight to the dashboard.
-  const skipToOverview = useCallback(async () => {
-    if (!step1Complete) return
-    // Persist whatever the user has typed on the current step first.
-    await persistStep(step)
-    const ok = await finalize({ skipped: true })
-    if (ok) router.push('/dashboard')
-  }, [step, step1Complete, persistStep, finalize, router])
+  // Skip-the-current-step: persists whatever partial data exists for the
+  // current step and advances one step forward. On the final interactive
+  // step (Plaid), skipping rolls into the reveal phase, matching the
+  // in-Plaid "Connect later" affordance.
+  const skipCurrentStep = useCallback(async () => {
+    setError(null)
+    setBusy(true)
+    try {
+      await persistStep(step, { skipped: true })
+    } finally {
+      setBusy(false)
+    }
+    if (step >= SUB_STEP_COUNTS.length - 1) {
+      const ok = await finalize({ skipped: true })
+      if (ok) showReveal()
+      return
+    }
+    setStep(step + 1)
+    setSubIndex(0)
+  }, [step, persistStep, finalize, showReveal])
 
+  // Skip for now surfaces on every step after the final Step 1 sub-question
+  // ("When do you want to retire?"). Once the user has entered their basics
+  // we can run the rest of the app on those values alone, so every
+  // subsequent step gets a low-friction bail-out that advances one step
+  // rather than abandoning the rest of onboarding wholesale.
   const showSkipButton = step >= 1 && step <= 4
+
+  // Progress value for the hairline bar. The reveal phase renders a
+  // fully-filled bar; the steps phase maps (step, subIndex) to a fraction
+  // of the total sub-step count.
+  const progressValue = useMemo(() => {
+    if (phase === 'reveal') return 1
+    if (step >= SUB_STEP_COUNTS.length) return 1
+    const idx = globalSubIndex(step, subIndex)
+    return Math.max(0, Math.min(1, idx / TOTAL_SUB_STEPS))
+  }, [phase, step, subIndex])
 
   const stepVariants = {
     hidden:  { opacity: 0, y: 12 },
@@ -258,279 +279,291 @@ export default function OnboardingPage() {
   // ── Render ───────────────────────────────────────────────────────────────
   if (!introChecked) {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-bg)' }} />
+      <>
+        <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-bg)' }} />
+        <OnboardingDevRestart />
+      </>
     )
   }
 
   if (phase === 'welcome') {
-    return <WelcomeIntro onStart={() => setPhase('steps')} />
-  }
-
-  if (phase === 'preview') {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          backgroundColor: 'var(--color-bg)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '40px 20px',
-        }}
-      >
-        <DashboardPreview
-          age={data.age}
-          annualIncome={data.annualIncome}
-          savingsRate={data.savingsRate}
-          retirementAge={data.retirementAge}
-          skippedPlaid={skippedPlaid}
-          onContinue={handlePreviewContinue}
-        />
-      </div>
+      <>
+        <WelcomeIntro onStart={() => setPhase('steps')} />
+        <OnboardingDevRestart />
+      </>
     )
   }
 
   if (phase === 'reveal') {
     return (
+      <>
+        <div
+          style={{
+            minHeight: '100dvh',
+            backgroundColor: 'var(--color-bg)',
+            overflowX: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div style={{ paddingTop: '20px', position: 'sticky', top: 0, zIndex: 30, backgroundColor: 'var(--color-bg)' }}>
+            <ProgressBar value={1} isMobile={isMobile} />
+          </div>
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '100%',
+            }}
+          >
+            <Step6Reveal data={data} />
+          </div>
+        </div>
+        <OnboardingDevRestart />
+      </>
+    )
+  }
+
+  return (
+    <>
       <div
         style={{
-          minHeight: '100vh',
+          minHeight: '100dvh',
           backgroundColor: 'var(--color-bg)',
           display: 'flex',
           flexDirection: 'column',
         }}
       >
+        {/* Hairline progress bar at the very top. */}
         <div style={{ paddingTop: '20px' }}>
-          <ProgressBar
-            currentStep={5}
-            completedSteps={new Set([0, 1, 2, 3, 4, 5])}
-            justCompleted={justCompleted}
-            isMobile={isMobile}
-          />
+          <ProgressBar value={progressValue} isMobile={isMobile} />
         </div>
+
+        {/* Top bar: back arrow (left) and wordmark (center). */}
+        <div
+          className="onboarding-top-bar"
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <button
+            type="button"
+            onClick={handleBack}
+            aria-label="Back"
+            disabled={(step === 0 && subIndex === 0) || busy}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: '44px',
+              minHeight: '44px',
+              background: 'transparent',
+              border: 'none',
+              padding: 0,
+              cursor: (step === 0 && subIndex === 0) || busy ? 'default' : 'pointer',
+              opacity: (step === 0 && subIndex === 0) ? 0 : 1,
+              visibility: (step === 0 && subIndex === 0) ? 'hidden' : 'visible',
+              color: 'var(--color-text-muted)',
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12 19 5 12 12 5" />
+            </svg>
+          </button>
+          <div
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '16px',
+              fontWeight: 400,
+              color: 'var(--color-gold)',
+              letterSpacing: '0.22em',
+              textTransform: 'uppercase',
+            }}
+          >
+            Illumin
+          </div>
+          <div style={{ width: '44px' }} />
+        </div>
+
+        {/* Mobile sticky LiveProjection bar. Stays above the step content.
+            Only renders once the user has entered a salary, so the strip
+            doesn't sit empty across the entire pre-salary portion of the
+            flow. */}
+        {isMobile && salaryEverEntered && (
+          <div
+            style={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 20,
+              padding: '12px 20px 14px',
+              backgroundColor: 'var(--color-bg)',
+              borderBottom: '1px solid var(--color-border)',
+            }}
+          >
+            <LiveProjection
+              data={data}
+              step={step}
+              linkedAccounts={linkedAccounts}
+              variant="sticky-mobile"
+            />
+          </div>
+        )}
+
+        {/* Main content area: question + field (left / main) and LiveProjection
+            sidecar (right on desktop). The flex:1 wrapper centers the
+            content vertically within the remaining viewport space (after the
+            progress bar, top bar, and optional mobile sticky LiveProjection
+            are accounted for by normal flow). */}
         <div
           className="onboarding-step-padding"
           style={{
             flex: 1,
             display: 'flex',
-            alignItems: 'center',
             justifyContent: 'center',
-          }}
-        >
-          <Step6Reveal data={data} />
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div
-      style={{
-        minHeight: '100vh',
-        backgroundColor: 'var(--color-bg)',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      <div style={{ paddingTop: '20px' }}>
-        <ProgressBar
-          currentStep={step}
-          completedSteps={completedSteps}
-          justCompleted={justCompleted}
-          isMobile={isMobile}
-        />
-      </div>
-
-      <div
-        className="onboarding-top-bar"
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexShrink: 0,
-        }}
-      >
-        <button
-          type="button"
-          onClick={handleBack}
-          aria-label="Back"
-          disabled={step <= 0 || busy}
-          style={{
-            display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            width: '32px',
-            height: '32px',
-            background: 'transparent',
-            border: 'none',
-            padding: 0,
-            cursor: step <= 0 || busy ? 'default' : 'pointer',
-            opacity: step <= 0 ? 0 : 1,
-            visibility: step <= 0 ? 'hidden' : 'visible',
-            color: 'var(--color-text-muted)',
+            paddingTop: 'clamp(24px, 4vh, 48px)',
+            paddingBottom: 'clamp(24px, 4vh, 48px)',
+            minHeight: 0,
           }}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="19" y1="12" x2="5" y2="12" />
-            <polyline points="12 19 5 12 12 5" />
-          </svg>
-        </button>
-        <div
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '16px',
-            fontWeight: 400,
-            color: 'var(--color-gold)',
-            letterSpacing: '0.22em',
-            textTransform: 'uppercase',
-          }}
-        >
-          Illumin
-        </div>
-        <div style={{ width: '32px' }} />
-      </div>
-
-      <div
-        className="onboarding-step-padding"
-        style={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            variants={stepVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-            style={{ width: '100%', maxWidth: step === 0 && !isMobile ? '860px' : '520px' }}
-          >
-            {step === 0 && (
-              <Step1Basics
-                data={data}
-                onChange={handlePatch}
-                isMobile={isMobile}
-                onAdvance={handleContinue}
-              />
-            )}
-            {step === 1 && <Step2Employment data={data} onChange={handlePatch} />}
-            {step === 2 && (
-              <Step3Contract
-                data={data}
-                onChange={handlePatch}
-                onAdvance={handleContinue}
-              />
-            )}
-            {step === 3 && <Step4Goals data={data} onChange={handlePatch} />}
-            {step === 4 && (
-              <Step5Plaid
-                linkedAccounts={linkedAccounts}
-                onLinked={accts => setLinkedAccounts(prev => [...prev, ...accts])}
-                onCompleteAssetLinked={handlePlaidAssetLinked}
-                onSkipForNow={handleSkipPlaid}
-                busy={busy}
-              />
-            )}
-
-            {error && (
-              <p
-                style={{
-                  marginTop: '16px',
-                  fontSize: '12px',
-                  color: 'var(--color-negative)',
-                  fontFamily: 'var(--font-mono)',
-                }}
-              >
-                {error}
-              </p>
-            )}
-
-            {/* Desktop Step 1 + Steps 1 and 3 use their own advance. Step 2 (employment)
-                and Step 4 (goals) need a shared Continue button. */}
-            {(step === 1 || step === 3) && (
-              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '44px' }}>
-                <button
-                  type="button"
-                  onClick={handleContinue}
-                  disabled={busy}
-                  style={{
-                    padding: '13px 36px',
-                    backgroundColor: 'var(--color-gold)',
-                    border: 'none',
-                    borderRadius: '2px',
-                    color: 'var(--color-surface)',
-                    fontSize: '12px',
-                    fontFamily: 'var(--font-mono)',
-                    letterSpacing: '0.12em',
-                    textTransform: 'uppercase',
-                    fontWeight: 500,
-                    cursor: busy ? 'not-allowed' : 'pointer',
-                    opacity: busy ? 0.65 : 1,
-                  }}
-                >
-                  {busy ? 'Saving…' : 'Continue'}
-                </button>
-              </div>
-            )}
-
-            {/* Desktop Step 1: explicit Continue button since Step1Basics only auto-advances on mobile */}
-            {step === 0 && !isMobile && (
-              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '44px' }}>
-                <button
-                  type="button"
-                  onClick={handleContinue}
-                  disabled={busy || !step1Complete}
-                  style={{
-                    padding: '13px 36px',
-                    backgroundColor: 'var(--color-gold)',
-                    border: 'none',
-                    borderRadius: '2px',
-                    color: 'var(--color-surface)',
-                    fontSize: '12px',
-                    fontFamily: 'var(--font-mono)',
-                    letterSpacing: '0.12em',
-                    textTransform: 'uppercase',
-                    fontWeight: 500,
-                    cursor: busy || !step1Complete ? 'not-allowed' : 'pointer',
-                    opacity: busy || !step1Complete ? 0.55 : 1,
-                  }}
-                >
-                  {busy ? 'Saving…' : 'Continue'}
-                </button>
-              </div>
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
-      {/* Persistent "Skip to account overview" — steps 2, 3, 4, 5 */}
-      {showSkipButton && (
-        <div
-          style={{
-            padding: isMobile ? '16px 20px 24px' : '16px 40px 24px',
-            display: 'flex',
-            justifyContent: 'flex-start',
-          }}
-        >
-          <button
-            type="button"
-            onClick={skipToOverview}
-            disabled={!step1Complete || busy}
+          <div
             style={{
-              ...secondaryBtn,
-              opacity: !step1Complete || busy ? 0.45 : 1,
-              cursor: !step1Complete || busy ? 'not-allowed' : 'pointer',
+              width: '100%',
+              maxWidth: '1040px',
+              display: 'grid',
+              gridTemplateColumns:
+                isMobile || !salaryEverEntered
+                  ? '1fr'
+                  : 'minmax(0, 1fr) minmax(300px, max-content)',
+              gap: isMobile ? '24px' : '56px',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
-            Skip to account overview
-          </button>
+            <div style={{ display: 'flex', justifyContent: 'flex-start', minWidth: 0 }}>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={`${step}-${subIndex}`}
+                  variants={stepVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                  style={{ width: '100%' }}
+                >
+                  {step === 0 && (
+                    <Step1Basics
+                      data={data}
+                      onChange={handlePatch}
+                      subIndex={subIndex}
+                      onSubAdvance={handleSubAdvance}
+                      isMobile={isMobile}
+                    />
+                  )}
+                  {step === 1 && (
+                    <Step2Employment
+                      data={data}
+                      onChange={handlePatch}
+                      subIndex={subIndex}
+                      onSubAdvance={handleSubAdvance}
+                      isMobile={isMobile}
+                    />
+                  )}
+                  {step === 2 && (
+                    <Step3Contract
+                      data={data}
+                      onChange={handlePatch}
+                      onAdvance={handleSubAdvance}
+                      isMobile={isMobile}
+                    />
+                  )}
+                  {step === 3 && (
+                    <Step4Goals
+                      data={data}
+                      onChange={handlePatch}
+                      subIndex={subIndex}
+                      onSubAdvance={handleSubAdvance}
+                      isMobile={isMobile}
+                    />
+                  )}
+                  {step === 4 && (
+                    <Step5Plaid
+                      linkedAccounts={linkedAccounts}
+                      onLinked={accts => setLinkedAccounts(prev => [...prev, ...accts])}
+                      onCompleteAssetLinked={handlePlaidAssetLinked}
+                      onSkipForNow={handleSkipPlaid}
+                      busy={busy}
+                      age={data.age}
+                      annualIncome={data.annualIncome}
+                      savingsRate={data.savingsRate}
+                      retirementAge={data.retirementAge}
+                      isMobile={isMobile}
+                    />
+                  )}
+
+                  {error && (
+                    <p
+                      style={{
+                        marginTop: '16px',
+                        fontFamily: 'var(--font-sans)',
+                        fontSize: '13px',
+                        color: 'var(--color-negative)',
+                      }}
+                    >
+                      {error}
+                    </p>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            {!isMobile && salaryEverEntered && (
+              <div style={{ alignSelf: 'center', justifySelf: 'start' }}>
+                <LiveProjection
+                  data={data}
+                  step={step}
+                  linkedAccounts={linkedAccounts}
+                  variant="sidecar"
+                />
+              </div>
+            )}
+          </div>
         </div>
-      )}
-    </div>
+
+        {/* Skip affordance on every step that supports it. Muted text button
+            below the main content. No guilt language. Advances one step
+            rather than abandoning the rest of onboarding. */}
+        {showSkipButton && (
+          <div
+            style={{
+              padding: isMobile ? '16px 20px 24px' : '16px 40px 24px',
+              display: 'flex',
+              justifyContent: 'flex-start',
+            }}
+          >
+            <button
+              type="button"
+              onClick={skipCurrentStep}
+              disabled={busy}
+              style={{
+                ...secondaryBtn,
+                opacity: busy ? 0.45 : 1,
+                cursor: busy ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Skip for now
+            </button>
+          </div>
+        )}
+      </div>
+      <OnboardingDevRestart />
+    </>
   )
 }
-

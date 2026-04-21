@@ -1,72 +1,47 @@
 'use client'
 
-import { motion, AnimatePresence } from 'framer-motion'
-import { TOTAL_STEPS } from './shared'
+import { motion } from 'framer-motion'
 
 interface Props {
-  currentStep: number
-  completedSteps: Set<number>
-  justCompleted: number | null
+  value: number  // 0..1
   isMobile: boolean
 }
 
-export function ProgressBar({ currentStep, completedSteps, justCompleted, isMobile }: Props) {
+/**
+ * Thin hairline progress bar in gold, advancing with each sub-step. No
+ * numbers, no segments, no "step X of Y" language per the intentional
+ * restraint of the onboarding flow.
+ */
+export function ProgressBar({ value, isMobile }: Props) {
+  const clamped = Math.max(0, Math.min(1, value))
   return (
-    <div style={{ width: '100%' }}>
+    <div
+      style={{
+        width: '100%',
+        padding: isMobile ? '0 20px' : '0 40px',
+      }}
+    >
       <div
         style={{
-          display: 'flex',
-          gap: '4px',
-          padding: isMobile ? '0 20px' : '0 40px',
+          position: 'relative',
+          width: '100%',
+          height: '1px',
+          backgroundColor: 'var(--color-border)',
+          overflow: 'hidden',
         }}
       >
-        {Array.from({ length: TOTAL_STEPS }, (_, i) => {
-          const filled = completedSteps.has(i) || i === currentStep
-          const isActive = i === currentStep
-          const isCelebrating = justCompleted === i
-          return (
-            <div
-              key={i}
-              style={{
-                flex: 1,
-                position: 'relative',
-                height: '3px',
-                backgroundColor: filled ? 'var(--color-gold)' : 'var(--color-border)',
-                borderRadius: '2px',
-                transition: 'background-color 350ms ease',
-                opacity: isActive && !completedSteps.has(i) ? 0.55 : 1,
-              }}
-            >
-              <AnimatePresence>
-                {isCelebrating && (
-                  <motion.div
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.6, opacity: 0 }}
-                    transition={{ duration: 0.45, ease: 'backOut' }}
-                    style={{
-                      position: 'absolute',
-                      right: '-2px',
-                      top: '-10px',
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      backgroundColor: 'var(--color-gold)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'var(--color-surface)',
-                    }}
-                  >
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )
-        })}
+        <motion.div
+          initial={false}
+          animate={{ width: `${clamped * 100}%` }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            bottom: 0,
+            backgroundColor: 'var(--color-gold)',
+          }}
+        />
       </div>
     </div>
   )

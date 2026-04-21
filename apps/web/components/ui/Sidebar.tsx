@@ -33,7 +33,7 @@ const sections = [
   {
     label: 'INTELLIGENCE',
     items: [
-      { href: '/dashboard/score',        label: 'Score'            },
+      { href: '/dashboard/recovery',     label: 'Recovery'         },
       { href: '/dashboard/benefits',     label: 'Benefits'         },
       { href: '/dashboard/opportunity',  label: 'Opportunity Cost' },
     ],
@@ -100,11 +100,11 @@ export default function Sidebar() {
     textDecoration: 'none',
     color: isActive(href) ? 'var(--color-text)' : 'var(--color-text-muted)',
     backgroundColor: isActive(href) ? 'var(--color-gold-subtle)' : 'transparent',
-    fontSize: '14px',
+    fontSize: '12px',
     fontFamily: 'var(--font-sans)',
-    fontWeight: 400,
-    letterSpacing: '0.01em',
-    textTransform: 'none',
+    fontWeight: 500,
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
     transition: 'color 150ms ease, background-color 150ms ease',
   })
 
