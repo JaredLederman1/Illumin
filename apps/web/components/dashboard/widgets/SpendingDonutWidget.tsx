@@ -19,33 +19,6 @@ const PALETTE = [
 
 const MAX_LEGEND_ITEMS = 4
 
-// ── Styles ──────────────────────────────────────────────────────────────────
-
-const shellStyle: CSSProperties = {
-  minHeight: '260px',
-  maxHeight: '340px',
-  overflow: 'hidden',
-}
-
-const heroLabel: CSSProperties = {
-  fontFamily: 'var(--font-sans)',
-  fontSize: '11px',
-  fontWeight: 500,
-  color: 'var(--color-text-muted)',
-  textTransform: 'uppercase',
-  letterSpacing: '0.06em',
-  margin: 0,
-}
-
-const heroValue: CSSProperties = {
-  fontFamily: 'var(--font-mono)',
-  fontSize: '28px',
-  color: 'var(--color-text)',
-  letterSpacing: '-0.01em',
-  lineHeight: 1.05,
-  margin: 0,
-}
-
 const barTrack: CSSProperties = {
   display: 'flex',
   height: '8px',
@@ -89,6 +62,7 @@ const legendLabel: CSSProperties = {
   fontFamily: 'var(--font-mono)',
   fontSize: '12px',
   color: 'var(--color-text-mid)',
+  textTransform: 'lowercase',
   whiteSpace: 'nowrap',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
@@ -107,8 +81,13 @@ const ctaLink: CSSProperties = {
   letterSpacing: '0.08em',
   color: 'var(--color-gold)',
   textDecoration: 'none',
-  marginTop: 'auto',
-  alignSelf: 'flex-start',
+}
+
+const emptyCopy: CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: '12px',
+  color: 'var(--color-text-muted)',
+  margin: 0,
 }
 
 const fmtCurrency = (n: number) =>
@@ -118,23 +97,22 @@ const fmtCurrency = (n: number) =>
     maximumFractionDigits: 0,
   }).format(Math.max(0, Math.round(n)))
 
-// ── Component ───────────────────────────────────────────────────────────────
-
 export default function SpendingDonutWidget() {
   const { spendingByCategory } = useDashboard()
 
   if (!spendingByCategory || spendingByCategory.length === 0) {
     return (
       <WidgetCard
-        label="Spending by category"
-        title="Last 30 days"
-        subtitle="No expense transactions in the last 30 days."
-        style={shellStyle}
-      >
-        <Link href="/dashboard/cashflow" style={ctaLink}>
-          See breakdown &rarr;
-        </Link>
-      </WidgetCard>
+        variant="metric"
+        eyebrow="Spending by category"
+        columns={[{ caption: 'Last 30 days', hero: fmtCurrency(0), captionPosition: 'below' }]}
+        secondary={<p style={emptyCopy}>No expense transactions in the last 30 days.</p>}
+        cta={
+          <Link href="/dashboard/cashflow" style={ctaLink}>
+            See breakdown &rarr;
+          </Link>
+        }
+      />
     )
   }
 
@@ -144,45 +122,47 @@ export default function SpendingDonutWidget() {
   const hiddenCount = Math.max(0, ranked.length - MAX_LEGEND_ITEMS)
 
   return (
-    <WidgetCard label="Spending by category" style={shellStyle}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-label-to-value)' }}>
-        <p style={heroLabel}>Last 30 days</p>
-        <p style={heroValue}>{fmtCurrency(total)}</p>
-      </div>
-
-      <div style={barTrack} role="img" aria-label="Category share of spending">
-        {ranked.map((item, i) => {
-          const share = total > 0 ? (item.amount / total) * 100 : 0
-          return (
-            <div
-              key={item.category}
-              style={{
-                width: `${share}%`,
-                backgroundColor: PALETTE[i % PALETTE.length],
-              }}
-            />
-          )
-        })}
-      </div>
-
-      <div style={legendGrid}>
-        {topForLegend.map((item, i) => {
-          const share = total > 0 ? (item.amount / total) * 100 : 0
-          return (
-            <div key={item.category} style={legendRow}>
-              <div style={legendLeft}>
-                <div style={{ ...legendSwatch, backgroundColor: PALETTE[i % PALETTE.length] }} />
-                <span style={legendLabel}>{item.category}</span>
-              </div>
-              <span style={legendShare}>{share.toFixed(0)}%</span>
-            </div>
-          )
-        })}
-      </div>
-
-      <Link href="/dashboard/cashflow" style={ctaLink}>
-        {hiddenCount > 0 ? `See all ${ranked.length} categories` : 'See breakdown'} &rarr;
-      </Link>
-    </WidgetCard>
+    <WidgetCard
+      variant="metric"
+      eyebrow="Spending by category"
+      columns={[{ caption: 'Last 30 days', hero: fmtCurrency(total), captionPosition: 'below' }]}
+      secondary={
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={barTrack} role="img" aria-label="Category share of spending">
+            {ranked.map((item, i) => {
+              const share = total > 0 ? (item.amount / total) * 100 : 0
+              return (
+                <div
+                  key={item.category}
+                  style={{
+                    width: `${share}%`,
+                    backgroundColor: PALETTE[i % PALETTE.length],
+                  }}
+                />
+              )
+            })}
+          </div>
+          <div style={legendGrid}>
+            {topForLegend.map((item, i) => {
+              const share = total > 0 ? (item.amount / total) * 100 : 0
+              return (
+                <div key={item.category} style={legendRow}>
+                  <div style={legendLeft}>
+                    <div style={{ ...legendSwatch, backgroundColor: PALETTE[i % PALETTE.length] }} />
+                    <span style={legendLabel}>{item.category}</span>
+                  </div>
+                  <span style={legendShare}>{share.toFixed(0)}%</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      }
+      cta={
+        <Link href="/dashboard/cashflow" style={ctaLink}>
+          {hiddenCount > 0 ? `See all ${ranked.length} categories` : 'See breakdown'} &rarr;
+        </Link>
+      }
+    />
   )
 }

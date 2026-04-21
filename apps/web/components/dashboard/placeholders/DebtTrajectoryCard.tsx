@@ -42,44 +42,20 @@ function monthsLabel(months: number, capped: boolean): string {
   return `${years} yr ${rem} mo`
 }
 
-// ── Styles ──────────────────────────────────────────────────────────────────
-
-const primaryLabel: CSSProperties = {
-  fontFamily: 'var(--font-sans)',
-  fontSize: '11px',
-  fontWeight: 500,
-  color: 'var(--color-text-muted)',
-  textTransform: 'uppercase',
-  letterSpacing: '0.06em',
-  margin: 0,
-}
-
-const primaryValue: CSSProperties = {
-  fontFamily: 'var(--font-mono)',
-  fontSize: '32px',
-  color: 'var(--color-text)',
-  letterSpacing: '-0.01em',
-  lineHeight: 1.05,
-  margin: 0,
-}
-
-const statsRow: CSSProperties = {
+const statsGrid: CSSProperties = {
   display: 'grid',
   gridTemplateColumns: '1fr 1fr',
   gap: '14px',
-  borderTop: '1px solid var(--color-border)',
-  marginTop: 'calc(var(--space-section-above) - var(--space-card-label-to-body))',
-  paddingTop: 'var(--space-section-below)',
 }
 
 const statLabel: CSSProperties = {
-  fontFamily: 'var(--font-sans)',
+  fontFamily: 'var(--font-mono)',
   fontSize: '11px',
   fontWeight: 500,
   color: 'var(--color-text-muted)',
   textTransform: 'uppercase',
   letterSpacing: '0.06em',
-  marginBottom: 'var(--space-label-to-value)',
+  marginBottom: '4px',
 }
 
 const statValue: CSSProperties = {
@@ -105,31 +81,24 @@ const ctaLink: CSSProperties = {
   letterSpacing: '0.08em',
   color: 'var(--color-gold)',
   textDecoration: 'none',
-  marginTop: 'auto',
-  alignSelf: 'flex-start',
 }
-
-const shellStyle: CSSProperties = {
-  minHeight: '260px',
-  maxHeight: '340px',
-  overflow: 'hidden',
-}
-
-// ── Component ───────────────────────────────────────────────────────────────
 
 export default function DebtTrajectoryCard({ scenarios }: Props) {
   if (!scenarios || scenarios.debts.length === 0) {
     return (
       <WidgetCard
-        label="Debt trajectory"
-        title="No debts tracked"
-        subtitle="Link a credit card or loan account to project your payoff date."
-        style={shellStyle}
-      >
-        <Link href="/dashboard/accounts" style={ctaLink}>
-          Link a debt account &rarr;
-        </Link>
-      </WidgetCard>
+        variant="metric"
+        eyebrow="Debt trajectory"
+        columns={[{ caption: 'No debts tracked', hero: '—', captionPosition: 'below' }]}
+        secondary={
+          <p style={copy}>Link a credit card or loan account to project your payoff date.</p>
+        }
+        cta={
+          <Link href="/dashboard/accounts" style={ctaLink}>
+            Link a debt account &rarr;
+          </Link>
+        }
+      />
     )
   }
 
@@ -150,28 +119,30 @@ export default function DebtTrajectoryCard({ scenarios }: Props) {
       : 'Paying the minimums is also the avalanche path at this extra rate.'
 
   return (
-    <WidgetCard label="Debt trajectory" style={shellStyle}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-label-to-value)' }}>
-        <p style={primaryLabel}>Projected payoff</p>
-        <p style={primaryValue}>{payoffDate}</p>
-      </div>
-
-      <div style={statsRow}>
-        <div>
-          <p style={statLabel}>Interest remaining</p>
-          <p style={statValue}>{fmtCurrency(totalInterestRemaining)}</p>
+    <WidgetCard
+      variant="metric"
+      eyebrow="Debt trajectory"
+      columns={[{ caption: 'Projected payoff', hero: payoffDate, captionPosition: 'below' }]}
+      secondary={
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={statsGrid}>
+            <div>
+              <p style={statLabel}>Interest remaining</p>
+              <p style={statValue}>{fmtCurrency(totalInterestRemaining)}</p>
+            </div>
+            <div>
+              <p style={statLabel}>Months to debt-free</p>
+              <p style={statValue}>{monthsLabel(months, best.capped)}</p>
+            </div>
+          </div>
+          <p style={copy}>{savingsLine}</p>
         </div>
-        <div>
-          <p style={statLabel}>Months to debt-free</p>
-          <p style={statValue}>{monthsLabel(months, best.capped)}</p>
-        </div>
-      </div>
-
-      <p style={copy}>{savingsLine}</p>
-
-      <Link href="/dashboard/forecast/debt-paydown" style={ctaLink}>
-        Open paydown planner &rarr;
-      </Link>
-    </WidgetCard>
+      }
+      cta={
+        <Link href="/dashboard/forecast/debt-paydown" style={ctaLink}>
+          Open paydown planner &rarr;
+        </Link>
+      }
+    />
   )
 }

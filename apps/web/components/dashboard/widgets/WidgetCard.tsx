@@ -2,29 +2,88 @@
 
 import { CSSProperties, ReactNode } from 'react'
 
-interface Props {
-  label?: string
-  title?: string
-  subtitle?: string
-  comingSoon?: boolean
+/**
+ * WidgetCard is the shared shell for every card in the dashboard grid.
+ *
+ * The `variant` prop decides slot structure:
+ *   metric  - eyebrow, optional caption(s) + hero number(s), fixed-height
+ *             secondary region, bottom-aligned CTA.
+ *   list    - eyebrow, list rows (children), bottom-aligned CTA. No serif
+ *             sub-heading between the eyebrow and the rows.
+ *   chart   - eyebrow, DM Mono caption, chart (children), optional CTA. No
+ *             serif sub-heading.
+ *
+ * The hero number uses one canonical size (HERO_FONT_SIZE) across every
+ * metric card on the page so the dashboard reads as one system. The secondary
+ * slot in a metric card uses `flex: 1`, which means all metric cards placed
+ * in the same grid row share the same secondary-slot height (grid rows
+ * equalise card heights, the secondary slot absorbs the difference).
+ */
+
+const CANONICAL_HERO_FONT_SIZE = '56px'
+const SECONDARY_SLOT_MIN_HEIGHT = '96px'
+
+interface BaseProps {
+  eyebrow: string
+  cta?: ReactNode
   accent?: 'neutral' | 'alert' | 'positive'
-  children?: ReactNode
   style?: CSSProperties
 }
 
-const card: CSSProperties = {
+export interface MetricColumn {
+  caption?: string
+  hero: ReactNode
+  heroColor?: string
+  // Default 'above' preserves the original layout for every card that does
+  // not opt in. 'below' renders the caption as a quiet sentence-case
+  // footnote under the hero number instead of an uppercase eyebrow-style
+  // label above it.
+  captionPosition?: 'above' | 'below'
+}
+
+interface MetricVariantProps extends BaseProps {
+  variant: 'metric'
+  columns: MetricColumn[]
+  secondary?: ReactNode
+  secondaryFill?: boolean
+}
+
+interface ListVariantProps extends BaseProps {
+  variant: 'list'
+  children?: ReactNode
+}
+
+interface ChartVariantProps extends BaseProps {
+  variant: 'chart'
+  caption: string
+  children?: ReactNode
+}
+
+type Props = MetricVariantProps | ListVariantProps | ChartVariantProps
+
+const shell: CSSProperties = {
   backgroundColor: 'var(--color-surface)',
   border: '1px solid var(--color-gold-border)',
   borderRadius: 'var(--radius-lg)',
   padding: '24px',
   display: 'flex',
   flexDirection: 'column',
-  gap: 'var(--space-card-label-to-body)',
+  gap: '16px',
   height: '100%',
 }
 
-const labelStyle: CSSProperties = {
-  fontFamily: 'var(--font-sans)',
+const eyebrowStyle: CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: '11px',
+  fontWeight: 500,
+  color: 'var(--color-text-muted)',
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
+  margin: 0,
+}
+
+const captionStyle: CSSProperties = {
+  fontFamily: 'var(--font-mono)',
   fontSize: '11px',
   fontWeight: 500,
   color: 'var(--color-text-muted)',
@@ -33,61 +92,132 @@ const labelStyle: CSSProperties = {
   margin: 0,
 }
 
-const titleStyle: CSSProperties = {
+// Footnote-style caption that sits below the hero. One step smaller than
+// the eyebrow, sentence case, normal letter-spacing. Reads as a quiet
+// annotation of the hero rather than a second header competing with the
+// eyebrow label above.
+const captionBelowStyle: CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: '10px',
+  fontWeight: 400,
+  color: 'var(--color-text-muted)',
+  letterSpacing: 'normal',
+  margin: 0,
+}
+
+const heroStyle: CSSProperties = {
   fontFamily: 'var(--font-display)',
-  fontSize: '20px',
+  fontSize: CANONICAL_HERO_FONT_SIZE,
   fontWeight: 400,
   color: 'var(--color-text)',
-  margin: 0,
-  lineHeight: 1.25,
-}
-
-const subStyle: CSSProperties = {
-  fontFamily: 'var(--font-mono)',
-  fontSize: '12px',
-  color: 'var(--color-text-mid)',
-  lineHeight: 1.6,
+  letterSpacing: '-0.01em',
+  lineHeight: 1,
   margin: 0,
 }
 
-const comingSoonPill: CSSProperties = {
-  alignSelf: 'flex-start',
-  fontFamily: 'var(--font-sans)',
-  fontSize: '10px',
-  fontWeight: 500,
-  letterSpacing: '0.06em',
-  textTransform: 'uppercase',
-  color: 'var(--color-text-muted)',
-  border: '1px solid var(--color-border)',
-  padding: '3px 10px',
-  borderRadius: 'var(--radius-pill)',
-}
-
-const accentBorder: Record<NonNullable<Props['accent']>, CSSProperties> = {
+const accentBorder: Record<NonNullable<BaseProps['accent']>, CSSProperties> = {
   neutral: {},
   alert: { borderColor: 'var(--color-negative-border)' },
   positive: { borderColor: 'var(--color-positive-border)' },
 }
 
-export default function WidgetCard({
-  label,
-  title,
-  subtitle,
-  comingSoon,
-  accent = 'neutral',
-  children,
-  style,
-}: Props) {
-  return (
+const secondarySlot: CSSProperties = {
+  flex: 1,
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'center',
+  minHeight: SECONDARY_SLOT_MIN_HEIGHT,
+}
+
+const ctaRow: CSSProperties = {
+  marginTop: 'auto',
+  display: 'flex',
+  alignItems: 'flex-end',
+}
+
+function Eyebrow({ text }: { text: string }) {
+  return <p style={eyebrowStyle}>{text}</p>
+}
+
+function HeroColumn({ col }: { col: MetricColumn }) {
+  const position = col.captionPosition ?? 'above'
+  const hero = (
     <div
-      className="card-hoverable"
-      style={{ ...card, ...accentBorder[accent], ...style }}
+      style={{
+        ...heroStyle,
+        color: col.heroColor ?? heroStyle.color,
+      }}
     >
-      {label && <p style={labelStyle}>{label}</p>}
-      {title && <p style={titleStyle}>{title}</p>}
-      {subtitle && <p style={subStyle}>{subtitle}</p>}
-      {children}
-      {comingSoon && <span style={comingSoonPill}>Coming soon</span>}
+      {col.hero}
+    </div>
+  )
+
+  if (position === 'below') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
+        {hero}
+        {col.caption && <p style={captionBelowStyle}>{col.caption}</p>}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
+      {col.caption && <p style={captionStyle}>{col.caption}</p>}
+      {hero}
     </div>
   )
 }
+
+export default function WidgetCard(props: Props) {
+  const { eyebrow, cta, accent = 'neutral', style } = props
+
+  const shellStyle = { ...shell, ...accentBorder[accent], ...style }
+
+  if (props.variant === 'metric') {
+    return (
+      <div className="card-hoverable" style={shellStyle}>
+        <Eyebrow text={eyebrow} />
+        <div
+          style={{
+            display: 'flex',
+            gap: '32px',
+            alignItems: 'flex-start',
+            flexWrap: 'wrap',
+          }}
+        >
+          {props.columns.map((col, i) => (
+            <HeroColumn key={i} col={col} />
+          ))}
+        </div>
+        <div style={secondarySlot}>{props.secondary ?? null}</div>
+        {cta && <div style={ctaRow}>{cta}</div>}
+      </div>
+    )
+  }
+
+  if (props.variant === 'list') {
+    return (
+      <div className="card-hoverable" style={shellStyle}>
+        <Eyebrow text={eyebrow} />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          {props.children}
+        </div>
+        {cta && <div style={ctaRow}>{cta}</div>}
+      </div>
+    )
+  }
+
+  return (
+    <div className="card-hoverable" style={shellStyle}>
+      <Eyebrow text={eyebrow} />
+      <p style={captionStyle}>{props.caption}</p>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        {props.children}
+      </div>
+      {cta && <div style={ctaRow}>{cta}</div>}
+    </div>
+  )
+}
+
+export { CANONICAL_HERO_FONT_SIZE, SECONDARY_SLOT_MIN_HEIGHT }
