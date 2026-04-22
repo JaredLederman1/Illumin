@@ -82,7 +82,7 @@ export default function StockChartBg() {
           fill="none"
           stroke="#A8B4C0"
           strokeWidth={2.5}
-          opacity={0.7}
+          opacity={0.35}
           strokeLinejoin="miter"
           strokeLinecap="square"
         />
