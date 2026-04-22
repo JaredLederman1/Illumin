@@ -194,6 +194,13 @@ After schema changes: `npx prisma generate` then `npx prisma db push` (or `npx p
 ### Brand name
 - Always **Illumin**. Never "Sovereign", "Lumen", or any other name.
 
+### Brand metaphor
+- The internal organizing metaphor for the vigilance repositioning is **sentinel**: elevated vantage, active watch, institutional register. Not "watchtower" (too literal). Not "watchdog" (wrong register, too consumer).
+- Public-facing copy can use "on watch," "standing watch," "watching" as verbs. Avoid "watchtower" in user-facing copy.
+- Route naming convention: dedicated vigilance pages go under `/dashboard/sentinel`, not `/dashboard/watchtower` or `/dashboard/watch`.
+- Component naming: `components/watch/` is the directory (active verb). Component names that explicitly invoke the metaphor should use "Sentinel" (e.g., `SentinelHero`, `SentinelDashboard`). Neutral components like `PerimeterSVG`, `WatchLogFeed`, `ThresholdBar` stay as-is.
+- The AI coach brand name remains **Illumin's Engine**. Do not rename it to anything involving "sentinel."
+
 ### Copy style
 - No em dashes (`—`) anywhere in copy, titles, or code comments. Use commas, periods, or colons instead.
 
