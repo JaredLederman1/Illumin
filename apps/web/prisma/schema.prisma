@@ -7,14 +7,14 @@ datasource db {
 }
 
 model User {
-  id                 String              @id @default(cuid())
-  email              String              @unique
-  createdAt          DateTime            @default(now()) @map("created_at")
-  accounts           Account[]
-  snapshots          NetWorthSnapshot[]
-  onboardingProfile  OnboardingProfile?
-  employmentBenefits EmploymentBenefits?
-  budget             Budget?
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  createdAt           DateTime             @default(now()) @map("created_at")
+  accounts            Account[]
+  snapshots           NetWorthSnapshot[]
+  onboardingProfile   OnboardingProfile?
+  employmentBenefits  EmploymentBenefits?
+  budget              Budget?
   categoryRules       CategoryRule[]
   merchantRenameRules MerchantRenameRule[]
   financialActions    FinancialAction[]
@@ -23,6 +23,9 @@ model User {
   budgetRollovers     BudgetRollover[]
   analyticsHoldings   AnalyticsHolding[]
   recoveryEvents      RecoveryEvent[]
+  scans               Scan[]
+  signals             Signal[]
+  signalStates        SignalState[]
 }
 
 model FinancialAction {
@@ -53,25 +56,29 @@ model Budget {
 }
 
 model Account {
-  id              String        @id @default(cuid())
-  userId          String        @map("user_id")
-  institutionName String        @map("institution_name")
-  accountType     String        @map("account_type")
-  balance         Float         @default(0)
-  last4           String?
-  classification  String        @default("asset")
-  apr             Float?
-  customLabel     String?       @map("custom_label")
-  aprConfirmedAt  DateTime?     @map("apr_confirmed_at")
-  plaidAccountId  String?       @unique @map("plaid_account_id")
-  plaidAccessToken String?       @map("plaid_access_token")
-  plaidItemId     String?       @map("plaid_item_id")
-  createdAt       DateTime      @default(now()) @map("created_at")
-  user            User          @relation(fields: [userId], references: [id])
-  transactions       Transaction[]
-  holdings           Holding[]
-  analyticsHoldings  AnalyticsHolding[]
+  id                  String             @id @default(cuid())
+  userId              String             @map("user_id")
+  institutionName     String             @map("institution_name")
+  accountType         String             @map("account_type")
+  balance             Float              @default(0)
+  last4               String?
+  classification      String             @default("asset")
+  apr                 Float?
+  customLabel         String?            @map("custom_label")
+  aprConfirmedAt      DateTime?          @map("apr_confirmed_at")
+  plaidAccountId      String?            @unique @map("plaid_account_id")
+  plaidAccessToken    String?            @map("plaid_access_token")
+  plaidItemId         String?            @map("plaid_item_id")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  lastSyncedAt        DateTime?          @map("last_synced_at")
+  lastSyncAttemptedAt DateTime?          @map("last_sync_attempted_at")
+  lastSyncError       String?            @map("last_sync_error")
+  user                User               @relation(fields: [userId], references: [id])
+  transactions        Transaction[]
+  holdings            Holding[]
+  analyticsHoldings   AnalyticsHolding[]
 
+  @@index([lastSyncedAt])
   @@map("accounts")
 }
 
@@ -130,15 +137,16 @@ model AnalyticsHolding {
 }
 
 model Transaction {
-  id           String   @id @default(cuid())
-  accountId    String   @map("account_id")
-  merchantName String?  @map("merchant_name")
+  id           String    @id @default(cuid())
+  accountId    String    @map("account_id")
+  merchantName String?   @map("merchant_name")
   amount       Float
   category     String?
   date         DateTime
-  pending      Boolean  @default(false)
-  tags         String[] @default([])
-  account      Account  @relation(fields: [accountId], references: [id])
+  pending      Boolean   @default(false)
+  tags         String[]  @default([])
+  lastSyncedAt DateTime? @map("last_synced_at")
+  account      Account   @relation(fields: [accountId], references: [id])
 
   @@map("transactions")
 }
@@ -155,29 +163,29 @@ model NetWorthSnapshot {
 }
 
 model OnboardingProfile {
-  id                         String    @id @default(cuid())
-  userId                     String    @unique @map("user_id")
-  age                        Int
-  annualIncome               Float     @map("annual_income")
-  savingsRate                Float     @map("savings_rate")
-  retirementAge              Int       @map("retirement_age")
-  locationCity               String?   @map("location_city")
-  locationState              String?   @map("location_state")
-  jobTitle                   String?   @map("job_title")
-  employer                   String?
-  employerStartDate          DateTime? @map("employer_start_date")
-  targetRetirementIncome     Float?    @map("target_retirement_income")
-  emergencyFundMonthsTarget  Int?      @default(6) @map("emergency_fund_months_target")
-  majorGoals                 String[]  @default([]) @map("major_goals")
-  riskTolerance              Int?      @map("risk_tolerance")
-  contractParsedData         Json?     @map("contract_parsed_data")
-  contractUploadedAt         DateTime? @map("contract_uploaded_at")
-  contractStepSkippedAt      DateTime? @map("contract_step_skipped_at")
-  introSeenAt                DateTime? @map("intro_seen_at")
-  completedAt                DateTime? @map("completed_at")
-  createdAt                  DateTime  @default(now()) @map("created_at")
-  updatedAt                  DateTime  @updatedAt @map("updated_at")
-  user                       User      @relation(fields: [userId], references: [id])
+  id                        String    @id @default(cuid())
+  userId                    String    @unique @map("user_id")
+  age                       Int
+  annualIncome              Float     @map("annual_income")
+  savingsRate               Float     @map("savings_rate")
+  retirementAge             Int       @map("retirement_age")
+  locationCity              String?   @map("location_city")
+  locationState             String?   @map("location_state")
+  jobTitle                  String?   @map("job_title")
+  employer                  String?
+  employerStartDate         DateTime? @map("employer_start_date")
+  targetRetirementIncome    Float?    @map("target_retirement_income")
+  emergencyFundMonthsTarget Int?      @default(6) @map("emergency_fund_months_target")
+  majorGoals                String[]  @default([]) @map("major_goals")
+  riskTolerance             Int?      @map("risk_tolerance")
+  contractParsedData        Json?     @map("contract_parsed_data")
+  contractUploadedAt        DateTime? @map("contract_uploaded_at")
+  contractStepSkippedAt     DateTime? @map("contract_step_skipped_at")
+  introSeenAt               DateTime? @map("intro_seen_at")
+  completedAt               DateTime? @map("completed_at")
+  createdAt                 DateTime  @default(now()) @map("created_at")
+  updatedAt                 DateTime  @updatedAt @map("updated_at")
+  user                      User      @relation(fields: [userId], references: [id])
 
   @@map("onboarding_profiles")
 }
@@ -196,13 +204,13 @@ model CategoryRule {
 }
 
 model MerchantRenameRule {
-  id               String   @id @default(cuid())
-  userId           String   @map("user_id")
-  originalName     String   @map("original_name")
-  renamedTo        String   @map("renamed_to")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
-  user             User     @relation(fields: [userId], references: [id])
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  originalName String   @map("original_name")
+  renamedTo    String   @map("renamed_to")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  user         User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, originalName])
   @@map("merchant_rename_rules")
@@ -278,17 +286,17 @@ model EmploymentBenefits {
 }
 
 model InviteCode {
-  id           String    @id @default(cuid())
-  code         String    @unique
-  maxUses      Int       @default(1) @map("max_uses")
-  usedCount    Int       @default(0) @map("used_count")
-  expiresAt    DateTime? @map("expires_at")
-  note         String?
-  createdBy    String?   @map("created_by")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  disabledAt   DateTime? @map("disabled_at")
+  id         String    @id @default(cuid())
+  code       String    @unique
+  maxUses    Int       @default(1) @map("max_uses")
+  usedCount  Int       @default(0) @map("used_count")
+  expiresAt  DateTime? @map("expires_at")
+  note       String?
+  createdBy  String?   @map("created_by")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  disabledAt DateTime? @map("disabled_at")
 
-  redemptions  InviteCodeRedemption[]
+  redemptions InviteCodeRedemption[]
 
   @@map("invite_codes")
 }
@@ -299,7 +307,7 @@ model InviteCodeRedemption {
   userId       String   @map("user_id")
   redeemedAt   DateTime @default(now()) @map("redeemed_at")
 
-  inviteCode   InviteCode @relation(fields: [inviteCodeId], references: [id], onDelete: Cascade)
+  inviteCode InviteCode @relation(fields: [inviteCodeId], references: [id], onDelete: Cascade)
 
   @@unique([inviteCodeId, userId])
   @@index([userId])
@@ -318,4 +326,65 @@ model RecoveryEvent {
   @@unique([userId, gapId])
   @@index([userId])
   @@map("recovery_events")
+}
+
+model Scan {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  startedAt       DateTime  @default(now()) @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  status          String    @default("running")
+  trigger         String
+  signalsChecked  Int       @default(0) @map("signals_checked")
+  signalsFlagged  Int       @default(0) @map("signals_flagged")
+  signalsResolved Int       @default(0) @map("signals_resolved")
+  errorMessage    String?   @map("error_message")
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startedAt(sort: Desc)])
+  @@index([status])
+  @@map("scans")
+}
+
+model Signal {
+  id                    String    @id @default(cuid())
+  userId                String    @map("user_id")
+  gapId                 String    @map("gap_id")
+  domain                String
+  state                 String    @default("new")
+  severity              String    @default("advisory")
+  annualValue           Float     @map("annual_value")
+  lifetimeValue         Float?    @map("lifetime_value")
+  payload               Json?
+  firstDetectedAt       DateTime  @default(now()) @map("first_detected_at")
+  lastSeenAt            DateTime  @default(now()) @map("last_seen_at")
+  acknowledgedAt        DateTime? @map("acknowledged_at")
+  actedAt               DateTime? @map("acted_at")
+  resolvedAt            DateTime? @map("resolved_at")
+  firstDetectedInScanId String?   @map("first_detected_in_scan_id")
+  lastUpdatedInScanId   String?   @map("last_updated_in_scan_id")
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gapId])
+  @@index([userId, state])
+  @@index([userId, lastSeenAt(sort: Desc)])
+  @@index([domain])
+  @@map("signals")
+}
+
+model SignalState {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  gapId         String   @map("gap_id")
+  currentState  String   @map("current_state")
+  stateSince    DateTime @default(now()) @map("state_since")
+  previousState String?  @map("previous_state")
+  lastCheckedAt DateTime @default(now()) @map("last_checked_at")
+  lastValue     Float?   @map("last_value")
+  previousValue Float?   @map("previous_value")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gapId])
+  @@index([userId, currentState])
+  @@map("signal_states")
 }
