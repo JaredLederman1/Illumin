@@ -381,7 +381,7 @@ export default function RecoveryPage() {
                   alignSelf: 'flex-start',
                 }}
               >
-                Connect more accounts to surface new gaps &rarr;
+                Connect more accounts so Illumin can flag new gaps &rarr;
               </Link>
             </section>
           ) : (

@@ -86,7 +86,7 @@ export default function TaxAdvantagedCapacityCard({ breakdown }: Props) {
         columns={[{ caption: 'No contribution data yet', hero: '—' }]}
         secondary={
           <p style={copy}>
-            Link a retirement account to see how much room is still available this year.
+            Link a retirement account so Illumin can monitor how much room is still available this year.
           </p>
         }
         cta={

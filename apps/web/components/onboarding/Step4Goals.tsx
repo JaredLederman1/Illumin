@@ -27,7 +27,7 @@ const QUESTION: Record<FieldKey, string> = {
 const CONTEXT: Record<FieldKey, string> = {
   retireIncome: 'The yearly income you want to live on in retirement, in today’s dollars.',
   emergencyFund: 'Most financial advisors recommend 3 to 6 months of essential expenses set aside for emergencies.',
-  risk: 'This shapes your target asset mix and the rebalancing nudges Illumin sends you.',
+  risk: 'This shapes your target asset mix and signals Illumin watches for rebalancing.',
 }
 
 const RISK_LABELS: Record<number, string> = {

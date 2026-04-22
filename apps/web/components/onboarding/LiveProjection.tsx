@@ -157,7 +157,7 @@ export function LiveProjection({ data, step, linkedAccounts = [], variant }: Pro
             maxWidth: compact ? undefined : '260px',
           }}
         >
-          Enter your salary to see your wealth at retirement.
+          Enter your salary so Illumin can monitor your projected wealth at retirement.
         </p>
       )}
 

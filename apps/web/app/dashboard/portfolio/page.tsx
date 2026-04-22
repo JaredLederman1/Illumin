@@ -870,7 +870,7 @@ function PortfolioDesktop() {
           No price data available
         </p>
         <p style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-text-muted)', lineHeight: 1.7 }}>
-          Connect a brokerage account with holdings to see portfolio performance.
+          Connect a brokerage account with holdings so Illumin can watch portfolio performance.
         </p>
         <Link
           href="/dashboard/accounts"
@@ -904,7 +904,7 @@ function PortfolioDesktop() {
           No price data available
         </p>
         <p style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-text-muted)', lineHeight: 1.7 }}>
-          Connect a brokerage account with holdings to see portfolio performance.
+          Connect a brokerage account with holdings so Illumin can watch portfolio performance.
         </p>
         <Link
           href="/dashboard/accounts"
@@ -1094,7 +1094,7 @@ function PortfolioMobile() {
           No price data available
         </p>
         <p style={{ fontFamily: fonts.mono, fontSize: 13, color: colors.textMuted, lineHeight: 1.7 }}>
-          Connect a brokerage account with holdings to see portfolio performance.
+          Connect a brokerage account with holdings so Illumin can watch portfolio performance.
         </p>
         <Link
           href="/dashboard/accounts"

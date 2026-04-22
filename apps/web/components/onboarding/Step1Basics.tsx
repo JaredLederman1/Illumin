@@ -31,8 +31,8 @@ const QUESTION: Record<FieldKey, string> = {
 
 const CONTEXT: Record<FieldKey, string> = {
   age: 'Your horizon is the single biggest input to every compounding calculation.',
-  location: 'State determines the tax advantages Illumin surfaces.',
-  income: 'This anchors every calculation you will see in Illumin.',
+  location: 'State determines the tax advantages Illumin monitors.',
+  income: 'This anchors every calculation Illumin screens for.',
   savings: 'The rate you save, not the dollar amount, drives retirement outcomes.',
   retirement: 'Changing this by two years can move your wealth trajectory by six figures.',
 }

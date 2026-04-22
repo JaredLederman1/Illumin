@@ -82,7 +82,7 @@ export function Step3Contract({ data, onChange, onAdvance, onSkip, busy, isMobil
       </motion.h1>
 
       <p style={contextCopy}>
-        Upload it and Illumin extracts your 401k match, equity grants, and every
+        Upload it and Illumin screens your 401k match, equity grants, and every
         benefit line you would otherwise miss. Everything stays private.
       </p>
 

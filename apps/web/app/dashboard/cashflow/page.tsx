@@ -93,7 +93,7 @@ function CashFlowDesktop() {
         </div>
         <div>
           <p style={{ fontFamily: 'var(--font-serif)', fontSize: '26px', fontWeight: 400, color: 'var(--color-text)', marginBottom: '8px' }}>No cash flow data</p>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-text-muted)', lineHeight: 1.7 }}>Connect a bank account to see your income, expenses, and savings trends.</p>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-text-muted)', lineHeight: 1.7 }}>Connect a bank account so Illumin can monitor your income, expenses, and savings trends.</p>
         </div>
         <Link href="/dashboard/accounts" style={{ padding: '10px 24px', backgroundColor: 'var(--color-gold)', border: 'none', borderRadius: '2px', color: 'var(--color-text)', fontFamily: 'var(--font-mono)', fontSize: '13px', letterSpacing: '0.08em', textDecoration: 'none', display: 'inline-block' }}>
           Connect an Account

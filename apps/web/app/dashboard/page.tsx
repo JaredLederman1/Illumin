@@ -92,7 +92,7 @@ function DashboardDesktop() {
               No data yet
             </p>
             <p style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: '#6B7A8D', lineHeight: 1.7 }}>
-              Connect a bank account to see your net worth, spending, and transactions here.
+              Connect a bank account so Illumin can monitor your net worth, spending, and transactions.
             </p>
           </div>
           <Link
@@ -240,7 +240,7 @@ function DashboardMobile() {
               No data yet
             </p>
             <p style={{ fontFamily: fonts.mono, fontSize: '14px', color: colors.textMuted, lineHeight: 1.7 }}>
-              Connect a bank account to see your net worth, spending, and transactions here.
+              Connect a bank account so Illumin can monitor your net worth, spending, and transactions.
             </p>
           </div>
           <Link

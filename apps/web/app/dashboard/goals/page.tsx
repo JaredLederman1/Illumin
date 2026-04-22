@@ -316,7 +316,7 @@ function GoalsDesktop() {
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '200px' }}>
           <p style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-text-muted)' }}>
-            Connect accounts to generate goal projections.
+            Connect accounts so Illumin can project your goals.
           </p>
         </div>
       )}
@@ -374,7 +374,7 @@ function GoalsMobile() {
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '200px' }}>
           <p style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-text-muted)' }}>
-            Connect accounts to generate goal projections.
+            Connect accounts so Illumin can project your goals.
           </p>
         </div>
       )}

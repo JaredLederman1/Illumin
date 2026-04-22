@@ -144,7 +144,7 @@ function BenefitsDesktop() {
           Employment Contract Analyzer
         </h1>
         <p style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
-          Upload your offer letter or benefits summary. Illumin extracts every element of your compensation, then cross-checks your transaction history to surface what you are likely leaving uncaptured.
+          Upload your offer letter or benefits summary. Illumin screens every element of your compensation, then scans your transaction history to flag what you are likely leaving uncaptured.
         </p>
       </div>
 
@@ -445,7 +445,7 @@ function BenefitsMobile() {
           Contract Analyzer
         </h1>
         <p style={{ fontFamily: fonts.mono, fontSize: 13, color: colors.textMuted, lineHeight: 1.6 }}>
-          Upload your offer letter or benefits summary. Illumin extracts your compensation and surfaces what you may be leaving uncaptured.
+          Upload your offer letter or benefits summary. Illumin screens your compensation and flags what you may be leaving uncaptured.
         </p>
       </div>
 

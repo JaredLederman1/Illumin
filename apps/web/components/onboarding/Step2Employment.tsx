@@ -26,7 +26,7 @@ const QUESTION: Record<FieldKey, string> = {
 }
 
 const CONTEXT: Record<FieldKey, string> = {
-  title: 'Your role tells Illumin which compensation patterns to look for.',
+  title: 'Your role helps Illumin identify which compensation patterns to watch for.',
   employer: 'We use this to match typical benefits and match rates for your employer size.',
   startDate: 'Tenure determines vesting, bonus timing, and match eligibility.',
 }

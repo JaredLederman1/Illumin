@@ -28,7 +28,7 @@ export default function MatchSetupCard() {
       columns={[{ caption: 'Set up required', hero: '—' }]}
       secondary={
         <p style={copy}>
-          Set up your employer match to unlock your biggest opportunity. A contract upload takes thirty seconds.
+          Set up your employer match so Illumin can watch your biggest opportunity. A contract upload takes thirty seconds.
         </p>
       }
       cta={

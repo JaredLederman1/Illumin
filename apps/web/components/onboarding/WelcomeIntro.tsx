@@ -42,7 +42,7 @@ const REDUCED_FADE = 1.2
 
 const HEADLINE_FIRST_WORD  = 'clarity'
 const HEADLINE_REPLACEMENT = 'Illumin'
-const HEADLINE_TAIL        = ' changes everything.'
+const HEADLINE_TAIL        = ' stands watch over everything.'
 
 // 'hold'       — "clarity" sits visible with no cursor at all.
 // 'cursor-in'  — cursor fades in at the end of "clarity".
@@ -316,7 +316,7 @@ export function WelcomeIntro({ onStart }: Props) {
                 maxWidth: '540px',
               }}
             >
-              The average American forfeits this much every year and doesn't know it.
+              The average American forfeits this much every year. Illumin won't let you.
             </motion.p>
           </motion.div>
 

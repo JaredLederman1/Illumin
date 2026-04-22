@@ -28,7 +28,7 @@ export default function LinkAssetAccountCard() {
       columns={[{ caption: 'Link an asset account', hero: '—' }]}
       secondary={
         <p style={copy}>
-          Add a checking, savings, or investment account to see your full balance sheet and savings-rate trends.
+          Add a checking, savings, or investment account so Illumin can monitor your full balance sheet and savings-rate trends.
         </p>
       }
       cta={

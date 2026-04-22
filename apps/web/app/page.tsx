@@ -30,11 +30,11 @@ export default function Page() {
           <p className={styles.eyebrow}>WEALTH INTELLIGENCE</p>
 
           <h1 className={styles.headline}>
-            Clarity Compounds
+            Vigilance Compounds
           </h1>
 
           <p className={styles.subhead}>
-            Most people have never had a financial advisor. Illumin&apos;s engine reads your complete financial picture and tells you exactly what to do, starting with what inaction is costing you right now.
+            Most people have never had a financial advisor. Illumin stands watch over your complete financial picture and alerts you exactly what to do, starting with what inaction is costing you right now.
           </p>
 
           <HeroCTAs />

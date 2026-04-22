@@ -59,9 +59,9 @@ export default function LightFeaturesSection() {
 
       <ScrollReveal>
         <div className={styles.featuresHeader}>
-          <h2 className={styles.featuresHeadline}>The numbers your advisor would show you first.</h2>
+          <h2 className={styles.featuresHeadline}>The numbers Illumin flags first.</h2>
           <p className={styles.featuresDesc}>
-            Inaction has a dollar amount. Illumin calculates it from your real balances and projects it 30 years forward. These are the numbers that change everything.
+            Inaction has a dollar amount. Illumin calculates it from your real balances and projects it 30 years forward. These are the signals that change everything.
           </p>
         </div>
       </ScrollReveal>
@@ -71,9 +71,9 @@ export default function LightFeaturesSection() {
         <div ref={row0Ref} className={`${styles.featureRow} ${styles.visible}`}>
           <div className={styles.featureLeft}>
             <span className={styles.featureLabel}>Opportunity Cost</span>
-            <h3 className={styles.featureH3}>The price of inaction.</h3>
+            <h3 className={styles.featureH3}>What inaction costs you.</h3>
             <p className={styles.featureText}>
-              Your idle cash has a cost. Illumin calculates exactly what it would be worth invested versus sitting in a checking account, and puts that number in front of you every time you log in. The gap is yours to close.
+              Your idle cash has a cost. Illumin calculates exactly what it would be worth invested versus sitting in a checking account, and screens for that gap on every login. Illumin watches the gap close.
             </p>
           </div>
 
@@ -97,9 +97,9 @@ export default function LightFeaturesSection() {
         <div className={`${styles.featureRow} ${styles.featureRowReverse} ${styles.visible}`}>
           <div className={styles.featureLeft}>
             <span className={styles.featureLabel}>Net Worth</span>
-            <h3 className={styles.featureH3}>The number that actually measures progress.</h3>
+            <h3 className={styles.featureH3}>The metric Illumin monitors for progress.</h3>
             <p className={styles.featureText}>
-              Every account in one place, updating automatically. Assets, liabilities, investments, debt. One number that tells you whether you&apos;re actually moving forward.
+              Every account in one place, updating automatically. Assets, liabilities, investments, debt. One number Illumin watches to verify you&apos;re moving forward.
             </p>
           </div>
 

@@ -47,7 +47,7 @@ export default function HeroLiabilityOnly() {
       transition={{ duration: 0.3, ease: 'easeOut' }}
       style={banner}
     >
-      <p style={message}>Link a bank or investment account.</p>
+      <p style={message}>Link a bank or investment account for Illumin to monitor.</p>
       <Link href="/dashboard/accounts" style={cta}>
         Link account
       </Link>

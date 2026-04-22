@@ -53,7 +53,7 @@ export default function MatchGapCard({ matchGapAnnual, matchDetail }: Props) {
         columns={[{ caption: 'Upload your offer letter', hero: '—' }]}
         secondary={
           <p style={copy}>
-            We need your match formula to size the gap. Two fields, one upload.
+            Illumin needs your match formula to size the gap. Two fields, one upload.
           </p>
         }
         cta={

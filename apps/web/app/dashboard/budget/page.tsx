@@ -494,7 +494,7 @@ function BudgetEditor({
 
           {actuals.length === 0 ? (
             <p style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: 1.8 }}>
-              No transaction data for this month yet. Connect accounts via Plaid to see actuals.
+              No transaction data for this month yet. Connect accounts via Plaid so Illumin can track actuals.
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -973,7 +973,7 @@ function BudgetEditorMobile({
           </p>
           {actuals.length === 0 ? (
             <p style={{ fontFamily: fonts.mono, fontSize: 13, color: colors.textMuted, lineHeight: 1.8 }}>
-              No transaction data for this month yet. Connect accounts via Plaid to see actuals.
+              No transaction data for this month yet. Connect accounts via Plaid so Illumin can track actuals.
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -1294,10 +1294,10 @@ function BudgetDesktop() {
         <div style={card}>
           <p style={{ ...labelStyle, marginBottom: '16px' }}>Budget Setup</p>
           <p style={{ fontFamily: 'var(--font-serif)', fontSize: '24px', fontWeight: 400, color: 'var(--color-text)', marginBottom: '14px' }}>
-            Let Illumin&apos;s Financial Engine analyze your finances
+            Let Illumin&apos;s Engine build your budget strategy
           </p>
           <p style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: 1.8, marginBottom: '28px' }}>
-            Illumin will review your income, spending history, debt, and savings to recommend the budgeting strategy that fits your situation. This takes about 10 seconds.
+            Illumin screens your income, spending history, debt, and savings, then flags the budgeting strategy that fits your situation. Takes about 10 seconds.
           </p>
           <button
             onClick={runAnalysis}
@@ -1561,7 +1561,7 @@ function BudgetMobile() {
             color: colors.text,
             marginBottom: 12,
           }}>
-            Let Illumin analyze your finances
+            Let Illumin&apos;s Engine build your budget strategy
           </p>
           <p style={{
             fontFamily: fonts.mono,
@@ -1570,7 +1570,7 @@ function BudgetMobile() {
             lineHeight: 1.8,
             marginBottom: spacing.sectionGap,
           }}>
-            Illumin will review your income, spending history, debt, and savings to recommend the budgeting strategy that fits your situation. This takes about 10 seconds.
+            Illumin screens your income, spending history, debt, and savings, then flags the budgeting strategy that fits your situation. Takes about 10 seconds.
           </p>
           <button
             onClick={runAnalysis}

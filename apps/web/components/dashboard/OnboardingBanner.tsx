@@ -66,7 +66,7 @@ export default function OnboardingBanner() {
           color: 'var(--color-text-mid, var(--color-text-muted))',
           lineHeight: 1.55,
         }}>
-          You&apos;re seeing a limited view. Complete your profile to unlock opportunity cost, goals, and forecast.
+          You&apos;re seeing a limited view. Complete your profile so Illumin can monitor opportunity cost, goals, and forecast.
         </span>
       </div>
       <Link

@@ -176,7 +176,7 @@ export function Step5Plaid({
               transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
               style={questionHeading}
             >
-              Turn estimate into fact.
+              Turn estimate into verified fact.
             </motion.h1>
 
             {oppCost > 0 ? (
@@ -226,13 +226,13 @@ export function Step5Plaid({
                     margin: 0,
                   }}
                 >
-                  Every year you don't act, this is the gap between where your money is and where it could be.
+                  Every year you don't act, Illumin flags this gap between where your money is and where it could be.
                 </p>
               </motion.div>
             ) : (
               <p style={contextCopy}>
-                Link a checking, savings, or investment account so Illumin can run
-                against real balances instead of estimates.
+                Link a checking, savings, or investment account so Illumin can monitor
+                real balances instead of estimates.
               </p>
             )}
 
