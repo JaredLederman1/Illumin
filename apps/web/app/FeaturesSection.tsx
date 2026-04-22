@@ -30,7 +30,7 @@ export default function FeaturesSection() {
 
       <ScrollReveal>
         <div className={styles.featuresHeader}>
-          <h2 className={styles.featuresHeadline}>See everything. Understand everything.</h2>
+          <h2 id="features-headline" className={styles.featuresHeadline}>See everything. Understand everything.</h2>
           <p className={styles.featuresDesc}>
             Every account, every transaction, every pattern. Connected, categorized, and finally making sense.
           </p>

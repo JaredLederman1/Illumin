@@ -82,23 +82,45 @@ export default function AdminPage() {
             Admin portal
           </p>
         </div>
-        <button
-          onClick={handleSignOut}
-          style={{
-            padding: '9px 20px',
-            backgroundColor: 'transparent',
-            border: '1px solid var(--color-border-strong)',
-            borderRadius: '2px',
-            color: 'var(--color-text-muted)',
-            fontSize: '10px',
-            fontFamily: 'var(--font-mono)',
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
-            cursor: 'pointer',
-          }}
-        >
-          Sign out
-        </button>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <Link
+            href="/dashboard"
+            style={{
+              padding: '9px 20px',
+              backgroundColor: 'transparent',
+              border: '1px solid var(--color-border-strong)',
+              borderRadius: '2px',
+              color: 'var(--color-text-muted)',
+              fontSize: '10px',
+              fontFamily: 'var(--font-mono)',
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              cursor: 'pointer',
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+            }}
+          >
+            Back to dashboard
+          </Link>
+          <button
+            onClick={handleSignOut}
+            style={{
+              padding: '9px 20px',
+              backgroundColor: 'transparent',
+              border: '1px solid var(--color-border-strong)',
+              borderRadius: '2px',
+              color: 'var(--color-text-muted)',
+              fontSize: '10px',
+              fontFamily: 'var(--font-mono)',
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              cursor: 'pointer',
+            }}
+          >
+            Sign out
+          </button>
+        </div>
       </div>
 
       <div style={{ maxWidth: '720px' }}>

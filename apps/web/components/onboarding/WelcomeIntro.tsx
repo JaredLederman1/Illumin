@@ -327,7 +327,7 @@ export function WelcomeIntro({ onStart }: Props) {
                 maxWidth: '540px',
               }}
             >
-              The average American leaves this much on the table every year.
+              The average American forfeits this much every year and doesn't know it.
             </motion.p>
           </motion.div>
 
@@ -365,7 +365,7 @@ export function WelcomeIntro({ onStart }: Props) {
                 lineHeight: 1.1,
                 letterSpacing: '-0.01em',
                 textAlign: 'center',
-                maxWidth: '760px',
+                maxWidth: '860px',
               }}
             >
               <span
@@ -386,7 +386,7 @@ export function WelcomeIntro({ onStart }: Props) {
                     transition: 'color 150ms ease',
                   }}
                 >
-                  {typed}
+                  {typed || '​'}
                 </span>
                 <span
                   aria-hidden

@@ -1,13 +1,10 @@
 import type { Metadata } from 'next'
 import styles from './page.module.css'
 import StockChartBg from '@/components/StockChartBg'
-import OppCostCalculator from '@/components/OppCostCalculator'
 import FloatingNav from './FloatingNav'
 import FeaturesSection from './FeaturesSection'
 import LightFeaturesSection from './LightFeaturesSection'
-import RevealText from './RevealText'
 import HeroCTAs from './HeroCTAs'
-import WaitlistForm from './WaitlistForm'
 
 export const metadata: Metadata = {
   title: "Illumin: You can't fix what you can't see.",
@@ -50,26 +47,6 @@ export default function Page() {
         <FeaturesSection />
         <LightFeaturesSection />
       </div>
-
-      {/* ── CALCULATOR ───────────────────────────────────── */}
-      <div id="calculator">
-        <OppCostCalculator />
-      </div>
-
-      {/* ── CLOSING CTA ─────────────────────────────────── */}
-      <section className={styles.ctaSection} id="email-signup">
-        <div className={styles.vignette} aria-hidden="true" />
-
-        <div className={styles.ctaContent}>
-          <h2 className={styles.ctaHeadline}>
-            <RevealText>Find out what your finances are actually doing.</RevealText>
-          </h2>
-          <p className={styles.ctaSubhead}>
-            Join the waitlist in two minutes. Be among the first to see exactly where you stand and what to do next. No advisor required. No minimum balance.
-          </p>
-          <WaitlistForm />
-        </div>
-      </section>
 
       {/* ── FOOTER ──────────────────────────────────────── */}
       <footer className={styles.footer}>

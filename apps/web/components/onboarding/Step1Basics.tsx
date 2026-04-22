@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { OnboardingData } from './shared'
-import { formatNumber, textInput } from './shared'
+import { fmt, formatNumber, textInput } from './shared'
 import { SubStepShell } from './SubStepShell'
 
 interface Props {
@@ -134,7 +134,7 @@ export function Step1Basics({ data, onChange, subIndex, onSubAdvance, isMobile }
             onChange={e => onChange({ locationCity: e.target.value })}
             placeholder="City"
             aria-label="City"
-            style={{ ...textInput, flex: 2 }}
+            style={{ ...textInput, flex: 2, minHeight: '72px', padding: '14px 18px' }}
           />
           <input
             type="text"
@@ -143,7 +143,7 @@ export function Step1Basics({ data, onChange, subIndex, onSubAdvance, isMobile }
             placeholder="ST"
             aria-label="State"
             maxLength={2}
-            style={{ ...textInput, flex: 1, textTransform: 'uppercase', textAlign: 'center' }}
+            style={{ ...textInput, flex: 1, minHeight: '72px', padding: '14px 18px', textTransform: 'uppercase', textAlign: 'center' }}
           />
         </div>
       )
@@ -186,6 +186,7 @@ export function Step1Basics({ data, onChange, subIndex, onSubAdvance, isMobile }
       break
     case 'savings': {
       const pct = (data.savingsRate / 50) * 100
+      const monthlySavings = Math.round((data.savingsRate / 100) * data.annualIncome / 12)
       field = (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
           <div
@@ -213,6 +214,28 @@ export function Step1Basics({ data, onChange, subIndex, onSubAdvance, isMobile }
               background: `linear-gradient(to right, var(--color-gold) ${pct}%, var(--color-border) ${pct}%)`,
             }}
           />
+          <div
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '14px',
+              color: 'var(--color-text-mid)',
+              letterSpacing: '0.05em',
+              textAlign: 'center',
+            }}
+          >
+            {fmt(monthlySavings)}
+            <span
+              style={{
+                color: 'var(--color-text-muted)',
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                fontSize: '11px',
+                marginLeft: '8px',
+              }}
+            >
+              per month
+            </span>
+          </div>
         </div>
       )
       break
