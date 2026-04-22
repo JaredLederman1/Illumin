@@ -238,3 +238,13 @@ Motion: 150ms ease hovers, 300-400ms enter (opacity + translateY), 30ms row stag
 - Test credentials: username `user_good`, password `pass_good`
 - Sandbox institutions available in Plaid Link automatically
 - `lib/plaid.ts` exports: `plaidClient`, `createLinkToken`, `exchangePublicToken`, `getAccounts`, `getTransactions`, `syncAccountBalances`
+
+## Database Migrations
+
+Migrations on this project go through `prisma migrate dev` only. Never use `prisma db push` against any shared database (remote Supabase, staging, prod) — it bypasses the migration history and causes downstream migrations to fail with "relation already exists" or "column already exists" errors. `db push` is strictly a local-dev tool against a throwaway Postgres instance.
+
+Never hand-write migration SQL. If you think you need to hand-write one (for something `migrate dev` can't express), stop and ask. Hand-written migrations skip Prisma's @@map/@map name translation — the #1 cause of silent migration failures in this codebase has been SQL that targets Prisma model names ("Transaction", "merchantName") instead of DB identifiers (transactions, merchant_name).
+
+When writing any migration that creates objects (CREATE TABLE, CREATE INDEX, ADD COLUMN), always use IF NOT EXISTS guards. The remote DB has accumulated some drift from prior sessions, so migrations must be idempotent. Pattern to follow: see `20260420200000_account_apr_confirmed_at` for the canonical example with self-documenting comment.
+
+Before running `migrate deploy` against the remote Supabase DB, always run `migrate status` first and surface any failed or drifted migrations for user review. Never auto-resolve a failed migration — the choice between `--applied` and `--rolled-back` requires inspecting the DB's actual state, and that's a judgment call the user makes, not Claude Code.

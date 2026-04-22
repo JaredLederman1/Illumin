@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth'
-import { isAdminEmail } from '@/lib/adminAllowlist'
 
 function sanitize(raw: string | null | undefined): string | null {
   if (!raw) return null
@@ -18,12 +17,14 @@ function sanitize(raw: string | null | undefined): string | null {
  * server cannot read the AAL without re-authenticating the full cookie chain,
  * and the client already has the information.
  *
- * Priority order: admin → onboarding incomplete → intended → dashboard.
+ * Priority order: onboarding incomplete → intended → dashboard. Admins are
+ * intentionally NOT short-circuited to /admin here; they go through the
+ * standard sign-in flow and reach /admin via the Admin pill in the header.
  */
 export async function POST(request: Request) {
   const result = await requireAuth()
   if ('error' in result) return result.error
-  const { user: { authUser, dbUser } } = result
+  const { user: { dbUser } } = result
 
   let intended: string | null = null
   try {
@@ -31,10 +32,6 @@ export async function POST(request: Request) {
     intended = sanitize(body.intended)
   } catch {
     intended = null
-  }
-
-  if (isAdminEmail(authUser.email)) {
-    return NextResponse.json({ destination: '/admin' })
   }
 
   const profile = await prisma.onboardingProfile.findUnique({

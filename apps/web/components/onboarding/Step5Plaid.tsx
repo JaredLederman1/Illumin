@@ -146,7 +146,7 @@ export function Step5Plaid({
               fontWeight: 500,
             }}
           >
-            Estimated annual opportunity cost
+            The cost of doing nothing, per year
           </span>
           <span
             style={{
@@ -168,7 +168,7 @@ export function Step5Plaid({
               margin: 0,
             }}
           >
-            Linking your accounts is what turns that number from estimate to fact.
+            Every year you don't act, this is the gap between where your money is and where it could be.
           </p>
         </motion.div>
       ) : (

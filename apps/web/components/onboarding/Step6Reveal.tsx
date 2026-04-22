@@ -26,9 +26,15 @@ interface Props {
  */
 export function Step6Reveal({ data }: Props) {
   const ageNum = typeof data.age === 'number' ? data.age : 0
-  const oppCost = opportunityCostOneYear(ageNum, data.annualIncome, data.savingsRate, data.retirementAge)
+  // The headline figure is the cost of one year of delay at the recommended
+  // savings rate (20% floor), not at the user's current rate. Framed this
+  // way so the number reflects what the user permanently forfeits each year
+  // they postpone investing at the recommended level, rather than locking
+  // in their under-investment as the baseline.
+  const recommendedSavingsRate = Math.max(20, data.savingsRate)
+  const oppCost = opportunityCostOneYear(ageNum, data.annualIncome, recommendedSavingsRate, data.retirementAge)
   const projectionNow = projectWealth(ageNum, data.annualIncome, data.savingsRate, data.retirementAge)
-  const projection20 = projectWealth(ageNum, data.annualIncome, Math.max(20, data.savingsRate), data.retirementAge)
+  const projection20 = projectWealth(ageNum, data.annualIncome, recommendedSavingsRate, data.retirementAge)
   const savingsRateGain = Math.max(0, projection20 - projectionNow)
 
   const email = useAuthEmail()
@@ -77,7 +83,6 @@ export function Step6Reveal({ data }: Props) {
           projectionNow={projectionNow}
           savingsRateGain={savingsRateGain}
         />
-        <LockedTiles />
       </div>
     </div>
   )
@@ -143,8 +148,8 @@ function HeroSection({ firstName, oppCost }: { firstName: string; oppCost: numbe
   )
 }
 
-const SENTENCE_PREFIX = 'At your current trajectory, you are leaving'
-const SENTENCE_SUFFIX = 'on the table every year.'
+const SENTENCE_PREFIX = 'By not investing at the recommended rate, each year that goes by you permanently forfeit'
+const SENTENCE_SUFFIX = 'in future wealth.'
 
 function HeadlineSentence({ oppCost }: { oppCost: number }) {
   const prefixWords = SENTENCE_PREFIX.split(' ')
@@ -340,121 +345,6 @@ function NarrativeSection({
   )
 }
 
-function LockedTiles() {
-  const tiles = [
-    { label: 'Your match gap', hint: 'Measured against your employer’s real match formula.' },
-    { label: 'Debt trajectory', hint: 'Balances, interest, and payoff dates from your credit accounts.' },
-    { label: 'Idle cash cost', hint: 'Every dollar sitting above your emergency buffer, priced.' },
-  ]
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: 5.3, ease: [0.22, 1, 0.36, 1] }}
-      style={{
-        display: 'grid',
-        gap: '14px',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-      }}
-    >
-      {tiles.map(tile => (
-        <FrostedTile key={tile.label} label={tile.label} hint={tile.hint} />
-      ))}
-    </motion.div>
-  )
-}
-
-function FrostedTile({ label, hint }: { label: string; hint: string }) {
-  return (
-    <div
-      style={{
-        position: 'relative',
-        padding: '20px 22px',
-        backgroundColor: 'var(--color-surface)',
-        border: '1px solid var(--color-border)',
-        borderRadius: '3px',
-        minHeight: '160px',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      {/* Frosted glass body. Filter blur + slight saturate gives a real-depth
-          frosted feel rather than a cartoonish blur. */}
-      <div
-        aria-hidden
-        style={{
-          position: 'absolute',
-          inset: '40px 16px 16px 16px',
-          borderRadius: '2px',
-          background: 'linear-gradient(180deg, var(--color-gold-subtle), transparent)',
-          filter: 'blur(14px) saturate(1.2)',
-          opacity: 0.55,
-          pointerEvents: 'none',
-        }}
-      />
-      <div
-        aria-hidden
-        style={{
-          position: 'absolute',
-          inset: '40px 16px 16px 16px',
-          borderRadius: '2px',
-          backdropFilter: 'blur(10px) saturate(1.15)',
-          WebkitBackdropFilter: 'blur(10px) saturate(1.15)',
-          backgroundColor: 'var(--color-gold-subtle)',
-          border: '1px solid var(--color-border)',
-          pointerEvents: 'none',
-        }}
-      />
-      <p
-        style={{
-          margin: 0,
-          position: 'relative',
-          fontFamily: 'var(--font-sans)',
-          fontSize: '11px',
-          color: 'var(--color-text-muted)',
-          letterSpacing: '0.14em',
-          textTransform: 'uppercase',
-          marginBottom: '10px',
-          fontWeight: 500,
-        }}
-      >
-        Locked
-      </p>
-      <p
-        style={{
-          margin: 0,
-          position: 'relative',
-          fontFamily: 'var(--font-display)',
-          fontSize: '16px',
-          fontWeight: 400,
-          color: 'var(--color-text)',
-          lineHeight: 1.35,
-          wordBreak: 'break-word',
-          overflowWrap: 'break-word',
-        }}
-      >
-        {label}
-      </p>
-      <p
-        style={{
-          margin: 0,
-          marginTop: '8px',
-          position: 'relative',
-          fontFamily: 'var(--font-sans)',
-          fontSize: '12px',
-          color: 'var(--color-text-muted)',
-          lineHeight: 1.5,
-          wordBreak: 'break-word',
-          overflowWrap: 'break-word',
-        }}
-      >
-        {hint}
-      </p>
-    </div>
-  )
-}
-
 function CtaRow() {
   const buttonBase: React.CSSProperties = {
     display: 'inline-flex',
@@ -533,7 +423,7 @@ function buildFallbackNarrative(
   const ageNum = typeof data.age === 'number' ? data.age : 0
   const years = Math.max(0, retirementAge - ageNum)
 
-  const s1 = `Your current trajectory has you retiring at ${retirementAge} with ${fmt(projectionNow)} after ${years} years of compounding, but every year you wait costs you ${fmt(oppCost)} permanently.`
+  const s1 = `Your current trajectory has you retiring at ${retirementAge} with ${fmt(projectionNow)} after ${years} years of compounding, and every year you stay below the recommended rate permanently forfeits ${fmt(oppCost)} in future wealth.`
   const s2 = savingsRateGain > 0
     ? `Moving your savings rate from ${savingsRate}% to 20% would add ${fmt(savingsRateGain)} to your retirement number, the single biggest lever on this page.`
     : `Your savings rate is already pulling hard, so the next lever is tax-advantaged capacity and employer match capture rather than raw contribution volume.`

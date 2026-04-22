@@ -138,19 +138,32 @@ export default function Header() {
         </span>
         {isAdmin && (
           <>
-            <span style={{
-              fontFamily: 'var(--font-sans)',
-              fontSize: '10px',
-              fontWeight: 500,
-              color: 'var(--color-gold)',
-              border: '1px solid var(--color-border-strong)',
-              borderRadius: 'var(--radius-pill)',
-              padding: '3px 10px',
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-            }}>
+            <Link
+              href="/admin"
+              style={{
+                fontFamily: 'var(--font-sans)',
+                fontSize: '10px',
+                fontWeight: 500,
+                color: 'var(--color-gold)',
+                border: '1px solid var(--color-border-strong)',
+                borderRadius: 'var(--radius-pill)',
+                padding: '3px 10px',
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                textDecoration: 'none',
+                transition: 'border-color 150ms ease, background-color 150ms ease',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = 'var(--color-gold)'
+                e.currentTarget.style.backgroundColor = 'var(--color-gold-subtle)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'var(--color-border-strong)'
+                e.currentTarget.style.backgroundColor = 'transparent'
+              }}
+            >
               Admin
-            </span>
+            </Link>
             <button
               onClick={handleSignOut}
               style={{

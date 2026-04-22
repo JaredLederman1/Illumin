@@ -14,6 +14,8 @@
   z-index:               100;
   background:            transparent;
   border:                1px solid var(--color-grid-line);
+  box-sizing:            border-box;
+  min-height:            3.5rem;
   display:               flex;
   align-items:           center;
   gap:                   24px;
@@ -21,16 +23,20 @@
   transition:            left 280ms cubic-bezier(0.25, 0.1, 0.25, 1),
                          transform 280ms cubic-bezier(0.25, 0.1, 0.25, 1),
                          border-radius 280ms cubic-bezier(0.25, 0.1, 0.25, 1),
+                         border-color 280ms ease,
                          padding 280ms cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 /* ── DEFAULT STATE: halves meet at center, borders overlap by 1px,
-      inner paddings tightened so the junction gap matches internal gap ── */
+      inner paddings tightened so the junction gap matches internal gap.
+      Inner (touching) border side is transparent so the two halves read
+      as one continuous outline with no nested seam. ── */
 .leftPill {
   left:                  50%;
   transform:             translateX(calc(-100% + 1px));
   border-radius:         999px 0 0 999px;
   padding:               10px 12px 10px 20px;
+  border-right-color:    transparent;
 }
 
 .rightPill {
@@ -38,14 +44,16 @@
   transform:             translateX(0);
   border-radius:         0 999px 999px 0;
   padding:               10px 20px 10px 12px;
+  border-left-color:     transparent;
 }
 
-/* ── DOCKED STATE: halves split to viewport edges ─────────── */
+/* ── DOCKED STATE: halves split to viewport edges, inner borders restored ── */
 .leftPill.docked {
   left:                  24px;
   transform:             translateX(0);
   border-radius:         999px;
   padding:               10px 20px;
+  border-right-color:    var(--color-grid-line);
 }
 
 .rightPill.docked {
@@ -53,6 +61,7 @@
   transform:             translateX(-100%);
   border-radius:         999px;
   padding:               10px 20px;
+  border-left-color:     var(--color-grid-line);
 }
 
 /* ── WORDMARK (gold, serif, uppercase — matches Sidebar/auth treatment) ── */
