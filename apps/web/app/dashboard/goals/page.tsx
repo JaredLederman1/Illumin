@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { useGoalsQuery } from '@/lib/queries'
@@ -42,7 +43,57 @@ const labelStyle = {
   marginBottom: '4px',
 } as const
 
+// Per-goal timeline override, persisted to localStorage so a user's
+// custom months-to-target for a given goal survives reloads. The
+// server still returns a default monthsToTarget; when the user saves
+// an override here, we use it in its place and recompute the monthly
+// contribution client-side.
+function useGoalMonthsOverride(goalId: string, fallback: number | null) {
+  const [override, setOverride] = useState<number | null>(null)
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(`illumin_goal_months_${goalId}`)
+      if (raw !== null && raw !== '') setOverride(Number(raw))
+    } catch {}
+  }, [goalId])
+
+  const save = (m: number | null) => {
+    setOverride(m)
+    try {
+      if (m === null || Number.isNaN(m)) {
+        window.localStorage.removeItem(`illumin_goal_months_${goalId}`)
+      } else {
+        window.localStorage.setItem(`illumin_goal_months_${goalId}`, String(m))
+      }
+    } catch {}
+  }
+
+  return { months: override ?? fallback, setMonths: save, isCustom: override !== null }
+}
+
 function GoalCard({ goal, delay }: { goal: Goal; delay: number }) {
+  const { months, setMonths, isCustom } = useGoalMonthsOverride(goal.id, goal.monthsToTarget)
+  const gap = Math.max(0, goal.target - goal.current)
+  const monthlyNeeded = months != null && months > 0 ? Math.ceil(gap / months) : null
+
+  const [editingTimeline, setEditingTimeline] = useState(false)
+  const [draft, setDraft] = useState<string>(months != null ? String(months) : '')
+
+  useEffect(() => {
+    if (!editingTimeline) setDraft(months != null ? String(months) : '')
+  }, [months, editingTimeline])
+
+  const commit = () => {
+    setEditingTimeline(false)
+    const parsed = parseInt(draft, 10)
+    if (draft === '' || Number.isNaN(parsed) || parsed <= 0) {
+      setMonths(null)
+    } else {
+      setMonths(parsed)
+    }
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -84,7 +135,12 @@ function GoalCard({ goal, delay }: { goal: Goal; delay: number }) {
       </div>
 
       {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginTop: '16px' }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+        gap: '16px',
+        marginTop: '16px',
+      }}>
         <div>
           <p style={labelStyle}>Current</p>
           <p style={{ fontFamily: 'var(--font-sans)', fontSize: '24px', color: 'var(--color-text)', fontWeight: 400 }}>
@@ -108,16 +164,87 @@ function GoalCard({ goal, delay }: { goal: Goal; delay: number }) {
           </p>
         </div>
         <div>
+          <p style={labelStyle}>Timeline</p>
+          {editingTimeline ? (
+            <input
+              type="number"
+              inputMode="numeric"
+              autoFocus
+              min={1}
+              value={draft}
+              onChange={e => setDraft(e.target.value)}
+              onBlur={commit}
+              onKeyDown={e => {
+                if (e.key === 'Enter') commit()
+                if (e.key === 'Escape') {
+                  setDraft(months != null ? String(months) : '')
+                  setEditingTimeline(false)
+                }
+              }}
+              aria-label={`${goal.name} timeline in months`}
+              style={{
+                fontFamily: 'var(--font-sans)',
+                fontSize: '24px',
+                fontWeight: 400,
+                color: 'var(--color-text)',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: '1px solid var(--color-gold)',
+                outline: 'none',
+                padding: '0 0 2px 0',
+                width: '100%',
+                maxWidth: '80px',
+              }}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setEditingTimeline(true)}
+              style={{
+                fontFamily: 'var(--font-sans)',
+                fontSize: '24px',
+                fontWeight: 400,
+                color: 'var(--color-text)',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: '1px dashed var(--color-border)',
+                padding: '0 0 2px 0',
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+              aria-label={`Edit ${goal.name} timeline`}
+            >
+              {months != null ? (
+                <>
+                  {months}
+                  <span style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginLeft: '6px', letterSpacing: '0.06em' }}>
+                    {months === 1 ? 'mo' : 'mos'}
+                  </span>
+                  {isCustom && (
+                    <span style={{ fontSize: '10px', color: 'var(--color-gold)', marginLeft: '8px', letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+                      Custom
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span style={{ fontSize: '14px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                  Set months
+                </span>
+              )}
+            </button>
+          )}
+        </div>
+        <div>
           <p style={labelStyle}>Monthly Needed</p>
           <p style={{ fontFamily: 'var(--font-sans)', fontSize: '24px', color: 'var(--color-gold)', fontWeight: 400 }}>
-            {goal.monthlyContributionNeeded != null ? (
+            {monthlyNeeded != null ? (
               <DataTooltip
-                value={goal.monthlyContributionNeeded}
+                value={monthlyNeeded}
                 title={`${goal.name}: Monthly Needed`}
-                computationNote="(Target - Current) / months to goal"
+                computationNote={`(Target - Current) / ${months} months`}
                 sources={[
-                  { label: 'Remaining gap', value: goal.target - goal.current, type: 'computed' as const },
-                  { label: 'Monthly contribution', value: goal.monthlyContributionNeeded, type: 'average' as const },
+                  { label: 'Remaining gap', value: gap, type: 'computed' as const },
+                  { label: 'Monthly contribution', value: monthlyNeeded, type: 'average' as const },
                 ]}
               />
             ) : '--'}

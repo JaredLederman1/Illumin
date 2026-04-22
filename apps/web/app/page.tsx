@@ -30,7 +30,7 @@ export default function Page() {
           <p className={styles.eyebrow}>WEALTH INTELLIGENCE</p>
 
           <h1 className={styles.headline}>
-            Clarity is the rarest asset.<br />Illumin gives it to you.
+            Your Money, Finally Yours
           </h1>
 
           <p className={styles.subhead}>

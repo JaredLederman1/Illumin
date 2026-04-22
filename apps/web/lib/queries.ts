@@ -162,6 +162,16 @@ export interface OnboardingProfile {
   annualIncome: number
   savingsRate: number
   retirementAge: number
+  locationCity: string | null
+  locationState: string | null
+  jobTitle: string | null
+  employer: string | null
+  employerStartDate: string | null
+  targetRetirementIncome: number | null
+  emergencyFundMonthsTarget: number | null
+  riskTolerance: number | null
+  contractUploadedAt: string | null
+  contractStepSkippedAt: string | null
   completedAt?: string | null
 }
 
