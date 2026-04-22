@@ -10,16 +10,26 @@ import {
 } from 'plaid'
 import { PLAID_CLIENT_ID, PLAID_SECRET, PLAID_ENV, PLAID_SANDBOX_SECRET } from '@/lib/env'
 
-// Sandbox is the default. Real production Plaid is only used when BOTH
-// NODE_ENV and PLAID_ENV explicitly say "production" — anything else
-// (dev, test, preview deploys, misconfigured envs) falls back to sandbox
-// as long as PLAID_SANDBOX_SECRET is available. This prevents accidental
-// production hits during local dev when NODE_ENV isn't strictly
-// 'development' (e.g., `next start`) or when PLAID_ENV was left as
-// "production" in a local .env file.
+// ── PLAID MODE TOGGLE ────────────────────────────────────────────────────
+// Flip this constant to switch every environment (local dev, preview
+// deploys, AND the live production site on Vercel) between Plaid sandbox
+// and real Plaid. Commit + push = Vercel redeploys automatically, so
+// toggling does NOT require editing Vercel env vars.
+//
+//   FORCE_SANDBOX = true   → every deploy uses Plaid sandbox
+//   FORCE_SANDBOX = false  → sandbox for local/preview, real Plaid for
+//                            production (when NODE_ENV=production AND
+//                            PLAID_ENV=production on Vercel)
+//
+// PLAID_SANDBOX_SECRET must be set in every environment that should run
+// sandbox (including Vercel production when FORCE_SANDBOX is true).
+const FORCE_SANDBOX = true
+
 const isRealProduction =
   process.env.NODE_ENV === 'production' && PLAID_ENV === 'production'
-const useSandbox = !isRealProduction && !!PLAID_SANDBOX_SECRET
+const useSandbox = FORCE_SANDBOX
+  ? !!PLAID_SANDBOX_SECRET
+  : !isRealProduction && !!PLAID_SANDBOX_SECRET
 
 const resolvedEnv = (useSandbox ? 'sandbox' : PLAID_ENV) as keyof typeof PlaidEnvironments
 const resolvedSecret = useSandbox ? PLAID_SANDBOX_SECRET : PLAID_SECRET
