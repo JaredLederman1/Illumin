@@ -5,6 +5,14 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import AuthLayout from '@/components/AuthLayout'
 
+// Admin allowlist enforcement happens server-side in the (gated) admin layout
+// and in POST /api/auth/post-login-destination. This page only needs to know
+// whether the email matches a public hint (NEXT_PUBLIC_ADMIN_EMAIL) so we can
+// give a clean error to non-admins without waiting for a server round-trip.
+const PUBLIC_ADMIN_HINT = (process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? '')
+  .toLowerCase()
+  .trim()
+
 const fieldLabel: React.CSSProperties = {
   display: 'block',
   fontSize: '10px',
@@ -38,8 +46,6 @@ const primaryBtn = (loading: boolean): React.CSSProperties => ({
   marginTop: '8px',
 })
 
-const ADMIN_EMAILS = ['jared.a.lederman@gmail.com']
-
 export default function AdminLoginPage() {
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
@@ -62,13 +68,22 @@ export default function AdminLoginPage() {
         return
       }
       const userEmail = data.user?.email?.toLowerCase()
-      if (!userEmail || !ADMIN_EMAILS.includes(userEmail)) {
+      // Client-side hint check gives a fast error for the obvious non-admin
+      // case. The authoritative gate is the server admin layout, which reads
+      // ADMIN_EMAILS. Any user who sneaks past this hint still cannot render
+      // a gated page.
+      if (PUBLIC_ADMIN_HINT && userEmail !== PUBLIC_ADMIN_HINT) {
         await supabase.auth.signOut()
         setError('This account does not have admin access.')
         return
       }
-      sessionStorage.setItem('illumin_admin', userEmail)
-      router.push('/dashboard')
+
+      const { data: levelData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+      if (levelData?.nextLevel === 'aal2' && levelData.currentLevel !== 'aal2') {
+        router.push('/auth/mfa/verify?redirect=/admin')
+        return
+      }
+      router.push('/admin')
     } catch {
       setError('Something went wrong. Please try again.')
     } finally {

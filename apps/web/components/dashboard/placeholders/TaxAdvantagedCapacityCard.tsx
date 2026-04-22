@@ -36,44 +36,20 @@ function render401kRemaining(breakdown: TaxAdvantagedBreakdown): string {
 // exists. /dashboard/accounts is a placeholder destination.
 const PLANNER_HREF = '/dashboard/accounts'
 
-// ── Styles ──────────────────────────────────────────────────────────────────
-
-const primaryLabel: CSSProperties = {
-  fontFamily: 'var(--font-sans)',
-  fontSize: '11px',
-  fontWeight: 500,
-  color: 'var(--color-text-muted)',
-  textTransform: 'uppercase',
-  letterSpacing: '0.06em',
-  margin: 0,
-}
-
-const primaryValue: CSSProperties = {
-  fontFamily: 'var(--font-mono)',
-  fontSize: '32px',
-  color: 'var(--color-text)',
-  letterSpacing: '-0.01em',
-  lineHeight: 1.05,
-  margin: 0,
-}
-
 const triad: CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'repeat(3, 1fr)',
   gap: '14px',
-  borderTop: '1px solid var(--color-border)',
-  marginTop: 'calc(var(--space-section-above) - var(--space-card-label-to-body))',
-  paddingTop: 'var(--space-section-below)',
 }
 
 const triadLabel: CSSProperties = {
-  fontFamily: 'var(--font-sans)',
+  fontFamily: 'var(--font-mono)',
   fontSize: '11px',
   fontWeight: 500,
   color: 'var(--color-text-muted)',
   textTransform: 'uppercase',
   letterSpacing: '0.06em',
-  marginBottom: 'var(--space-label-to-value)',
+  marginBottom: '4px',
 }
 
 const triadValue: CSSProperties = {
@@ -91,31 +67,34 @@ const ctaLink: CSSProperties = {
   letterSpacing: '0.08em',
   color: 'var(--color-gold)',
   textDecoration: 'none',
-  marginTop: 'auto',
-  alignSelf: 'flex-start',
 }
 
-const shellStyle: CSSProperties = {
-  minHeight: '260px',
-  maxHeight: '340px',
-  overflow: 'hidden',
+const copy: CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: '12px',
+  color: 'var(--color-text-mid)',
+  lineHeight: 1.55,
+  margin: 0,
 }
-
-// ── Component ───────────────────────────────────────────────────────────────
 
 export default function TaxAdvantagedCapacityCard({ breakdown }: Props) {
   if (!breakdown) {
     return (
       <WidgetCard
-        label="Tax-Advantaged Capacity"
-        title="No contribution data yet"
-        subtitle="Link a retirement account to see how much room is still available this year."
-        style={shellStyle}
-      >
-        <Link href="/dashboard/accounts" style={ctaLink}>
-          Link an account &rarr;
-        </Link>
-      </WidgetCard>
+        variant="metric"
+        eyebrow="Tax-advantaged capacity"
+        columns={[{ caption: 'No contribution data yet', hero: '—' }]}
+        secondary={
+          <p style={copy}>
+            Link a retirement account to see how much room is still available this year.
+          </p>
+        }
+        cta={
+          <Link href="/dashboard/accounts" style={ctaLink}>
+            Link an account &rarr;
+          </Link>
+        }
+      />
     )
   }
 
@@ -128,30 +107,31 @@ export default function TaxAdvantagedCapacityCard({ breakdown }: Props) {
   const totalRemaining = breakdown.totalRemaining
 
   return (
-    <WidgetCard label="Tax-Advantaged Capacity" style={shellStyle}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-label-to-value)' }}>
-        <p style={primaryLabel}>Total room remaining</p>
-        <p style={primaryValue}>{fmtUsd(totalRemaining)}</p>
-      </div>
-
-      <div style={triad}>
-        <div>
-          <p style={triadLabel}>IRA</p>
-          <p style={triadValue}>{fmtUsd(iraRemaining)}</p>
+    <WidgetCard
+      variant="metric"
+      eyebrow="Tax-advantaged capacity"
+      columns={[{ caption: 'Total room remaining', hero: fmtUsd(totalRemaining) }]}
+      secondary={
+        <div style={triad}>
+          <div>
+            <p style={triadLabel}>IRA</p>
+            <p style={triadValue}>{fmtUsd(iraRemaining)}</p>
+          </div>
+          <div>
+            <p style={triadLabel}>401(k)</p>
+            <p style={triadValue}>{k401Remaining}</p>
+          </div>
+          <div>
+            <p style={triadLabel}>HSA</p>
+            <p style={triadValue}>{hsaRemaining}</p>
+          </div>
         </div>
-        <div>
-          <p style={triadLabel}>401(k)</p>
-          <p style={triadValue}>{k401Remaining}</p>
-        </div>
-        <div>
-          <p style={triadLabel}>HSA</p>
-          <p style={triadValue}>{hsaRemaining}</p>
-        </div>
-      </div>
-
-      <Link href={PLANNER_HREF} style={ctaLink}>
-        Plan contributions &rarr;
-      </Link>
-    </WidgetCard>
+      }
+      cta={
+        <Link href={PLANNER_HREF} style={ctaLink}>
+          Plan contributions &rarr;
+        </Link>
+      }
+    />
   )
 }

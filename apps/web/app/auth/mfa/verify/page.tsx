@@ -1,9 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import AuthLayout from '@/components/AuthLayout'
+
+// Accept only same-origin paths for the redirect query parameter. Absolute
+// URLs or protocol-relative values (`//evil.com`) are rejected to prevent an
+// open redirect.
+function sanitizeRedirect(raw: string | null): string | null {
+  if (!raw) return null
+  if (!raw.startsWith('/')) return null
+  if (raw.startsWith('//')) return null
+  return raw
+}
 
 const fieldLabel: React.CSSProperties = {
   display: 'block',
@@ -40,7 +50,7 @@ const primaryBtn = (loading: boolean): React.CSSProperties => ({
 
 type VerifyMethod = 'totp' | 'email'
 
-export default function MFAVerifyPage() {
+function MFAVerifyContent() {
   const [verifyMethod, setVerifyMethod] = useState<VerifyMethod | null>(null)
   const [userEmail, setUserEmail]       = useState<string | null>(null)
   // TOTP-specific
@@ -52,13 +62,15 @@ export default function MFAVerifyPage() {
   const [loading, setLoading]           = useState(false)
   const [ready, setReady]               = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirect = sanitizeRedirect(searchParams.get('redirect')) ?? '/dashboard'
 
   useEffect(() => {
     async function setup() {
-      // If already at aal2, go straight to dashboard
+      // If already at aal2, go straight to the intended destination.
       const { data: levelData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
       if (levelData && levelData.currentLevel === levelData.nextLevel) {
-        router.push('/dashboard')
+        router.push(redirect)
         return
       }
 
@@ -101,7 +113,7 @@ export default function MFAVerifyPage() {
     }
 
     setup()
-  }, [router])
+  }, [router, redirect])
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -121,7 +133,7 @@ export default function MFAVerifyPage() {
         })
         if (err) { setError(err.message); return }
       }
-      router.push('/dashboard')
+      router.push(redirect)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
     } finally {
@@ -213,5 +225,24 @@ export default function MFAVerifyPage() {
         </form>
       )}
     </AuthLayout>
+  )
+}
+
+export default function MFAVerifyPage() {
+  return (
+    <Suspense fallback={
+      <AuthLayout>
+        <p style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: '12px',
+          color: 'var(--color-text-muted)',
+          textAlign: 'center',
+        }}>
+          Loading...
+        </p>
+      </AuthLayout>
+    }>
+      <MFAVerifyContent />
+    </Suspense>
   )
 }

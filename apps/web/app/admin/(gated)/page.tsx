@@ -1,10 +1,9 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-
-const ADMIN_EMAILS = ['jared.a.lederman@gmail.com']
 
 const row: React.CSSProperties = {
   display: 'flex',
@@ -33,50 +32,16 @@ const value: React.CSSProperties = {
 export default function AdminPage() {
   const router = useRouter()
   const [adminEmail, setAdminEmail] = useState<string | null>(null)
-  const [loading, setLoading]       = useState(true)
 
   useEffect(() => {
-    async function checkAdmin() {
-      const stored = sessionStorage.getItem('illumin_admin')
-      if (!stored || !ADMIN_EMAILS.includes(stored)) {
-        router.replace('/admin/login')
-        return
-      }
-      const { data: { user } } = await supabase.auth.getUser()
-      const email = user?.email?.toLowerCase()
-      if (!email || !ADMIN_EMAILS.includes(email)) {
-        sessionStorage.removeItem('illumin_admin')
-        router.replace('/admin/login')
-        return
-      }
-      setAdminEmail(email)
-      setLoading(false)
-    }
-    checkAdmin()
-  }, [router])
+    supabase.auth.getUser().then(({ data }) => {
+      setAdminEmail(data.user?.email ?? null)
+    })
+  }, [])
 
   const handleSignOut = async () => {
-    sessionStorage.removeItem('illumin_admin')
     await supabase.auth.signOut()
-    router.push('/admin/login')
-  }
-
-  if (loading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        backgroundColor: 'var(--color-bg)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: 'var(--font-mono)',
-        fontSize: '12px',
-        color: 'var(--color-text-muted)',
-        letterSpacing: '0.1em',
-      }}>
-        Loading…
-      </div>
-    )
+    router.push('/')
   }
 
   return (
@@ -87,7 +52,6 @@ export default function AdminPage() {
       maxWidth: '100%',
       overflowX: 'auto',
     }}>
-      {/* Header */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -137,7 +101,6 @@ export default function AdminPage() {
         </button>
       </div>
 
-      {/* Content */}
       <div style={{ maxWidth: '720px' }}>
         <h1 style={{
           fontFamily: 'var(--font-serif)',
@@ -150,7 +113,6 @@ export default function AdminPage() {
           Admin dashboard
         </h1>
 
-        {/* Session card */}
         <div style={{
           backgroundColor: 'var(--color-surface)',
           border: '1px solid var(--color-border)',
@@ -161,7 +123,7 @@ export default function AdminPage() {
           <p style={{ ...label, marginBottom: '20px' }}>Active session</p>
           <div style={row}>
             <span style={label}>Signed in as</span>
-            <span style={value}>{adminEmail}</span>
+            <span style={value}>{adminEmail ?? '—'}</span>
           </div>
           <div style={{ ...row, borderBottom: 'none', paddingBottom: 0, marginBottom: 0 }}>
             <span style={label}>Role</span>
@@ -180,7 +142,38 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Placeholder panels */}
+        <Link
+          href="/admin/invites"
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: '2px',
+            padding: '24px 28px',
+            marginBottom: '12px',
+            textDecoration: 'none',
+          }}
+        >
+          <span style={{
+            fontFamily: 'var(--font-serif)',
+            fontSize: '18px',
+            fontWeight: 300,
+            color: 'var(--color-text)',
+          }}>
+            Invite codes
+          </span>
+          <span style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '11px',
+            color: 'var(--color-gold)',
+            letterSpacing: '0.08em',
+          }}>
+            Manage &rarr;
+          </span>
+        </Link>
+
         {[
           { title: 'Users', note: 'User management coming soon' },
           { title: 'Integrations', note: 'Plaid connection status and token management' },

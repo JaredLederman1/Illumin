@@ -1,35 +1,41 @@
 'use client'
 
+import { CSSProperties } from 'react'
 import Link from 'next/link'
 import WidgetCard from '../widgets/WidgetCard'
 
-const cta: React.CSSProperties = {
-  alignSelf: 'flex-start',
-  marginTop: '4px',
-  padding: '9px 22px',
-  backgroundColor: 'var(--color-gold)',
-  border: 'none',
-  borderRadius: 'var(--radius-sm)',
-  color: 'var(--color-text)',
-  fontFamily: 'var(--font-sans)',
-  fontSize: '12px',
-  fontWeight: 500,
-  letterSpacing: '0.06em',
-  textTransform: 'uppercase',
+const ctaLink: CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: '11px',
+  letterSpacing: '0.08em',
+  color: 'var(--color-gold)',
   textDecoration: 'none',
-  display: 'inline-block',
+}
+
+const copy: CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: '12px',
+  color: 'var(--color-text-mid)',
+  lineHeight: 1.55,
+  margin: 0,
 }
 
 export default function LinkAssetAccountCard() {
   return (
     <WidgetCard
-      label="Unlock savings view"
-      title="Link an asset account."
-      subtitle="Add a checking, savings, or investment account to see your full balance sheet and savings-rate trends."
-    >
-      <Link href="/dashboard/accounts" style={cta}>
-        Link account
-      </Link>
-    </WidgetCard>
+      variant="metric"
+      eyebrow="Unlock savings view"
+      columns={[{ caption: 'Link an asset account', hero: '—' }]}
+      secondary={
+        <p style={copy}>
+          Add a checking, savings, or investment account to see your full balance sheet and savings-rate trends.
+        </p>
+      }
+      cta={
+        <Link href="/dashboard/accounts" style={ctaLink}>
+          Link account &rarr;
+        </Link>
+      }
+    />
   )
 }

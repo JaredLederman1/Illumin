@@ -11,12 +11,7 @@ const strategies = [
 
 export default function AdvancedStrategiesCard() {
   return (
-    <WidgetCard
-      label="Next frontier"
-      title="Advanced strategies"
-      subtitle="Past the basics. These move the needle at the margins."
-      comingSoon
-    >
+    <WidgetCard variant="list" eyebrow="Advanced strategies">
       <ul
         style={{
           listStyle: 'none',
@@ -24,7 +19,7 @@ export default function AdvancedStrategiesCard() {
           margin: 0,
           display: 'flex',
           flexDirection: 'column',
-          gap: '6px',
+          gap: '8px',
         }}
       >
         {strategies.map(s => (

@@ -162,6 +162,7 @@ export interface OnboardingProfile {
   annualIncome: number
   savingsRate: number
   retirementAge: number
+  completedAt?: string | null
 }
 
 export interface BenefitsData {
@@ -628,10 +629,17 @@ export function useSaveOnboardingMutation() {
       }
       return res.json()
     },
+    // Every query whose result is computed from OnboardingProfile fields
+    // (age, annualIncome, savingsRate, retirementAge, emergencyFundMonthsTarget,
+    // contractParsedData, etc.) must be invalidated here so the profile edit
+    // propagates to every dependent feature.
     onSuccess: () => {
       inv.onboarding()
       void inv.score()
       void inv.dashboardState()
+      void inv.opportunity()
+      void inv.goals()
+      void inv.recovery()
     },
   })
 }

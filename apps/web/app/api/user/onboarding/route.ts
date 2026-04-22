@@ -127,12 +127,22 @@ function buildWritableFields(body: Body) {
   if ('contractParsedData' in body) {
     const raw = body.contractParsedData
     if (raw && typeof raw === 'object') {
-      fields.contractParsedData = raw as Prisma.InputJsonValue
-      fields.contractUploadedAt = new Date()
+      fields.contractParsedData    = raw as Prisma.InputJsonValue
+      fields.contractUploadedAt    = new Date()
+      // A successful upload supersedes any prior skip so future resume
+      // logic does not misread the state.
+      fields.contractStepSkippedAt = null
     } else if (raw === null) {
       fields.contractParsedData = Prisma.JsonNull
       fields.contractUploadedAt = null
     }
+  }
+
+  // Explicit skip of Step 3. Records a timestamp without touching the
+  // parsed-data or upload fields so the resume logic can tell skip apart
+  // from a completed upload.
+  if (body.contractStepSkipped === true) {
+    fields.contractStepSkippedAt = new Date()
   }
 
   return fields
@@ -261,6 +271,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const completedAt = new Date()
     const profile = await prisma.onboardingProfile.upsert({
       where: { userId: user.id },
       create: {
@@ -270,8 +281,12 @@ export async function POST(request: NextRequest) {
         annualIncome:  mergedIncome,
         savingsRate:   mergedSavingsRate,
         retirementAge: mergedRetirementAge,
+        completedAt,
       },
-      update: writable as Prisma.OnboardingProfileUncheckedUpdateInput,
+      update: {
+        ...(writable as Prisma.OnboardingProfileUncheckedUpdateInput),
+        completedAt,
+      },
     })
 
     const assetCount = await countAssetAccounts(user.id)

@@ -3,13 +3,15 @@
 import { useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import type { OnboardingData } from './shared'
-import { questionHeading, contextCopy, continueBtn } from './shared'
-import { useUploadBenefitsMutation } from '@/lib/queries'
+import { questionHeading, contextCopy, continueBtn, secondaryBtn } from './shared'
+import { useSaveOnboardingMutation, useUploadBenefitsMutation } from '@/lib/queries'
 
 interface Props {
   data: OnboardingData
   onChange: (patch: Partial<OnboardingData>) => void
   onAdvance: () => void
+  onSkip?: () => void
+  busy?: boolean
   isMobile: boolean
 }
 
@@ -17,13 +19,29 @@ interface Props {
 // flow because the resume logic in /api/user/onboarding depends on
 // contractParsedData being populated before Step 4, and the file-upload state
 // is not straightforward to defer until after the reveal.
-export function Step3Contract({ data, onChange, onAdvance, isMobile }: Props) {
+export function Step3Contract({ data, onChange, onAdvance, onSkip, busy, isMobile }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const upload = useUploadBenefitsMutation()
+  const saveOnboarding = useSaveOnboardingMutation()
   const [state, setState] = useState<'idle' | 'uploading' | 'done' | 'error'>(
     data.contractParsedData ? 'done' : 'idle'
   )
   const [error, setError] = useState<string | null>(null)
+
+  // Records the explicit skip of Step 3 so the resume logic can tell
+  // "skipped for now" apart from "completed upload". Both end with an
+  // advance past this step in the current flow, but the timestamps let
+  // future nudges re-engage users who deferred. Errors are swallowed so a
+  // transient network failure does not block advancement; the parent's
+  // onSkip below also triggers a save that will retry on reload.
+  const handleSkip = async () => {
+    try {
+      await saveOnboarding.mutateAsync({ contractStepSkipped: true })
+    } catch {
+      // non-blocking
+    }
+    onSkip?.()
+  }
 
   const handleFile = async (file: File) => {
     setState('uploading')
@@ -175,7 +193,7 @@ export function Step3Contract({ data, onChange, onAdvance, isMobile }: Props) {
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
         {state === 'done' && (
           <button
             type="button"
@@ -187,6 +205,20 @@ export function Step3Contract({ data, onChange, onAdvance, isMobile }: Props) {
               <line x1="5" y1="12" x2="19" y2="12" />
               <polyline points="12 5 19 12 12 19" />
             </svg>
+          </button>
+        )}
+        {onSkip && (
+          <button
+            type="button"
+            onClick={handleSkip}
+            disabled={busy}
+            style={{
+              ...secondaryBtn,
+              opacity: busy ? 0.45 : 1,
+              cursor: busy ? 'not-allowed' : 'pointer',
+            }}
+          >
+            Skip for now
           </button>
         )}
       </div>

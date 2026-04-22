@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -10,6 +10,9 @@ import { calcTotals } from '@/lib/benefitsAnalysis'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import MobileCard from '@/components/ui/MobileCard'
 import { colors, fonts, spacing } from '@/lib/theme'
+
+const SAVE_CONFIRMATION_TEXT = 'Updated. Dependent figures recalculated.'
+const SAVE_CONFIRMATION_TTL_MS = 4000
 
 const card: React.CSSProperties = {
   backgroundColor: 'var(--color-surface)',
@@ -157,10 +160,19 @@ function ProfileDesktop() {
   const [editing,    setEditing]   = useState(false)
   const [editValues, setEditValues] = useState<EditValues | null>(null)
   const [saveError,  setSaveError] = useState<string | null>(null)
+  const [savedAt,    setSavedAt]   = useState<number | null>(null)
+  const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (confirmTimer.current) clearTimeout(confirmTimer.current)
+    }
+  }, [])
 
   const startEdit = () => {
     setEditValues(profile ?? { age: 0, annualIncome: 0, savingsRate: 0, retirementAge: 65 })
     setSaveError(null)
+    setSavedAt(null)
     setEditing(true)
   }
 
@@ -178,6 +190,9 @@ function ProfileDesktop() {
         onSuccess: (data: { profile?: EditValues }) => {
           if (data?.profile) setProfile(data.profile)
           setEditing(false)
+          setSavedAt(Date.now())
+          if (confirmTimer.current) clearTimeout(confirmTimer.current)
+          confirmTimer.current = setTimeout(() => setSavedAt(null), SAVE_CONFIRMATION_TTL_MS)
         },
         onError: err => setSaveError(err instanceof Error ? err.message : 'Save failed'),
       },
@@ -231,23 +246,36 @@ function ProfileDesktop() {
         transition={{ duration: 0.35, delay: 0.06 }}
         style={card}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', gap: '12px' }}>
           <p style={{ ...sectionLabel, marginBottom: 0 }}>Financial profile</p>
-          {!editing && (
-            <button
-              onClick={startEdit}
-              style={{
-                fontFamily: 'var(--font-mono)', fontSize: '12px', letterSpacing: '0.1em',
-                textTransform: 'uppercase', color: 'var(--color-gold)', background: 'none',
-                border: '1px solid var(--color-gold-border)', borderRadius: '2px',
-                padding: '5px 12px', cursor: 'pointer',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-gold)')}
-              onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-gold-border)')}
-            >
-              Edit
-            </button>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {savedAt && (
+              <p style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '12px',
+                color: 'var(--color-text-muted)',
+                letterSpacing: '0.02em',
+                margin: 0,
+              }}>
+                {SAVE_CONFIRMATION_TEXT}
+              </p>
+            )}
+            {!editing && (
+              <button
+                onClick={startEdit}
+                style={{
+                  fontFamily: 'var(--font-mono)', fontSize: '12px', letterSpacing: '0.1em',
+                  textTransform: 'uppercase', color: 'var(--color-gold)', background: 'none',
+                  border: '1px solid var(--color-gold-border)', borderRadius: '2px',
+                  padding: '5px 12px', cursor: 'pointer',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-gold)')}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-gold-border)')}
+              >
+                Edit
+              </button>
+            )}
+          </div>
         </div>
 
         {loading ? (
@@ -393,10 +421,19 @@ function ProfileMobile() {
   const [editing,    setEditing]   = useState(false)
   const [editValues, setEditValues] = useState<EditValues | null>(null)
   const [saveError,  setSaveError] = useState<string | null>(null)
+  const [savedAt,    setSavedAt]   = useState<number | null>(null)
+  const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (confirmTimer.current) clearTimeout(confirmTimer.current)
+    }
+  }, [])
 
   const startEdit = () => {
     setEditValues(profile ?? { age: 0, annualIncome: 0, savingsRate: 0, retirementAge: 65 })
     setSaveError(null)
+    setSavedAt(null)
     setEditing(true)
   }
 
@@ -414,6 +451,9 @@ function ProfileMobile() {
         onSuccess: (data: { profile?: EditValues }) => {
           if (data?.profile) setProfile(data.profile)
           setEditing(false)
+          setSavedAt(Date.now())
+          if (confirmTimer.current) clearTimeout(confirmTimer.current)
+          confirmTimer.current = setTimeout(() => setSavedAt(null), SAVE_CONFIRMATION_TTL_MS)
         },
         onError: err => setSaveError(err instanceof Error ? err.message : 'Save failed'),
       },
@@ -520,6 +560,17 @@ function ProfileMobile() {
             </button>
           )}
         </div>
+        {savedAt && (
+          <p style={{
+            fontFamily: fonts.mono,
+            fontSize: 12,
+            color: colors.textMuted,
+            letterSpacing: '0.02em',
+            marginBottom: 14,
+          }}>
+            {SAVE_CONFIRMATION_TEXT}
+          </p>
+        )}
 
         {loading ? (
           <p style={{ fontFamily: fonts.mono, fontSize: 14, color: colors.textMuted }}>Loading...</p>

@@ -1,7 +1,7 @@
 'use client'
 
+import { CSSProperties } from 'react'
 import WidgetCard from '../widgets/WidgetCard'
-import MetricDisplay from '../widgets/MetricDisplay'
 
 interface Props {
   concentrationPct: number | null
@@ -15,6 +15,14 @@ const fmt = (n: number) =>
     maximumFractionDigits: 0,
   }).format(Math.max(0, Math.round(n)))
 
+const catRow: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  fontFamily: 'var(--font-mono)',
+  fontSize: '12px',
+  color: 'var(--color-text-mid)',
+}
+
 export default function CategoryConcentrationCard({
   concentrationPct,
   topCategories,
@@ -25,40 +33,23 @@ export default function CategoryConcentrationCard({
       : null
   return (
     <WidgetCard
-      label="Spending concentration"
-      title="Where your variable dollars go"
-      subtitle="Your top three discretionary categories relative to total variable spend."
-    >
-      <MetricDisplay
-        value={pct != null ? `${pct}%` : '—'}
-        label="Top 3 share of variable spend"
-      />
-      {topCategories.length > 0 && (
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '6px',
-            marginTop: '6px',
-          }}
-        >
-          {topCategories.map(c => (
-            <div
-              key={c.category}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontFamily: 'var(--font-mono)',
-                fontSize: '12px',
-                color: 'var(--color-text-mid)',
-              }}
-            >
-              <span>{c.category}</span>
-              <span>{fmt(c.amount)}/mo</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </WidgetCard>
+      variant="metric"
+      eyebrow="Spending concentration"
+      columns={[
+        { caption: 'Top 3 share of variable spend', hero: pct != null ? `${pct}%` : '—' },
+      ]}
+      secondary={
+        topCategories.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {topCategories.map(c => (
+              <div key={c.category} style={catRow}>
+                <span>{c.category}</span>
+                <span>{fmt(c.amount)}/mo</span>
+              </div>
+            ))}
+          </div>
+        ) : null
+      }
+    />
   )
 }

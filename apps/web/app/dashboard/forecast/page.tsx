@@ -31,8 +31,34 @@ const sectionLabel = {
   marginBottom: '22px',
 } as const
 
+function ProfileGate() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: 'easeOut' }}
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', gap: '20px', textAlign: 'center' }}
+    >
+      <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: '1px solid var(--color-border-strong)', backgroundColor: 'var(--color-gold-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', color: 'var(--color-gold)' }}>
+        ◈
+      </div>
+      <div>
+        <p style={{ fontFamily: 'var(--font-serif)', fontSize: '26px', fontWeight: 400, color: 'var(--color-text)', marginBottom: '8px' }}>Complete your profile to see this</p>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-text-muted)', lineHeight: 1.7 }}>The forecast uses your age, income, and savings rate from onboarding.</p>
+      </div>
+      <Link href="/onboarding" style={{ padding: '10px 24px', backgroundColor: 'var(--color-gold)', border: 'none', borderRadius: '2px', color: 'var(--color-surface)', fontFamily: 'var(--font-mono)', fontSize: '13px', letterSpacing: '0.08em', textDecoration: 'none', display: 'inline-block' }}>
+        Resume onboarding
+      </Link>
+    </motion.div>
+  )
+}
+
 function ForecastDesktop() {
-  const { loading, forecast } = useDashboard()
+  const { loading, forecast, profile } = useDashboard()
+
+  if (profile && !profile.completedAt) {
+    return <ProfileGate />
+  }
 
   if (loading) {
     return (
@@ -153,7 +179,11 @@ function ForecastDesktop() {
 }
 
 function ForecastMobile() {
-  const { loading, forecast } = useDashboard()
+  const { loading, forecast, profile } = useDashboard()
+
+  if (profile && !profile.completedAt) {
+    return <ProfileGate />
+  }
 
   if (loading) {
     return (

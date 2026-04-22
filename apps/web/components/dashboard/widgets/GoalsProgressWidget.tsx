@@ -1,7 +1,8 @@
 'use client'
 
+import { CSSProperties } from 'react'
 import Link from 'next/link'
-import { useGoalsQuery } from '@/lib/queries'
+import { useGoalsQuery, useOnboardingProfileQuery } from '@/lib/queries'
 import WidgetCard from './WidgetCard'
 
 interface Goal {
@@ -10,42 +11,48 @@ interface Goal {
   percentage: number
 }
 
+const ctaLink: CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: '11px',
+  letterSpacing: '0.08em',
+  color: 'var(--color-gold)',
+  textDecoration: 'none',
+}
+
+const emptyCopy: CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: '12px',
+  color: 'var(--color-text-muted)',
+  margin: 0,
+}
+
 export default function GoalsProgressWidget() {
   const { data } = useGoalsQuery<Goal>()
+  const { data: profile } = useOnboardingProfileQuery()
   const goals = data?.goals ?? null
+  const gated = profile && !profile.completedAt
 
   return (
-    <WidgetCard label="Goals progress" title="Your milestones">
-      {goals == null ? (
-        <p
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '12px',
-            color: 'var(--color-text-muted)',
-            margin: 0,
-          }}
+    <WidgetCard
+      variant="list"
+      eyebrow="Goals progress"
+      cta={
+        <Link
+          href={gated ? '/onboarding' : '/dashboard/goals'}
+          style={ctaLink}
         >
-          Loading…
-        </p>
+          {gated ? 'Resume onboarding' : 'View all'} &rarr;
+        </Link>
+      }
+    >
+      {gated ? (
+        <p style={emptyCopy}>Complete your profile to see this.</p>
+      ) : goals == null ? (
+        <p style={emptyCopy}>Loading…</p>
       ) : goals.length === 0 ? (
-        <p
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '12px',
-            color: 'var(--color-text-muted)',
-            margin: 0,
-          }}
-        >
-          Finish onboarding to see goal tracking.
-        </p>
+        <p style={emptyCopy}>Finish onboarding to see goal tracking.</p>
       ) : (
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-          }}
-        >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {goals.slice(0, 3).map(g => (
             <div key={g.id}>
               <div
@@ -59,7 +66,9 @@ export default function GoalsProgressWidget() {
                 }}
               >
                 <span>{g.name}</span>
-                <span>{Math.round(g.percentage)}%</span>
+                <span style={{ fontFamily: 'var(--font-mono)' }}>
+                  {Math.round(g.percentage)}%
+                </span>
               </div>
               <div
                 style={{
@@ -81,19 +90,6 @@ export default function GoalsProgressWidget() {
           ))}
         </div>
       )}
-      <Link
-        href="/dashboard/goals"
-        style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: '11px',
-          letterSpacing: '0.08em',
-          color: 'var(--color-gold)',
-          textDecoration: 'none',
-          alignSelf: 'flex-start',
-        }}
-      >
-        View all →
-      </Link>
     </WidgetCard>
   )
 }

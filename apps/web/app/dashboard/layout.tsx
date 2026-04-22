@@ -4,6 +4,7 @@ import MobileNav from '@/components/ui/MobileNav'
 import PageTransition from '@/components/ui/PageTransition'
 import GlobalTooltipRenderer from '@/components/ui/GlobalTooltipRenderer'
 import CoachWidget from '@/components/ui/CoachWidget'
+import OnboardingBanner from '@/components/dashboard/OnboardingBanner'
 import { DashboardProvider } from '@/lib/dashboardData'
 import { TooltipProvider } from '@/lib/tooltipContext'
 
@@ -24,6 +25,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               className="dashboard-main"
               style={{ flex: 1, overflowY: 'auto' }}
             >
+              <OnboardingBanner />
               <PageTransition>{children}</PageTransition>
             </main>
 

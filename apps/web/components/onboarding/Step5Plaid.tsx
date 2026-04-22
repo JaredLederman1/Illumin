@@ -7,6 +7,7 @@ import {
   questionHeading,
   contextCopy,
   continueBtn,
+  secondaryBtn,
   fmt,
   opportunityCostOneYear,
 } from './shared'
@@ -283,7 +284,8 @@ export function Step5Plaid({
         style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: '14px',
+          alignItems: 'flex-start',
+          gap: '8px',
         }}
       >
         <button
@@ -316,20 +318,12 @@ export function Step5Plaid({
           onClick={onSkipForNow}
           disabled={exchanging || busy}
           style={{
-            background: 'none',
-            border: 'none',
-            padding: '10px 0',
-            fontFamily: 'var(--font-sans)',
-            fontSize: '12px',
-            color: 'var(--color-text-muted)',
-            letterSpacing: '0.08em',
+            ...secondaryBtn,
+            opacity: exchanging || busy ? 0.45 : 1,
             cursor: exchanging || busy ? 'not-allowed' : 'pointer',
-            opacity: exchanging || busy ? 0.5 : 1,
-            textAlign: 'left',
-            minHeight: '44px',
           }}
         >
-          Connect later, show me what you have so far
+          Skip for now
         </button>
       </div>
 

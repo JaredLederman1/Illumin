@@ -172,6 +172,9 @@ model OnboardingProfile {
   riskTolerance              Int?      @map("risk_tolerance")
   contractParsedData         Json?     @map("contract_parsed_data")
   contractUploadedAt         DateTime? @map("contract_uploaded_at")
+  contractStepSkippedAt      DateTime? @map("contract_step_skipped_at")
+  introSeenAt                DateTime? @map("intro_seen_at")
+  completedAt                DateTime? @map("completed_at")
   createdAt                  DateTime  @default(now()) @map("created_at")
   updatedAt                  DateTime  @updatedAt @map("updated_at")
   user                       User      @relation(fields: [userId], references: [id])
@@ -272,6 +275,35 @@ model EmploymentBenefits {
   user                 User     @relation(fields: [userId], references: [id])
 
   @@map("employment_benefits")
+}
+
+model InviteCode {
+  id           String    @id @default(cuid())
+  code         String    @unique
+  maxUses      Int       @default(1) @map("max_uses")
+  usedCount    Int       @default(0) @map("used_count")
+  expiresAt    DateTime? @map("expires_at")
+  note         String?
+  createdBy    String?   @map("created_by")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  disabledAt   DateTime? @map("disabled_at")
+
+  redemptions  InviteCodeRedemption[]
+
+  @@map("invite_codes")
+}
+
+model InviteCodeRedemption {
+  id           String   @id @default(cuid())
+  inviteCodeId String   @map("invite_code_id")
+  userId       String   @map("user_id")
+  redeemedAt   DateTime @default(now()) @map("redeemed_at")
+
+  inviteCode   InviteCode @relation(fields: [inviteCodeId], references: [id], onDelete: Cascade)
+
+  @@unique([inviteCodeId, userId])
+  @@index([userId])
+  @@map("invite_code_redemptions")
 }
 
 model RecoveryEvent {

@@ -85,6 +85,7 @@ export default function DonutChart({ data }: DonutChartProps) {
                 color: 'var(--color-text-mid)',
                 fontFamily: 'var(--font-mono)',
                 letterSpacing: '0.03em',
+                textTransform: 'lowercase',
               }}>
                 {item.category}
               </span>

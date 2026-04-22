@@ -1,11 +1,11 @@
 'use client'
 
+import { CSSProperties } from 'react'
 import Link from 'next/link'
 import { useMemo } from 'react'
 import { useDashboard } from '@/lib/dashboardData'
 import { detectRecurringMerchants } from '@/lib/data'
 import WidgetCard from './WidgetCard'
-import MetricDisplay from './MetricDisplay'
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-US', {
@@ -14,12 +14,27 @@ const fmt = (n: number) =>
     maximumFractionDigits: 0,
   }).format(Math.max(0, Math.round(n)))
 
+const ctaLink: CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: '11px',
+  letterSpacing: '0.08em',
+  color: 'var(--color-gold)',
+  textDecoration: 'none',
+}
+
+const merchantRow: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  fontFamily: 'var(--font-mono)',
+  fontSize: '12px',
+  color: 'var(--color-text-mid)',
+}
+
 export default function RecurringChargesWidget() {
   const { transactions } = useDashboard()
   const summary = useMemo(() => {
     const recurring = detectRecurringMerchants(transactions)
     const monthlySpend = new Map<string, number>()
-    // Monthly approximation: sum last 30 days of recurring charges.
     const since = new Date()
     since.setDate(since.getDate() - 30)
     for (const tx of transactions) {
@@ -41,53 +56,31 @@ export default function RecurringChargesWidget() {
 
   return (
     <WidgetCard
-      label="Recurring charges"
-      title="Monthly subscriptions"
-      subtitle="Everything Illumin detects as a recurring charge, summed over the last 30 days."
-    >
-      <MetricDisplay
-        value={fmt(summary.total)}
-        label={`${summary.count} merchant${summary.count === 1 ? '' : 's'}`}
-      />
-      {summary.topMerchants.length > 0 && (
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '6px',
-            marginTop: '4px',
-          }}
-        >
-          {summary.topMerchants.map(([name, amt]) => (
-            <div
-              key={name}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontFamily: 'var(--font-mono)',
-                fontSize: '12px',
-                color: 'var(--color-text-mid)',
-              }}
-            >
-              <span>{name}</span>
-              <span>{fmt(amt)}</span>
-            </div>
-          ))}
-        </div>
-      )}
-      <Link
-        href="/dashboard/recurring"
-        style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: '11px',
-          letterSpacing: '0.08em',
-          color: 'var(--color-gold)',
-          textDecoration: 'none',
-          alignSelf: 'flex-start',
-        }}
-      >
-        View all →
-      </Link>
-    </WidgetCard>
+      variant="metric"
+      eyebrow="Recurring charges"
+      columns={[
+        {
+          caption: `${summary.count} merchant${summary.count === 1 ? '' : 's'}, last 30 days`,
+          hero: fmt(summary.total),
+        },
+      ]}
+      secondary={
+        summary.topMerchants.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {summary.topMerchants.map(([name, amt]) => (
+              <div key={name} style={merchantRow}>
+                <span>{name}</span>
+                <span>{fmt(amt)}</span>
+              </div>
+            ))}
+          </div>
+        ) : null
+      }
+      cta={
+        <Link href="/dashboard/recurring" style={ctaLink}>
+          View all &rarr;
+        </Link>
+      }
+    />
   )
 }

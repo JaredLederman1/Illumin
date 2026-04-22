@@ -1,57 +1,71 @@
 /* ── LOCAL DESIGN TOKENS ──────────────────────────────────── */
-.nav {
+.leftPill,
+.rightPill {
   --color-background: #080B0F;
   --color-foreground: #F0F2F8;
   --color-muted:      #6B7A8D;
 }
 
-/* ── NAV PILL ─────────────────────────────────────────────── */
-.nav {
+/* ── SHARED PILL CHROME ───────────────────────────────────── */
+.leftPill,
+.rightPill {
   position:              fixed;
   top:                   24px;
-  left:                  50%;
-  transform:             translateX(-50%);
   z-index:               100;
-  background:            color-mix(in srgb, var(--color-background) 75%, transparent);
-  backdrop-filter:       blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background:            transparent;
   border:                1px solid var(--color-grid-line);
-  border-radius:         999px;
-  padding:               10px 20px;
   display:               flex;
   align-items:           center;
-  gap:                   32px;
+  gap:                   24px;
   white-space:           nowrap;
-  transition:            left 400ms cubic-bezier(0.25, 0.1, 0.25, 1),
-                         transform 400ms cubic-bezier(0.25, 0.1, 0.25, 1),
-                         top 400ms cubic-bezier(0.25, 0.1, 0.25, 1);
+  transition:            left 280ms cubic-bezier(0.25, 0.1, 0.25, 1),
+                         transform 280ms cubic-bezier(0.25, 0.1, 0.25, 1),
+                         border-radius 280ms cubic-bezier(0.25, 0.1, 0.25, 1),
+                         padding 280ms cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
-/* ── DOCKED (top-left) ───────────────────────────────────── */
-.docked {
-  left:      24px;
-  transform: translateX(0);
-  top:       16px;
+/* ── DEFAULT STATE: halves meet at center, borders overlap by 1px,
+      inner paddings tightened so the junction gap matches internal gap ── */
+.leftPill {
+  left:                  50%;
+  transform:             translateX(calc(-100% + 1px));
+  border-radius:         999px 0 0 999px;
+  padding:               10px 12px 10px 20px;
 }
 
-/* ── WORDMARK ─────────────────────────────────────────────── */
+.rightPill {
+  left:                  50%;
+  transform:             translateX(0);
+  border-radius:         0 999px 999px 0;
+  padding:               10px 20px 10px 12px;
+}
+
+/* ── DOCKED STATE: halves split to viewport edges ─────────── */
+.leftPill.docked {
+  left:                  24px;
+  transform:             translateX(0);
+  border-radius:         999px;
+  padding:               10px 20px;
+}
+
+.rightPill.docked {
+  left:                  calc(100% - 24px);
+  transform:             translateX(-100%);
+  border-radius:         999px;
+  padding:               10px 20px;
+}
+
+/* ── WORDMARK (gold, serif, uppercase — matches Sidebar/auth treatment) ── */
 .wordmark {
-  font-family: var(--font-sans), sans-serif;
-  font-size:   0.9rem;
-  font-weight: 500;
-  color:       var(--color-foreground);
-  flex:        1;
-  display:     block;
-  text-align:  center;
+  font-family:    var(--font-serif), serif;
+  font-size:      0.95rem;
+  font-weight:    500;
+  color:          var(--color-gold);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
 }
 
 /* ── NAV LINKS ───────────────────────────────────────────── */
-.linksWrap {
-  display:     flex;
-  align-items: center;
-  gap:         24px;
-}
-
 .link {
   font-family:     var(--font-sans), sans-serif;
   font-size:       0.85rem;
@@ -79,30 +93,6 @@
 }
 .cta:hover { opacity: 0.85; }
 
-/* ── ADMIN BUTTON ─────────────────────────────────────────── */
-.adminBtn {
-  position:        fixed;
-  top:             24px;
-  right:           24px;
-  z-index:         100;
-  font-family:     var(--font-mono), monospace;
-  font-size:       0.7rem;
-  text-transform:  uppercase;
-  letter-spacing:  0.1em;
-  color:           var(--color-muted);
-  text-decoration: none;
-  padding:         6px 12px;
-  border:          1px solid var(--color-grid-line);
-  border-radius:   4px;
-  background:      color-mix(in srgb, var(--color-background) 75%, transparent);
-  backdrop-filter: blur(12px);
-  transition:      color 150ms ease, border-color 150ms ease;
-}
-.adminBtn:hover {
-  color:         var(--color-foreground);
-  border-color:  rgba(255,255,255,0.2);
-}
-
 /* ── HAMBURGER (hidden on desktop) ────────────────────────── */
 .hamburger {
   display: none;
@@ -122,12 +112,9 @@
    ════════════════════════════════════════════════════════════ */
 
 @media (max-width: 768px) {
-  /* Hide the desktop nav pill */
-  .nav {
-    display: none;
-  }
-
-  .adminBtn {
+  /* Hide both desktop pills */
+  .leftPill,
+  .rightPill {
     display: none;
   }
 

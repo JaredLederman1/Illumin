@@ -9,6 +9,8 @@ interface Props {
   onChange: (patch: Partial<OnboardingData>) => void
   subIndex: number
   onSubAdvance: () => void
+  onSkip?: () => void
+  busy?: boolean
   isMobile: boolean
 }
 
@@ -27,7 +29,7 @@ const CONTEXT: Record<FieldKey, string> = {
   startDate: 'Tenure determines vesting, bonus timing, and match eligibility.',
 }
 
-export function Step2Employment({ data, onChange, subIndex, onSubAdvance, isMobile }: Props) {
+export function Step2Employment({ data, onChange, subIndex, onSubAdvance, onSkip, busy, isMobile }: Props) {
   const key: FieldKey = FIELDS[Math.max(0, Math.min(FIELDS.length - 1, subIndex))]
 
   const canAdvance = (() => {
@@ -85,7 +87,9 @@ export function Step2Employment({ data, onChange, subIndex, onSubAdvance, isMobi
       question={QUESTION[key]}
       context={CONTEXT[key]}
       canAdvance={canAdvance}
+      busy={busy}
       onAdvance={onSubAdvance}
+      onSkip={onSkip}
       isMobile={isMobile}
     >
       {field}

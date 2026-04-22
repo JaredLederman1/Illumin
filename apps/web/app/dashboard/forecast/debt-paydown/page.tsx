@@ -158,7 +158,11 @@ function usePortfolioYield(): {
   source: 'portfolio' | 'default'
   loading: boolean
 } {
-  const { data, isLoading } = usePortfolioHistoryQuery<PortfolioHistoryResponse>('1y')
+  // Pull the annualized return over the portfolio's full lifespan rather than
+  // the trailing 12 months, so one good or bad year doesn't swing the
+  // invest-vs-paydown decision. A negative lifespan return falls back to the
+  // 7% S&P long-run expectation.
+  const { data, isLoading } = usePortfolioHistoryQuery<PortfolioHistoryResponse>('all')
   if (!data) {
     return {
       yieldValue: DEFAULT_PORTFOLIO_YIELD,
@@ -168,7 +172,7 @@ function usePortfolioYield(): {
     }
   }
   const y = data.portfolioAnnualizedReturn
-  const usable = typeof y === 'number' && Number.isFinite(y) && y !== 0
+  const usable = typeof y === 'number' && Number.isFinite(y) && y > 0
   return {
     yieldValue: usable ? (y as number) : DEFAULT_PORTFOLIO_YIELD,
     portfolioValue: data.totalPortfolioValue ?? 0,
@@ -358,6 +362,45 @@ function InlineAprEditor({
   )
 }
 
+// Renders a month tick with the year count stacked below, so the decade marks
+// on the paydown projection chart double as a years-elapsed scale.
+function DecadeTick(props: {
+  x?: number
+  y?: number
+  payload?: { value: number }
+}) {
+  const { x = 0, y = 0, payload } = props
+  const month = payload?.value ?? 0
+  const years = Math.round(month / 12)
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text
+        x={0}
+        y={12}
+        textAnchor="middle"
+        fontFamily="var(--font-mono)"
+        fontSize={11}
+        fill="var(--color-text-muted)"
+      >
+        {month}
+      </text>
+      {month > 0 && (
+        <text
+          x={0}
+          y={28}
+          textAnchor="middle"
+          fontFamily="var(--font-mono)"
+          fontSize={10}
+          fill="var(--color-text-muted)"
+          letterSpacing="0.08em"
+        >
+          {years} yr
+        </text>
+      )}
+    </g>
+  )
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DebtPaydownPage() {
@@ -524,6 +567,16 @@ export default function DebtPaydownPage() {
     }
     return points
   }, [aggressiveSchedule, minimumSchedule, debts])
+
+  // Ticks at every 10-year mark so the x-axis stays readable and each decade
+  // can be annotated with its year count directly below the month number.
+  const decadeTicks = useMemo(() => {
+    if (chartData.length === 0) return [] as number[]
+    const maxMonths = chartData[chartData.length - 1]?.month ?? 0
+    const ticks: number[] = []
+    for (let m = 0; m <= maxMonths; m += 120) ticks.push(m)
+    return ticks
+  }, [chartData])
 
   // Schedule grouped by account
   const visibleSchedule = scheduleView === 'aggressive' ? aggressiveSchedule : minimumSchedule
@@ -819,17 +872,20 @@ export default function DebtPaydownPage() {
         <p style={sectionLabel}>Debt-Free Projection</p>
         <div style={{ width: '100%', height: '320px' }}>
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 8, right: 24, left: 8, bottom: 28 }}>
+            <LineChart data={chartData} margin={{ top: 8, right: 24, left: 8, bottom: 64 }}>
               <CartesianGrid stroke="var(--color-grid-line)" strokeDasharray="2 4" vertical={false} />
               <XAxis
                 dataKey="month"
                 stroke="var(--color-text-muted)"
                 tickLine={false}
-                tick={{ fontFamily: 'var(--font-mono)', fontSize: 11, fill: 'var(--color-text-muted)' }}
+                interval={0}
+                ticks={decadeTicks}
+                tick={<DecadeTick />}
+                height={44}
                 label={{
                   value: 'Months from today',
                   position: 'insideBottom',
-                  offset: -4,
+                  offset: -8,
                   style: {
                     fontFamily: 'var(--font-mono)',
                     fontSize: 10,
@@ -862,11 +918,13 @@ export default function DebtPaydownPage() {
                 labelFormatter={m => `Month ${m}`}
               />
               <Legend
+                verticalAlign="bottom"
                 wrapperStyle={{
                   fontFamily: 'var(--font-mono)',
                   fontSize: '11px',
                   letterSpacing: '0.06em',
                   textTransform: 'uppercase',
+                  bottom: 14,
                 }}
                 formatter={v => (v === 'aggressive' ? 'Scenario A: Aggressive' : 'Scenario B: Minimums')}
               />

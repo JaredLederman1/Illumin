@@ -19,26 +19,6 @@ const fmtDollars = (n: number) =>
     maximumFractionDigits: 0,
   }).format(Math.max(0, Math.round(n)))
 
-// ── Styles ──────────────────────────────────────────────────────────────────
-
-const primaryLabel: CSSProperties = {
-  fontFamily: 'var(--font-sans)',
-  fontSize: '11px',
-  fontWeight: 500,
-  color: 'var(--color-text-muted)',
-  textTransform: 'uppercase',
-  letterSpacing: '0.06em',
-  margin: 0,
-}
-
-const primaryValue: CSSProperties = {
-  fontFamily: 'var(--font-mono)',
-  fontSize: '32px',
-  letterSpacing: '-0.01em',
-  lineHeight: 1.05,
-  margin: 0,
-}
-
 const copy: CSSProperties = {
   fontFamily: 'var(--font-mono)',
   fontSize: '12px',
@@ -59,17 +39,7 @@ const ctaLink: CSSProperties = {
   letterSpacing: '0.08em',
   color: 'var(--color-gold)',
   textDecoration: 'none',
-  marginTop: 'auto',
-  alignSelf: 'flex-start',
 }
-
-const shellStyle: CSSProperties = {
-  minHeight: '260px',
-  maxHeight: '340px',
-  overflow: 'hidden',
-}
-
-// ── Component ───────────────────────────────────────────────────────────────
 
 export default function MatchGapCard({ matchGapAnnual, matchDetail }: Props) {
   const hasDetail =
@@ -78,15 +48,20 @@ export default function MatchGapCard({ matchGapAnnual, matchDetail }: Props) {
   if (!hasDetail) {
     return (
       <WidgetCard
-        label="401(k) Match Gap"
-        title="Upload your offer letter"
-        subtitle="We need your match formula to size the gap. Two fields, one upload."
-        style={shellStyle}
-      >
-        <Link href="/dashboard/benefits" style={ctaLink}>
-          Close the gap &rarr;
-        </Link>
-      </WidgetCard>
+        variant="metric"
+        eyebrow="401(k) match gap"
+        columns={[{ caption: 'Upload your offer letter', hero: '—' }]}
+        secondary={
+          <p style={copy}>
+            We need your match formula to size the gap. Two fields, one upload.
+          </p>
+        }
+        cta={
+          <Link href="/dashboard/benefits" style={ctaLink}>
+            Close the gap &rarr;
+          </Link>
+        }
+      />
     )
   }
 
@@ -115,29 +90,27 @@ export default function MatchGapCard({ matchGapAnnual, matchDetail }: Props) {
 
   return (
     <WidgetCard
-      label="401(k) Match Gap"
+      variant="metric"
+      eyebrow="401(k) match gap"
       accent={atCap ? 'positive' : 'alert'}
-      style={shellStyle}
-    >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-label-to-value)' }}>
-        <p style={primaryLabel}>{primaryLine}</p>
-        <p style={{ ...primaryValue, color: primaryColor }}>{primaryDisplay}</p>
-      </div>
-
-      <p style={copy}>
-        {compoundedLine}
-        <span style={{ ...strongMono, color: atCap ? 'var(--color-positive)' : 'var(--color-negative)' }}>
-          {fmtDollars(compoundedOpportunity)}
-        </span>
-        .{' '}
-        {atCap
-          ? 'Keep your contribution rate at the full match to preserve this.'
-          : 'Raise your contribution to the full match cap to close it.'}
-      </p>
-
-      <Link href="/dashboard/benefits" style={ctaLink}>
-        Close the gap &rarr;
-      </Link>
-    </WidgetCard>
+      columns={[{ caption: primaryLine, hero: primaryDisplay, heroColor: primaryColor }]}
+      secondary={
+        <p style={copy}>
+          {compoundedLine}
+          <span style={{ ...strongMono, color: atCap ? 'var(--color-positive)' : 'var(--color-negative)' }}>
+            {fmtDollars(compoundedOpportunity)}
+          </span>
+          .{' '}
+          {atCap
+            ? 'Keep your contribution rate at the full match to preserve this.'
+            : 'Raise your contribution to the full match cap to close it.'}
+        </p>
+      }
+      cta={
+        <Link href="/dashboard/benefits" style={ctaLink}>
+          Close the gap &rarr;
+        </Link>
+      }
+    />
   )
 }

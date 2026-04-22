@@ -55,6 +55,7 @@ interface HistoryData {
   portfolioReturn: number | null
   portfolioAnnualizedReturn: number | null
   benchmarkReturn: number | null
+  benchmarkAnnualizedReturn: number | null
   benchmarkAvailable: boolean
   holdingMetrics: HoldingMetric[]
   worstPerformers: WorstPerformer[]
@@ -182,7 +183,7 @@ function PeriodSelector({
 
 // ── Metric Cards Row ──────────────────────────────────────────────────────────
 
-function MetricCards({ data }: { data: HistoryData }) {
+function MetricCards({ data, period }: { data: HistoryData; period: Period }) {
   const totalOppCostDollars = data.holdingMetrics.reduce(
     (s, h) => s + h.opportunityCostDollars,
     0,
@@ -201,6 +202,11 @@ function MetricCards({ data }: { data: HistoryData }) {
     benchmarkValid && data.benchmarkReturn !== null && data.portfolioReturn !== null
       ? data.portfolioReturn - data.benchmarkReturn
       : null
+
+  // Annualized Y/Y performance is only meaningful once the window covers
+  // more than a single year; for 2Y and longer we show it alongside the
+  // cumulative return so the user sees per-year pacing.
+  const showAnnualized = period === '2y' || period === '5y' || period === 'all'
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
@@ -224,7 +230,7 @@ function MetricCards({ data }: { data: HistoryData }) {
           fontFamily: 'var(--font-mono)',
           fontSize: '13px',
           color: 'var(--color-text-muted)',
-          marginBottom: '4px',
+          marginBottom: showAnnualized ? '2px' : '4px',
         }}>
           Your return:{' '}
           <span style={{
@@ -237,6 +243,19 @@ function MetricCards({ data }: { data: HistoryData }) {
             {data.portfolioReturn !== null ? fmtPct(data.portfolioReturn, true) : '--'}
           </span>
         </p>
+        {showAnnualized && (
+          <p style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '10px',
+            color: 'var(--color-text-muted)',
+            letterSpacing: '0.06em',
+            marginBottom: '6px',
+          }}>
+            {data.portfolioAnnualizedReturn !== null
+              ? `${fmtPct(data.portfolioAnnualizedReturn, true)} / yr annualized`
+              : '--'}
+          </p>
+        )}
         <p style={{
           fontFamily: 'var(--font-mono)',
           fontSize: '13px',
@@ -255,6 +274,19 @@ function MetricCards({ data }: { data: HistoryData }) {
             {benchmarkValid ? fmtPct(data.benchmarkReturn!, true) : '--'}
           </span>
         </p>
+        {showAnnualized && (
+          <p style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '10px',
+            color: 'var(--color-text-muted)',
+            letterSpacing: '0.06em',
+            marginTop: '2px',
+          }}>
+            {benchmarkValid && data.benchmarkAnnualizedReturn !== null
+              ? `${fmtPct(data.benchmarkAnnualizedReturn, true)} / yr annualized`
+              : '--'}
+          </p>
+        )}
         <p style={{
           fontFamily: 'var(--font-mono)',
           fontSize: '10px',
@@ -967,7 +999,7 @@ function PortfolioDesktop() {
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: 'easeOut', delay: 0.06 }}>
-        <MetricCards data={historyData} />
+        <MetricCards data={historyData} period={period} />
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: 'easeOut', delay: 0.12 }}>

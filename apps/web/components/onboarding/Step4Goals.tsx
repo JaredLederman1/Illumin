@@ -10,6 +10,8 @@ interface Props {
   onChange: (patch: Partial<OnboardingData>) => void
   subIndex: number
   onSubAdvance: () => void
+  onSkip?: () => void
+  busy?: boolean
   isMobile: boolean
 }
 
@@ -38,7 +40,7 @@ const RISK_LABELS: Record<number, string> = {
 
 const EMERGENCY_FUND_MAX = 24
 
-export function Step4Goals({ data, onChange, subIndex, onSubAdvance, isMobile }: Props) {
+export function Step4Goals({ data, onChange, subIndex, onSubAdvance, onSkip, busy, isMobile }: Props) {
   const key: FieldKey = FIELDS[Math.max(0, Math.min(FIELDS.length - 1, subIndex))]
 
   const [incomeDisplay, setIncomeDisplay] = useState(
@@ -165,7 +167,9 @@ export function Step4Goals({ data, onChange, subIndex, onSubAdvance, isMobile }:
       question={QUESTION[key]}
       context={CONTEXT[key]}
       canAdvance={canAdvance}
+      busy={busy}
       onAdvance={onSubAdvance}
+      onSkip={onSkip}
       isMobile={isMobile}
     >
       {field}

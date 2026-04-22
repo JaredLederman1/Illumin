@@ -55,12 +55,26 @@ function strengthColor(score: number): string {
   return 'var(--color-positive)'
 }
 
-const ACCESS_CODE = 'illumin2026'
+type InvalidReason = 'not_found' | 'expired' | 'exhausted' | 'disabled'
+
+function inviteReasonCopy(reason: InvalidReason | 'unknown'): string {
+  switch (reason) {
+    case 'not_found':  return 'We do not recognize that invite code.'
+    case 'expired':    return 'That invite code has expired.'
+    case 'exhausted':  return 'That invite code has already been used.'
+    case 'disabled':   return 'That invite code is no longer active.'
+    default:           return 'Something went wrong. Please try again.'
+  }
+}
 
 export default function SignupPage() {
-  const [accessCode, setAccessCode] = useState('')
-  const [unlocked, setUnlocked]     = useState(false)
-  const [codeError, setCodeError]   = useState(false)
+  // Step A: invite code
+  const [inviteCode, setInviteCode]         = useState('')
+  const [validatedCode, setValidatedCode]   = useState<string | null>(null)
+  const [inviteError, setInviteError]       = useState<string | null>(null)
+  const [inviteLoading, setInviteLoading]   = useState(false)
+
+  // Step B: signup fields
   const [name, setName]             = useState('')
   const [email, setEmail]           = useState('')
   const [password, setPassword]     = useState('')
@@ -74,6 +88,33 @@ export default function SignupPage() {
 
   const strength = getStrength(password)
 
+  const handleValidateInvite = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setInviteError(null)
+    setInviteLoading(true)
+    try {
+      const res = await fetch('/api/invite/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: inviteCode.trim() }),
+      })
+      if (!res.ok) {
+        setInviteError(inviteReasonCopy('unknown'))
+        return
+      }
+      const data: { valid: boolean; reason?: InvalidReason } = await res.json()
+      if (!data.valid) {
+        setInviteError(inviteReasonCopy(data.reason ?? 'unknown'))
+        return
+      }
+      setValidatedCode(inviteCode.trim().toUpperCase())
+    } catch {
+      setInviteError(inviteReasonCopy('unknown'))
+    } finally {
+      setInviteLoading(false)
+    }
+  }
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     if (password !== confirm) {
@@ -84,18 +125,64 @@ export default function SignupPage() {
       setError('Password is too weak.')
       return
     }
+    if (!validatedCode) {
+      setError('Invite code missing. Please start over.')
+      return
+    }
     setLoading(true)
     setError(null)
     try {
-      const { error: authError } = await supabase.auth.signUp({
+      const { data, error: authError } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { full_name: name } },
+        options: {
+          data: { full_name: name },
+          emailRedirectTo:
+            typeof window !== 'undefined'
+              ? `${window.location.origin}/auth/callback`
+              : undefined,
+        },
       })
       if (authError) {
         setError(authError.message)
-      } else {
+        return
+      }
+
+      // Session is present immediately when "confirm email" is OFF in Supabase.
+      // When ON, data.session is null and the user goes through /auth/callback
+      // after clicking the confirmation email. In that case we cannot call a
+      // Bearer-protected endpoint here because there is no session yet, so we
+      // skip redemption and let /auth/callback route to onboarding. Jared
+      // needs to wire the redemption there too if email confirm is turned on.
+      if (data.session) {
+        const res = await fetch('/api/invite/redeem', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${data.session.access_token}`,
+          },
+          body: JSON.stringify({ code: validatedCode }),
+        })
+        if (!res.ok) {
+          const body = (await res.json().catch(() => ({}))) as {
+            reason?: InvalidReason | 'already_redeemed'
+          }
+          const reason = body.reason ?? 'unknown'
+          if (reason === 'already_redeemed') {
+            setError('That invite code has already been redeemed by your account.')
+          } else {
+            setError(inviteReasonCopy(reason as InvalidReason | 'unknown'))
+          }
+          await supabase.auth.signOut()
+          return
+        }
         router.push(`/auth/mfa/enroll?email=${encodeURIComponent(email)}`)
+      } else {
+        // Email confirmation path. The /auth/callback route will pick up after
+        // the user clicks the link and finish onboarding redirect from there.
+        setError(
+          'Check your email for a confirmation link to finish creating your account.',
+        )
       }
     } catch {
       setError('Something went wrong. Please try again.')
@@ -104,7 +191,7 @@ export default function SignupPage() {
     }
   }
 
-  if (!unlocked) {
+  if (!validatedCode) {
     return (
       <AuthLayout>
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
@@ -125,36 +212,29 @@ export default function SignupPage() {
             fontFamily: 'var(--font-serif)',
             fontWeight: 300,
           }}>
-            Enter access code
+            Enter your invite code
           </p>
         </div>
 
         <form
-          onSubmit={e => {
-            e.preventDefault()
-            if (accessCode === ACCESS_CODE) {
-              setUnlocked(true)
-              setCodeError(false)
-            } else {
-              setCodeError(true)
-            }
-          }}
+          onSubmit={handleValidateInvite}
           style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
         >
           <div>
-            <label style={fieldLabel}>Access Code</label>
+            <label style={fieldLabel}>Invite Code</label>
             <input
-              type="password"
-              value={accessCode}
-              onChange={e => { setAccessCode(e.target.value); setCodeError(false) }}
+              type="text"
+              value={inviteCode}
+              onChange={e => { setInviteCode(e.target.value); setInviteError(null) }}
               required
               autoComplete="off"
-              style={inputStyle}
-              placeholder="Enter code to continue"
+              spellCheck={false}
+              style={{ ...inputStyle, textTransform: 'uppercase', letterSpacing: '0.18em' }}
+              placeholder="XXXXXXXX"
             />
           </div>
 
-          {codeError && (
+          {inviteError && (
             <p style={{
               fontSize: '12px',
               color: 'var(--color-negative)',
@@ -162,12 +242,12 @@ export default function SignupPage() {
               margin: 0,
               lineHeight: 1.5,
             }}>
-              Invalid access code.
+              {inviteError}
             </p>
           )}
 
-          <button type="submit" style={primaryBtn(false)}>
-            Continue
+          <button type="submit" disabled={inviteLoading} style={primaryBtn(inviteLoading)}>
+            {inviteLoading ? 'Checking…' : 'Continue'}
           </button>
         </form>
 
@@ -189,7 +269,6 @@ export default function SignupPage() {
 
   return (
     <AuthLayout>
-      {/* Wordmark */}
       <div style={{ textAlign: 'center', marginBottom: '40px' }}>
         <div style={{
           fontFamily: 'var(--font-serif)',
@@ -268,7 +347,6 @@ export default function SignupPage() {
               {showPwd ? 'HIDE' : 'SHOW'}
             </button>
           </div>
-          {/* Strength bar */}
           {password.length > 0 && (
             <div style={{ display: 'flex', gap: '3px', marginTop: '8px' }}>
               {[0, 1, 2, 3].map(i => (
@@ -333,7 +411,6 @@ export default function SignupPage() {
           </p>
         )}
 
-        {/* Consent checkbox */}
         <label style={{
           display: 'flex',
           alignItems: 'flex-start',

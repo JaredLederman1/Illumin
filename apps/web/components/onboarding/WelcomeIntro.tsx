@@ -166,11 +166,6 @@ export function WelcomeIntro({ onStart }: Props) {
 
   const handleStart = () => {
     if (!buttonReady || exiting) return
-    try {
-      window.localStorage.setItem('illumin_onboarding_intro_seen', 'true')
-    } catch {
-      // localStorage may be unavailable (private mode); advance anyway.
-    }
     setExiting(true)
     window.setTimeout(onStart, EXIT_DURATION * 1000)
   }

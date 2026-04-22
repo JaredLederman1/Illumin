@@ -2,7 +2,7 @@
 
 import { ReactNode, FormEvent } from 'react'
 import { motion } from 'framer-motion'
-import { questionHeading, contextCopy, continueBtn } from './shared'
+import { questionHeading, contextCopy, continueBtn, secondaryBtn } from './shared'
 
 interface Props {
   question: string
@@ -12,6 +12,7 @@ interface Props {
   busy?: boolean
   continueLabel?: string
   onAdvance: () => void
+  onSkip?: () => void
   isMobile: boolean
   // When true, the entire form (heading, input, context, Continue) is
   // horizontally centered on the page rather than left-aligned. Used for
@@ -35,6 +36,7 @@ export function SubStepShell({
   busy = false,
   continueLabel = 'Continue',
   onAdvance,
+  onSkip,
   isMobile,
   centered = false,
 }: Props) {
@@ -52,13 +54,12 @@ export function SubStepShell({
         display: 'flex',
         flexDirection: 'column',
         gap: isMobile ? '24px' : '36px',
-        // Children always stretch to the full 620px form width so the input
-        // row keeps a constant shape regardless of typed content. When
-        // `centered`, the visual centering comes from textAlign on the form
-        // plus margin: auto on the block itself, not from shrinking children
-        // to their content box.
+        // Internal content is always left-justified within the form box.
+        // When `centered`, only the form box itself is horizontally
+        // centered on the page (via margin: auto). Text and controls
+        // inside still align left, matching the rest of the flow.
         alignItems: 'stretch',
-        textAlign: centered ? 'center' : 'left',
+        textAlign: 'left',
         marginLeft: centered ? 'auto' : undefined,
         marginRight: centered ? 'auto' : undefined,
       }}
@@ -70,7 +71,7 @@ export function SubStepShell({
         transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
         style={{
           ...questionHeading,
-          textAlign: centered ? 'center' : 'left',
+          textAlign: 'left',
           width: '100%',
         }}
       >
@@ -93,7 +94,7 @@ export function SubStepShell({
           <p
             style={{
               ...contextCopy,
-              textAlign: centered ? 'center' : 'left',
+              textAlign: 'left',
             }}
           >
             {context}
@@ -104,11 +105,11 @@ export function SubStepShell({
       <div
         style={{
           display: 'flex',
-          alignItems: 'center',
-          gap: '18px',
+          flexDirection: 'column',
+          alignItems: 'flex-start',
+          gap: '8px',
           marginTop: '8px',
           width: '100%',
-          justifyContent: centered ? 'center' : 'flex-start',
         }}
       >
         <button
@@ -128,6 +129,20 @@ export function SubStepShell({
             </svg>
           )}
         </button>
+        {onSkip && (
+          <button
+            type="button"
+            onClick={onSkip}
+            disabled={busy}
+            style={{
+              ...secondaryBtn,
+              opacity: busy ? 0.45 : 1,
+              cursor: busy ? 'not-allowed' : 'pointer',
+            }}
+          >
+            Skip for now
+          </button>
+        )}
       </div>
     </form>
   )

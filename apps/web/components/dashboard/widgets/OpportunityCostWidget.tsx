@@ -3,7 +3,7 @@
 import { CSSProperties } from 'react'
 import Link from 'next/link'
 import WidgetCard from './WidgetCard'
-import { useOpportunityQuery } from '@/lib/queries'
+import { useOpportunityQuery, useOnboardingProfileQuery } from '@/lib/queries'
 import type { OpportunityData } from '@/app/api/opportunity/route'
 
 const ctaLink: CSSProperties = {
@@ -31,6 +31,7 @@ const fmtCurrency = (n: number) =>
 
 export default function OpportunityCostWidget() {
   const { data: raw, isLoading } = useOpportunityQuery<OpportunityData>()
+  const { data: profile } = useOnboardingProfileQuery()
   const data = raw && typeof raw.idleCash === 'number' ? raw : null
 
   const cta = (
@@ -38,6 +39,22 @@ export default function OpportunityCostWidget() {
       Open calculator &rarr;
     </Link>
   )
+
+  if (profile && !profile.completedAt) {
+    return (
+      <WidgetCard
+        variant="metric"
+        eyebrow="Opportunity cost"
+        columns={[{ caption: 'Needs profile', hero: '—', captionPosition: 'below' }]}
+        secondary={<p style={contextCopy}>Complete your profile to see this.</p>}
+        cta={
+          <Link href="/onboarding" style={ctaLink}>
+            Resume onboarding &rarr;
+          </Link>
+        }
+      />
+    )
+  }
 
   if (isLoading) {
     return (

@@ -9,7 +9,6 @@ import {
   SUB_STEP_COUNTS,
   TOTAL_SUB_STEPS,
   globalSubIndex,
-  secondaryBtn,
 } from '@/components/onboarding/shared'
 import type { OnboardingData } from '@/components/onboarding/shared'
 import { useIsMobile } from '@/hooks/useIsMobile'
@@ -84,23 +83,14 @@ export default function OnboardingPage() {
   const [salaryEverEntered, setSalaryEverEntered] = useState<boolean>(data.annualIncome > 0)
   if (data.annualIncome > 0 && !salaryEverEntered) setSalaryEverEntered(true)
 
-  // Wait until we have checked localStorage before choosing between the
-  // cinematic intro and jumping straight to Step 1. Prevents a flash of the
-  // intro for returning users.
+  // Wait until we have fetched the profile (source of truth for intro seen)
+  // before choosing between the cinematic intro and jumping straight to
+  // Step 1. Prevents a flash of the intro for returning users.
   const [introChecked, setIntroChecked] = useState(false)
-  useEffect(() => {
-    try {
-      if (window.localStorage.getItem('illumin_onboarding_intro_seen') === 'true') {
-        setPhase('steps')
-      }
-    } catch {
-      // ignore, fall through to intro
-    }
-    setIntroChecked(true)
-  }, [])
 
   // Resume logic preserved. Jumps to the first step that still has missing
-  // data; sub-step always resets to 0 within that step.
+  // data; sub-step always resets to 0 within that step. Also reads
+  // introSeenAt from the profile and skips the welcome intro if set.
   useEffect(() => {
     if (!authToken) return
     let cancelled = false
@@ -112,6 +102,8 @@ export default function OnboardingPage() {
         if (!res.ok) return
         const { profile } = await res.json()
         if (cancelled || !profile) return
+
+        if (profile.introSeenAt) setPhase('steps')
 
         setData(prev => ({
           ...prev,
@@ -134,8 +126,12 @@ export default function OnboardingPage() {
           riskTolerance:              profile.riskTolerance ?? prev.riskTolerance,
         }))
 
+        // contractStepSkippedAt advances past Step 3 without implying an
+        // upload was completed. The resume tier is identical to "uploaded"
+        // for now; the timestamp is kept distinct so future nudges can
+        // surface Step 3 again to users who deferred.
         const resume: number =
-          profile.contractParsedData ? 3
+          profile.contractParsedData || profile.contractStepSkippedAt ? 3
           : profile.jobTitle || profile.employer ? 2
           : profile.age ? 1
           : 0
@@ -143,9 +139,25 @@ export default function OnboardingPage() {
         setSubIndex(0)
       } catch {
         // ignore, start fresh
+      } finally {
+        if (!cancelled) setIntroChecked(true)
       }
     })()
     return () => { cancelled = true }
+  }, [authToken])
+
+  // Called when the user advances past the welcome intro. Persists the
+  // dismissal server-side so it applies across browsers and devices, and
+  // flips the phase locally. The POST is fire-and-forget; a failure here
+  // would only mean the intro might replay on another device, which is
+  // preferable to blocking the user on a transient network error.
+  const handleIntroDismissed = useCallback(() => {
+    setPhase('steps')
+    if (!authToken) return
+    void fetch('/api/user/onboarding/intro-seen', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${authToken}` },
+    }).catch(() => { /* ignore */ })
   }, [authToken])
 
   const handlePatch = useCallback((patch: Partial<OnboardingData>) => {
@@ -180,19 +192,19 @@ export default function OnboardingPage() {
   }, [step, subIndex])
 
   // Internal sub-advance. If more sub-steps remain in this step, bump the
-  // sub-index. Otherwise persist the step and roll over to the next step.
-  const handleSubAdvance = useCallback(async () => {
+  // sub-index. Otherwise roll over to the next step and fire the save in
+  // the background so the transition feels instant. A failed save still
+  // surfaces via setError, and resume logic can recover partial state on
+  // next login.
+  const handleSubAdvance = useCallback(() => {
     const subCount = SUB_STEP_COUNTS[step] ?? 1
     if (subIndex + 1 < subCount) {
       setSubIndex(subIndex + 1)
       return
     }
-    setBusy(true)
-    const ok = await persistStep(step)
-    setBusy(false)
-    if (!ok) return
     setStep(step + 1)
     setSubIndex(0)
+    void persistStep(step)
   }, [step, subIndex, persistStep])
 
   const finalize = useCallback(async (opts: { skipped: boolean }): Promise<boolean> => {
@@ -253,13 +265,6 @@ export default function OnboardingPage() {
     setSubIndex(0)
   }, [step, persistStep, finalize, showReveal])
 
-  // Skip for now surfaces on every step after the final Step 1 sub-question
-  // ("When do you want to retire?"). Once the user has entered their basics
-  // we can run the rest of the app on those values alone, so every
-  // subsequent step gets a low-friction bail-out that advances one step
-  // rather than abandoning the rest of onboarding wholesale.
-  const showSkipButton = step >= 1 && step <= 4
-
   // Progress value for the hairline bar. The reveal phase renders a
   // fully-filled bar; the steps phase maps (step, subIndex) to a fraction
   // of the total sub-step count.
@@ -289,7 +294,7 @@ export default function OnboardingPage() {
   if (phase === 'welcome') {
     return (
       <>
-        <WelcomeIntro onStart={() => setPhase('steps')} />
+        <WelcomeIntro onStart={handleIntroDismissed} />
         <OnboardingDevRestart />
       </>
     )
@@ -335,6 +340,7 @@ export default function OnboardingPage() {
           backgroundColor: 'var(--color-bg)',
           display: 'flex',
           flexDirection: 'column',
+          position: 'relative',
         }}
       >
         {/* Hairline progress bar at the very top. */}
@@ -416,11 +422,9 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Main content area: question + field (left / main) and LiveProjection
-            sidecar (right on desktop). The flex:1 wrapper centers the
-            content vertically within the remaining viewport space (after the
-            progress bar, top bar, and optional mobile sticky LiveProjection
-            are accounted for by normal flow). */}
+        {/* Main content area. The flex:1 wrapper centers the question
+            vertically between the Illumin wordmark and the bottom of the
+            viewport. */}
         <div
           className="onboarding-step-padding"
           style={{
@@ -428,8 +432,8 @@ export default function OnboardingPage() {
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            paddingTop: 'clamp(24px, 4vh, 48px)',
-            paddingBottom: 'clamp(24px, 4vh, 48px)',
+            paddingTop: 0,
+            paddingBottom: isMobile ? '32px' : '48px',
             minHeight: 0,
           }}
         >
@@ -493,6 +497,8 @@ export default function OnboardingPage() {
                       onChange={handlePatch}
                       subIndex={subIndex}
                       onSubAdvance={handleSubAdvance}
+                      onSkip={skipCurrentStep}
+                      busy={busy}
                       isMobile={isMobile}
                     />
                   )}
@@ -501,6 +507,8 @@ export default function OnboardingPage() {
                       data={data}
                       onChange={handlePatch}
                       onAdvance={handleSubAdvance}
+                      onSkip={skipCurrentStep}
+                      busy={busy}
                       isMobile={isMobile}
                     />
                   )}
@@ -510,6 +518,8 @@ export default function OnboardingPage() {
                       onChange={handlePatch}
                       subIndex={subIndex}
                       onSubAdvance={handleSubAdvance}
+                      onSkip={skipCurrentStep}
+                      busy={busy}
                       isMobile={isMobile}
                     />
                   )}
@@ -557,31 +567,6 @@ export default function OnboardingPage() {
           </div>
         </div>
 
-        {/* Skip affordance on every step that supports it. Muted text button
-            below the main content. No guilt language. Advances one step
-            rather than abandoning the rest of onboarding. */}
-        {showSkipButton && (
-          <div
-            style={{
-              padding: isMobile ? '16px 20px 24px' : '16px 40px 24px',
-              display: 'flex',
-              justifyContent: 'flex-start',
-            }}
-          >
-            <button
-              type="button"
-              onClick={skipCurrentStep}
-              disabled={busy}
-              style={{
-                ...secondaryBtn,
-                opacity: busy ? 0.45 : 1,
-                cursor: busy ? 'not-allowed' : 'pointer',
-              }}
-            >
-              Skip for now
-            </button>
-          </div>
-        )}
       </div>
       <OnboardingDevRestart />
     </>

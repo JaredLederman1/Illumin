@@ -1,10 +1,11 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import AuthLayout from '@/components/AuthLayout'
+import { getPostAuthRedirect } from '@/lib/postAuthRedirect'
 
 const fieldLabel: React.CSSProperties = {
   display: 'block',
@@ -137,7 +138,8 @@ function MFAEnrollContent() {
         const { error: err } = await supabase.auth.mfa.challengeAndVerify({ factorId, code })
         if (err) { setError(err.message); return }
       }
-      router.push('/onboarding')
+      const destination = await getPostAuthRedirect({ supabase })
+      router.push(destination)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
     } finally {

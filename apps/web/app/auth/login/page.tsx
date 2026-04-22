@@ -3,8 +3,10 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 import AuthLayout from '@/components/AuthLayout'
+import { getPostAuthRedirect } from '@/lib/postAuthRedirect'
 
 const fieldLabel: React.CSSProperties = {
   display: 'block',
@@ -56,12 +58,8 @@ export default function LoginPage() {
       if (authError) {
         setError(authError.message)
       } else {
-        const { data: levelData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-        if (levelData?.nextLevel === 'aal2' && levelData.currentLevel !== 'aal2') {
-          router.push('/auth/mfa/verify')
-        } else {
-          router.push('/dashboard')
-        }
+        const destination = await getPostAuthRedirect({ supabase })
+        router.push(destination)
       }
     } catch {
       setError('Something went wrong. Please try again.')
@@ -139,6 +137,20 @@ export default function LoginPage() {
             >
               {showPwd ? 'HIDE' : 'SHOW'}
             </button>
+          </div>
+          <div style={{ textAlign: 'right', marginTop: '8px' }}>
+            <Link
+              href="/auth/forgot-password"
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '11px',
+                color: 'var(--color-text-muted)',
+                textDecoration: 'none',
+                letterSpacing: '0.04em',
+              }}
+            >
+              Forgot password?
+            </Link>
           </div>
         </div>
 

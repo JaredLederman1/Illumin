@@ -3,7 +3,21 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { rateLimit, rateLimitStrict } from '@/lib/rateLimit'
 
-const PUBLIC_PATHS = ['/', '/admin', '/admin/login', '/auth/login', '/auth/signup', '/auth/mfa/enroll', '/auth/mfa/verify', '/api/waitlist', '/logo', '/privacy']
+const PUBLIC_PATHS = [
+  '/',
+  '/admin/login',
+  '/auth/login',
+  '/auth/signup',
+  '/auth/mfa/enroll',
+  '/auth/mfa/verify',
+  '/auth/forgot-password',
+  '/auth/update-password',
+  '/auth/callback',
+  '/api/waitlist',
+  '/api/invite/validate',
+  '/logo',
+  '/privacy',
+]
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -25,7 +39,9 @@ export async function middleware(request: NextRequest) {
       request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
 
     const isStrictRoute =
-      pathname.startsWith('/api/auth/') || pathname.startsWith('/api/plaid/')
+      pathname.startsWith('/api/auth/') ||
+      pathname.startsWith('/api/plaid/') ||
+      pathname.startsWith('/api/invite/')
 
     const result = isStrictRoute ? rateLimitStrict(ip) : rateLimit(ip)
 
