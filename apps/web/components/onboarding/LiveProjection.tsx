@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { OnboardingData } from './shared'
-import { fmt, projectWealth } from './shared'
+import { fmt, projectWealth, requiredNestEgg } from './shared'
 import type { LinkedAccount } from './Step5Plaid'
 import { useCountUp } from '@/lib/useCountUp'
 
@@ -21,13 +21,6 @@ const TYPICAL_MATCH_PCT = 0.04
 
 const COUNT_UP_DURATION_MS = 1300
 const DEBOUNCE_MS          = 500
-
-// Required nest egg for a given retirement income: uses the standard 4%
-// withdrawal rule to back into a principal number.
-function requiredNestEgg(targetAnnualIncome: number): number {
-  if (targetAnnualIncome <= 0) return 0
-  return targetAnnualIncome / 0.04
-}
 
 /**
  * Accumulating projection card. Hidden until the user types any salary

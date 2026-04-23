@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAuthToken, useSaveOnboardingMutation } from '@/lib/queries'
 
@@ -18,12 +19,11 @@ import { Step2Employment } from '@/components/onboarding/Step2Employment'
 import { Step3Contract } from '@/components/onboarding/Step3Contract'
 import { Step4Goals } from '@/components/onboarding/Step4Goals'
 import { Step5Plaid, type LinkedAccount } from '@/components/onboarding/Step5Plaid'
-import { Step6Reveal } from '@/components/onboarding/Step6Reveal'
 import { LiveProjection } from '@/components/onboarding/LiveProjection'
 import { WelcomeIntro } from '@/components/onboarding/WelcomeIntro'
 import { OnboardingDevRestart } from '@/components/onboarding/OnboardingDevRestart'
 
-type Phase = 'welcome' | 'steps' | 'reveal'
+type Phase = 'welcome' | 'steps'
 
 // Step-index to field-payload mapping. Each step only sends its own fields so
 // a partial save does not clobber later steps on refresh/resume.
@@ -64,6 +64,7 @@ export default function OnboardingPage() {
   const isMobile = useIsMobile()
   const authToken = useAuthToken()
   const saveOnboarding = useSaveOnboardingMutation()
+  const router = useRouter()
 
   const [phase, setPhase] = useState<Phase>('welcome')
   const [step, setStep]   = useState<number>(0)
@@ -230,24 +231,24 @@ export default function OnboardingPage() {
     }
   }, [data, saveOnboarding])
 
-  const showReveal = useCallback(() => {
-    setPhase('reveal')
-  }, [])
+  const goToDashboard = useCallback(() => {
+    router.push('/dashboard')
+  }, [router])
 
   const handlePlaidAssetLinked = useCallback(async () => {
     const ok = await finalize({ skipped: false })
-    if (ok) showReveal()
-  }, [finalize, showReveal])
+    if (ok) goToDashboard()
+  }, [finalize, goToDashboard])
 
   const handleSkipPlaid = useCallback(async () => {
     const ok = await finalize({ skipped: true })
-    if (ok) showReveal()
-  }, [finalize, showReveal])
+    if (ok) goToDashboard()
+  }, [finalize, goToDashboard])
 
   // Skip-the-current-step: persists whatever partial data exists for the
   // current step and advances one step forward. On the final interactive
-  // step (Plaid), skipping rolls into the reveal phase, matching the
-  // in-Plaid "Connect later" affordance.
+  // step (Plaid), skipping finalizes and routes straight to the dashboard,
+  // matching the in-Plaid "Connect later" affordance.
   const skipCurrentStep = useCallback(async () => {
     setError(null)
     setBusy(true)
@@ -258,22 +259,20 @@ export default function OnboardingPage() {
     }
     if (step >= SUB_STEP_COUNTS.length - 1) {
       const ok = await finalize({ skipped: true })
-      if (ok) showReveal()
+      if (ok) goToDashboard()
       return
     }
     setStep(step + 1)
     setSubIndex(0)
-  }, [step, persistStep, finalize, showReveal])
+  }, [step, persistStep, finalize, goToDashboard])
 
-  // Progress value for the hairline bar. The reveal phase renders a
-  // fully-filled bar; the steps phase maps (step, subIndex) to a fraction
-  // of the total sub-step count.
+  // Progress value for the hairline bar. Maps (step, subIndex) to a
+  // fraction of the total sub-step count.
   const progressValue = useMemo(() => {
-    if (phase === 'reveal') return 1
     if (step >= SUB_STEP_COUNTS.length) return 1
     const idx = globalSubIndex(step, subIndex)
     return Math.max(0, Math.min(1, idx / TOTAL_SUB_STEPS))
-  }, [phase, step, subIndex])
+  }, [step, subIndex])
 
   const stepVariants = {
     hidden:  { opacity: 0, y: 12 },
@@ -295,38 +294,6 @@ export default function OnboardingPage() {
     return (
       <>
         <WelcomeIntro onStart={handleIntroDismissed} />
-        <OnboardingDevRestart />
-      </>
-    )
-  }
-
-  if (phase === 'reveal') {
-    return (
-      <>
-        <div
-          style={{
-            minHeight: '100dvh',
-            backgroundColor: 'var(--color-bg)',
-            overflowX: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          <div style={{ paddingTop: '20px', position: 'sticky', top: 0, zIndex: 30, backgroundColor: 'var(--color-bg)' }}>
-            <ProgressBar value={1} isMobile={isMobile} />
-          </div>
-          <div
-            style={{
-              flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '100%',
-            }}
-          >
-            <Step6Reveal data={data} />
-          </div>
-        </div>
         <OnboardingDevRestart />
       </>
     )
@@ -534,6 +501,7 @@ export default function OnboardingPage() {
                       annualIncome={data.annualIncome}
                       savingsRate={data.savingsRate}
                       retirementAge={data.retirementAge}
+                      targetRetirementIncome={data.targetRetirementIncome}
                       isMobile={isMobile}
                     />
                   )}

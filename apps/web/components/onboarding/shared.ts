@@ -98,9 +98,21 @@ export function projectWealth(
   return monthlyContribution * ((Math.pow(1 + r, months) - 1) / r)
 }
 
-// Cost-of-waiting: the delta between projecting from age N vs N+1. Same
-// formula the reveal surfaces as "what this year costs you."
-export function opportunityCostOneYear(
+// Target savings rate used to compute the gap-vs-target opportunity cost.
+// Kept as a percent (20 = 20%) to match the rest of the codebase's convention.
+export const DEFAULT_TARGET_SAVINGS_RATE = 20
+
+// Required nest egg for a given retirement income. Uses the standard 4%
+// withdrawal rule to back into a principal number.
+export function requiredNestEgg(targetAnnualIncome: number): number {
+  if (targetAnnualIncome <= 0) return 0
+  return targetAnnualIncome / 0.04
+}
+
+// Value of one year of contributions at the given rate, compounded to
+// retirement. Represents "what delaying your start by one year costs you" at
+// that rate. Used by Step6Reveal's headline figure.
+export function oneYearDelayCost(
   age: number,
   salary: number,
   savingsRatePct: number,
@@ -112,6 +124,23 @@ export function opportunityCostOneYear(
   const now = projectWealth(age, salary, savingsRatePct, retirementAge)
   const delayed = projectWealth(age + 1, salary, savingsRatePct, retirementAge)
   return Math.max(0, now - delayed)
+}
+
+// Gap between the user's current trajectory and a target savings rate. Zero
+// when the user is already at or above the target. Surfaced as the onboarding
+// "cost of doing nothing" number.
+export function opportunityCostOneYear(
+  age: number,
+  salary: number,
+  savingsRatePct: number,
+  retirementAge: number,
+  targetRatePct: number = DEFAULT_TARGET_SAVINGS_RATE,
+): number {
+  if (!age || !salary || !retirementAge || retirementAge <= age) return 0
+  if (savingsRatePct >= targetRatePct) return 0
+  const target = projectWealth(age, salary, targetRatePct, retirementAge)
+  const current = projectWealth(age, salary, savingsRatePct, retirementAge)
+  return Math.max(0, target - current)
 }
 
 // ── Typography tokens ──────────────────────────────────────────────────────

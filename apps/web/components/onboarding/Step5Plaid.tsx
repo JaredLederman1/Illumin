@@ -9,6 +9,8 @@ import {
   continueBtn,
   fmt,
   opportunityCostOneYear,
+  projectWealth,
+  requiredNestEgg,
 } from './shared'
 import { usePlaidLinkTokenQuery, usePlaidExchangeMutation } from '@/lib/queries'
 
@@ -42,6 +44,7 @@ interface Props {
   annualIncome: number
   savingsRate: number
   retirementAge: number
+  targetRetirementIncome: number | null
   isMobile: boolean
 }
 
@@ -71,6 +74,7 @@ export function Step5Plaid({
   annualIncome,
   savingsRate,
   retirementAge,
+  targetRetirementIncome,
   isMobile,
 }: Props) {
   const { data: linkToken, error: linkTokenError } = usePlaidLinkTokenQuery()
@@ -87,6 +91,16 @@ export function Step5Plaid({
 
   const ageNum = typeof age === 'number' ? age : 0
   const oppCost = opportunityCostOneYear(ageNum, annualIncome, savingsRate, retirementAge)
+
+  // When oppCost is 0 (user at or above target rate), check whether their
+  // projected wealth exceeds their target nest egg. If so, surface that
+  // surplus as "margin of safety" instead. Otherwise fall through to the
+  // neutral paragraph fallback.
+  const projection = projectWealth(ageNum, annualIncome, savingsRate, retirementAge)
+  const targetNestEgg = targetRetirementIncome
+    ? requiredNestEgg(targetRetirementIncome)
+    : 0
+  const marginOfSafety = targetNestEgg > 0 ? Math.max(0, projection - targetNestEgg) : 0
 
   const handlePlaidSuccess = useCallback(
     async (publicToken: string, metadata: PlaidOnSuccessMetadata) => {
@@ -227,6 +241,56 @@ export function Step5Plaid({
                   }}
                 >
                   Every year you don't act, Illumin flags this gap between where your money is and where it could be.
+                </p>
+              </motion.div>
+            ) : marginOfSafety > 0 ? (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '14px',
+                  padding: '22px 24px',
+                  backgroundColor: 'var(--color-surface)',
+                  border: '1px solid var(--color-gold-border)',
+                  borderRadius: '2px',
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: 'var(--font-sans)',
+                    fontSize: '11px',
+                    color: 'var(--color-text-muted)',
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    fontWeight: 500,
+                  }}
+                >
+                  Your margin of safety
+                </span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 'clamp(40px, 6vw, 56px)',
+                    fontWeight: 400,
+                    color: 'var(--color-gold)',
+                    lineHeight: 1,
+                    letterSpacing: '-0.01em',
+                  }}
+                >
+                  {fmt(marginOfSafety)}
+                </span>
+                <p
+                  style={{
+                    ...contextCopy,
+                    color: 'var(--color-text)',
+                    fontSize: '15px',
+                    margin: 0,
+                  }}
+                >
+                  You're projected to exceed your target by this much. That surplus is optionality: earlier retirement, bigger legacy, or resilience against a bad market decade.
                 </p>
               </motion.div>
             ) : (

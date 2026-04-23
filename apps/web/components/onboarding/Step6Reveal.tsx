@@ -10,7 +10,7 @@ import {
 } from 'framer-motion'
 import Link from 'next/link'
 import type { OnboardingData } from './shared'
-import { fmt, opportunityCostOneYear, projectWealth } from './shared'
+import { fmt, oneYearDelayCost, projectWealth } from './shared'
 import { useAuthEmail, useAuthToken } from '@/lib/queries'
 
 interface Props {
@@ -32,7 +32,7 @@ export function Step6Reveal({ data }: Props) {
   // they postpone investing at the recommended level, rather than locking
   // in their under-investment as the baseline.
   const recommendedSavingsRate = Math.max(20, data.savingsRate)
-  const oppCost = opportunityCostOneYear(ageNum, data.annualIncome, recommendedSavingsRate, data.retirementAge)
+  const oppCost = oneYearDelayCost(ageNum, data.annualIncome, recommendedSavingsRate, data.retirementAge)
   const projectionNow = projectWealth(ageNum, data.annualIncome, data.savingsRate, data.retirementAge)
   const projection20 = projectWealth(ageNum, data.annualIncome, recommendedSavingsRate, data.retirementAge)
   const savingsRateGain = Math.max(0, projection20 - projectionNow)
