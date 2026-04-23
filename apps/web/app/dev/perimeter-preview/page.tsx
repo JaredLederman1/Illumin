@@ -5,6 +5,7 @@ import type { CSSProperties } from "react";
 import PerimeterSVG from "@/components/watch/PerimeterSVG";
 import ThresholdBar from "@/components/watch/ThresholdBar";
 import ThresholdBarList from "@/components/watch/ThresholdBarList";
+import ThresholdCompositeList from "@/components/watch/ThresholdCompositeList";
 import ThresholdGauge from "@/components/watch/variants/ThresholdGauge";
 import ThresholdStrip from "@/components/watch/variants/ThresholdStrip";
 import ThresholdPill from "@/components/watch/variants/ThresholdPill";
@@ -179,10 +180,39 @@ function VariantsSection() {
     backgroundColor: "var(--color-surface)",
   });
 
+  const recommendedCellStyle: CSSProperties = {
+    padding: 24,
+    border: "0.5px solid var(--color-border-hover)",
+    borderRadius: "var(--radius-lg)",
+    backgroundColor: "var(--color-surface)",
+  };
+
+  const recommendedNoteStyle: CSSProperties = {
+    fontFamily: "var(--font-mono)",
+    fontSize: 10,
+    color: "var(--color-text-muted)",
+    marginTop: 16,
+    maxWidth: 640,
+    lineHeight: 1.5,
+  };
+
   return (
     <section>
       <h2 style={sectionHeadingStyle}>Threshold visualization alternatives</h2>
       <div style={thresholdStackStyle}>
+        <div>
+          <p style={labelStyle}>
+            option 6 · composite (gauge + trajectory on hover) · RECOMMENDED
+          </p>
+          <div style={recommendedCellStyle}>
+            <ThresholdCompositeList thresholds={thresholds} />
+            <p style={recommendedNoteStyle}>
+              Hover any composite to reveal the 14-day drift. Inline
+              expansion, no overlays. Direction-aware: cash yield and other
+              yield metrics correctly show low values as breach.
+            </p>
+          </div>
+        </div>
         <div>
           <p style={labelStyle}>option 1 · gauge</p>
           <div style={gaugeGridStyle}>
