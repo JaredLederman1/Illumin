@@ -15,6 +15,7 @@ const PUBLIC_PATHS = [
   '/auth/callback',
   '/api/waitlist',
   '/api/invite/validate',
+  '/api/plaid/webhook',
   '/logo',
   '/privacy',
 ]
