@@ -15,6 +15,7 @@ export interface UpsertSignalResult {
   signalId: string
   wasNew: boolean
   wasUpdated: boolean
+  state: SignalState
 }
 
 type PrismaExecutor = PrismaClient | Prisma.TransactionClient
@@ -76,7 +77,7 @@ export async function upsertSignal(
         lastUpdatedInScanId: scanId,
       },
     })
-    return { signalId: created.id, wasNew: true, wasUpdated: false }
+    return { signalId: created.id, wasNew: true, wasUpdated: false, state: 'new' }
   }
 
   const prevState = existing.state as SignalState
@@ -97,7 +98,7 @@ export async function upsertSignal(
         lastUpdatedInScanId: scanId,
       },
     })
-    return { signalId: updated.id, wasNew: false, wasUpdated: true }
+    return { signalId: updated.id, wasNew: false, wasUpdated: true, state: 'new' }
   }
 
   // Active / new / acknowledged / acted — refresh in place, preserve firstDetectedAt.
@@ -112,7 +113,7 @@ export async function upsertSignal(
       lastUpdatedInScanId: scanId,
     },
   })
-  return { signalId: updated.id, wasNew: false, wasUpdated: true }
+  return { signalId: updated.id, wasNew: false, wasUpdated: true, state: prevState }
 }
 
 /**
@@ -145,4 +146,39 @@ export async function resolveMissingSignals(
     },
   })
   return toResolve.length
+}
+
+export interface SignalDrift {
+  oldestValue: number
+  newestValue: number
+  deltaAnnualValue: number
+  snapshotCount: number
+}
+
+/**
+ * Compute annualValue drift for a single gap from SignalSnapshot rows captured
+ * since `since`. Returns null when fewer than two snapshots fall in the window
+ * (delta is undefined). Newest is the snapshot with the largest capturedAt;
+ * oldest is the smallest. Uses the (userId, gapId, capturedAt DESC) index.
+ */
+export async function getSignalDriftSince(
+  client: PrismaExecutor,
+  userId: string,
+  gapId: string,
+  since: Date,
+): Promise<SignalDrift | null> {
+  const snapshots = await client.signalSnapshot.findMany({
+    where: { userId, gapId, capturedAt: { gte: since } },
+    orderBy: { capturedAt: 'desc' },
+    select: { annualValue: true, capturedAt: true },
+  })
+  if (snapshots.length < 2) return null
+  const newest = snapshots[0]
+  const oldest = snapshots[snapshots.length - 1]
+  return {
+    oldestValue: oldest.annualValue,
+    newestValue: newest.annualValue,
+    deltaAnnualValue: newest.annualValue - oldest.annualValue,
+    snapshotCount: snapshots.length,
+  }
 }

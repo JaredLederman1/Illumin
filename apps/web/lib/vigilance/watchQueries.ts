@@ -20,6 +20,13 @@ import type {
   WatchLogResponse,
   WatchStatus,
 } from '@/lib/types/vigilance'
+import { getSignalDriftSince } from '@/lib/vigilance/signalLifecycle'
+
+// Drift window for snapshot-based widening detection. Anything older than this
+// is considered ancient history; we only look at recent scans so a long-lived
+// signal whose value has slowly grown over months doesn't keep emitting widened
+// entries forever.
+const WIDENING_LOOKBACK_DAYS = 7
 
 // Cron fires at 06:00, 11:00, 15:00, 21:00 UTC. Kept in sync with vercel.json.
 const SCHEDULED_SCAN_HOURS_UTC = [6, 11, 15, 21] as const
@@ -235,9 +242,10 @@ export async function getWatchLog(
       orderBy: { completedAt: 'desc' },
       take: limit + 1,
     }),
-    // SignalState.previousValue is the best v1 proxy for signal_widened
-    // detection. Once per-scan annualValue history is persisted, widening
-    // detection will move there and this read can be removed.
+    // SignalState.previousValue is the fallback when SignalSnapshot rows are
+    // unavailable (e.g. a signal that's been re-surfaced before the first
+    // scan after the snapshot table landed). The accurate path uses snapshots
+    // via getSignalDriftSince below.
     prisma.signalState.findMany({
       where: { userId },
       select: { gapId: true, previousValue: true },
@@ -250,6 +258,13 @@ export async function getWatchLog(
   }
 
   const entries: WatchLogEntry[] = []
+
+  // Snapshot-based widening detection is accurate when at least two snapshots
+  // exist in the lookback window. Falls back to SignalState.previousValue
+  // (single-scan delta) when snapshot data is insufficient.
+  const widenLookbackStart = new Date(
+    Date.now() - WIDENING_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
+  )
 
   for (const row of signalRows) {
     const signal = toSignalWire(row)
@@ -276,24 +291,43 @@ export async function getWatchLog(
       })
     }
 
-    // v1 widening detection. Known limitation: uses SignalState.previousValue
-    // (the value from the prior scan only), so multi-scan growth collapses
-    // and some transitions will be missed or misattributed until per-scan
-    // history lands.
-    const prev = previousValueByGap.get(row.gapId)
     if (
       row.lastSeenAt > row.firstDetectedAt &&
-      prev !== undefined &&
-      prev !== null &&
-      row.annualValue - prev > WIDENING_DELTA_THRESHOLD &&
       (!effectiveCursor || row.lastSeenAt < effectiveCursor)
     ) {
-      entries.push({
-        type: 'signal_widened',
-        timestamp: row.lastSeenAt.toISOString(),
-        signal,
-        deltaAnnualValue: row.annualValue - prev,
-      })
+      // Window starts at the later of (firstDetectedAt, lookback start) so a
+      // re-surfaced signal doesn't pick up snapshots from a prior lifecycle.
+      const windowStart =
+        row.firstDetectedAt > widenLookbackStart
+          ? row.firstDetectedAt
+          : widenLookbackStart
+      const drift = await getSignalDriftSince(
+        prisma,
+        userId,
+        row.gapId,
+        windowStart,
+      )
+      let deltaAnnualValue: number | null = null
+      if (drift && drift.deltaAnnualValue > WIDENING_DELTA_THRESHOLD) {
+        deltaAnnualValue = drift.deltaAnnualValue
+      } else if (drift === null) {
+        const prev = previousValueByGap.get(row.gapId)
+        if (
+          prev !== undefined &&
+          prev !== null &&
+          row.annualValue - prev > WIDENING_DELTA_THRESHOLD
+        ) {
+          deltaAnnualValue = row.annualValue - prev
+        }
+      }
+      if (deltaAnnualValue !== null) {
+        entries.push({
+          type: 'signal_widened',
+          timestamp: row.lastSeenAt.toISOString(),
+          signal,
+          deltaAnnualValue,
+        })
+      }
     }
   }
 

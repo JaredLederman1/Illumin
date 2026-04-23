@@ -26,6 +26,7 @@ model User {
   scans               Scan[]
   signals             Signal[]
   signalStates        SignalState[]
+  signalSnapshots     SignalSnapshot[]
 }
 
 model FinancialAction {
@@ -329,17 +330,18 @@ model RecoveryEvent {
 }
 
 model Scan {
-  id              String    @id @default(cuid())
-  userId          String    @map("user_id")
-  startedAt       DateTime  @default(now()) @map("started_at")
-  completedAt     DateTime? @map("completed_at")
-  status          String    @default("running")
+  id              String           @id @default(cuid())
+  userId          String           @map("user_id")
+  startedAt       DateTime         @default(now()) @map("started_at")
+  completedAt     DateTime?        @map("completed_at")
+  status          String           @default("running")
   trigger         String
-  signalsChecked  Int       @default(0) @map("signals_checked")
-  signalsFlagged  Int       @default(0) @map("signals_flagged")
-  signalsResolved Int       @default(0) @map("signals_resolved")
-  errorMessage    String?   @map("error_message")
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  signalsChecked  Int              @default(0) @map("signals_checked")
+  signalsFlagged  Int              @default(0) @map("signals_flagged")
+  signalsResolved Int              @default(0) @map("signals_resolved")
+  errorMessage    String?          @map("error_message")
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  snapshots       SignalSnapshot[]
 
   @@index([userId, startedAt(sort: Desc)])
   @@index([status])
@@ -387,4 +389,25 @@ model SignalState {
   @@unique([userId, gapId])
   @@index([userId, currentState])
   @@map("signal_states")
+}
+
+model SignalSnapshot {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  gapId         String   @map("gap_id")
+  scanId        String   @map("scan_id")
+  domain        String
+  annualValue   Float    @map("annual_value")
+  lifetimeValue Float?   @map("lifetime_value")
+  severity      String
+  state         String
+  payload       Json?
+  capturedAt    DateTime @default(now()) @map("captured_at")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scan          Scan     @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  @@index([userId, gapId, capturedAt(sort: Desc)])
+  @@index([scanId])
+  @@index([userId, capturedAt(sort: Desc)])
+  @@map("signal_snapshots")
 }

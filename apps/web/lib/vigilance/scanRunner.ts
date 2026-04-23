@@ -204,7 +204,7 @@ export async function runScanForUser(
           else if (result.wasUpdated) updatedCount++
           // Record a snapshot for every detected gap (new, updated, or
           // unchanged) so drift trajectories can be reconstructed exactly.
-          // Resolved signals get no snapshot — their lifecycle is captured
+          // Resolved signals get no snapshot; their lifecycle is captured
           // by the Signal.state transition handled below.
           snapshotRows.push({
             userId,
