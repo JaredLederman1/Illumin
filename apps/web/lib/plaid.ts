@@ -10,6 +10,10 @@ import {
 } from 'plaid'
 import { PLAID_CLIENT_ID, PLAID_SECRET, PLAID_ENV, PLAID_SANDBOX_SECRET } from '@/lib/env'
 
+if (!process.env.PLAID_WEBHOOK_URL && process.env.NODE_ENV !== 'test') {
+  console.warn('PLAID_WEBHOOK_URL not set. New Plaid Items will be created without a webhook URL.')
+}
+
 // ── PLAID MODE TOGGLE ────────────────────────────────────────────────────
 // Flip this constant to switch every environment (local dev, preview
 // deploys, AND the live production site on Vercel) between Plaid sandbox
@@ -63,6 +67,7 @@ export async function createLinkToken(userId: string): Promise<string> {
     optional_products: [Products.Investments],
     country_codes: [CountryCode.Us],
     language: 'en',
+    webhook: process.env.PLAID_WEBHOOK_URL,
     ...(redirectUri ? { redirect_uri: redirectUri } : {}),
   })
   return response.data.link_token
