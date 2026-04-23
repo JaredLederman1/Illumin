@@ -7,8 +7,9 @@
  * server runtime; skipping the round-trip is faster and avoids re-auth.
  */
 
+import * as Sentry from '@sentry/nextjs'
 import type { PrismaClient } from '@prisma/client'
-import { runScanForUser } from '@/lib/vigilance/scanRunner'
+import { runScanForUser, serializeError } from '@/lib/vigilance/scanRunner'
 
 export async function getUsersDueForScan(
   prisma: PrismaClient,
@@ -70,6 +71,13 @@ export async function runScheduledScans(
   const queue = userIds.slice()
   const concurrency = Math.max(1, Math.min(options.concurrency, userIds.length))
 
+  Sentry.addBreadcrumb({
+    category: 'scheduler',
+    message: 'batch_started',
+    level: 'info',
+    data: { userCount: userIds.length, concurrency, perUserTimeoutMs: options.perUserTimeoutMs },
+  })
+
   async function runOne(userId: string): Promise<void> {
     let timeoutHandle: ReturnType<typeof setTimeout> | undefined
     const timeoutPromise = new Promise<never>((_, reject) => {
@@ -86,11 +94,16 @@ export async function runScheduledScans(
       result.succeeded++
     } catch (err) {
       result.failed++
+      Sentry.captureException(err, {
+        tags: {
+          component: 'scan_scheduler',
+          userId,
+        },
+      })
       if (result.errors.length < MAX_ERRORS_STORED) {
-        const msg = err instanceof Error ? err.message : String(err)
         result.errors.push({
           userId,
-          error: msg.slice(0, MAX_ERROR_LENGTH),
+          error: serializeError(err).slice(0, MAX_ERROR_LENGTH),
         })
       }
     } finally {
@@ -111,6 +124,17 @@ export async function runScheduledScans(
     workers.push(worker())
   }
   await Promise.all(workers)
+
+  Sentry.addBreadcrumb({
+    category: 'scheduler',
+    message: 'batch_completed',
+    level: result.failed > 0 ? 'warning' : 'info',
+    data: {
+      userCount: userIds.length,
+      succeeded: result.succeeded,
+      failed: result.failed,
+    },
+  })
 
   return result
 }

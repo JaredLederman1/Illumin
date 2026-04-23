@@ -16,16 +16,34 @@
  * with interleaved intermediate writes.
  */
 
+import * as Sentry from '@sentry/nextjs'
+import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { syncPlaidForUser } from '@/lib/plaid/sync'
 import { detectGaps, type DetectedGap } from '@/lib/recovery'
 import {
   upsertSignal,
   resolveMissingSignals,
+  computeSeverity,
 } from '@/lib/vigilance/signalLifecycle'
 import { updateStabilityState } from '@/lib/vigilance/stabilityTracker'
 import { crossCheckBenefits, type ExtractedBenefits } from '@/lib/benefitsAnalysis'
 import type { ScanStatus, ScanTrigger } from '@/lib/types/vigilance'
+
+/**
+ * Produce a safe, size-bounded string representation of an unknown error
+ * for persistence and Sentry context. Connection-string-like substrings
+ * (postgres://user:pass@host, http://x:y@host) are redacted defensively.
+ */
+export function serializeError(err: unknown): string {
+  const name = err instanceof Error ? err.name : 'Error'
+  const rawMessage = err instanceof Error ? err.message : String(err)
+  const redacted = rawMessage
+    .replace(/(postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|amqp):\/\/\S+/gi, '[redacted-conn]')
+    .replace(/([A-Za-z0-9._%+-]+):[^@\s/]+@([A-Za-z0-9._-]+)/g, '$1:[redacted]@$2')
+  const serialized = `${name}: ${redacted}`
+  return serialized.length > 500 ? serialized.slice(0, 500) : serialized
+}
 
 export interface ScanResult {
   scanId: string
@@ -81,95 +99,237 @@ export async function runScanForUser(
   trigger: ScanTrigger,
 ): Promise<ScanResult> {
   const startedAt = new Date()
+  let scan: { id: string } | undefined
 
-  const scan = await prisma.scan.create({
-    data: {
-      userId,
-      trigger,
-      status: 'running',
-      startedAt,
-    },
+  Sentry.addBreadcrumb({
+    category: 'scan',
+    message: 'scan_started',
+    level: 'info',
+    data: { userId, trigger },
   })
 
-  // Step 2 — Plaid sync runs outside any DB transaction because it is
-  // network-bound and can take seconds. Per-account errors are surfaced in
-  // the result; we only degrade to status='partial' at the end.
-  let hadSyncErrors = false
   try {
-    const syncResult = await syncPlaidForUser(userId)
-    if (syncResult.accountErrors.length > 0) hadSyncErrors = true
-  } catch (err) {
-    console.error('[scanRunner] Plaid sync threw; continuing with stale data', err)
-    hadSyncErrors = true
-  }
+    scan = await prisma.scan.create({
+      data: {
+        userId,
+        trigger,
+        status: 'running',
+        startedAt,
+      },
+    })
 
-  // Step 3 — detect currently flagged gaps from post-sync data.
-  const detected: DetectedGap[] = await detectGaps(userId, prisma)
-  const detectedById = new Map(detected.map(g => [g.gapId, g]))
-  const detectedIdSet = new Set(detectedById.keys())
+    // Step 2 — Plaid sync runs outside any DB transaction because it is
+    // network-bound and can take seconds. Per-account errors are surfaced in
+    // the result; we only degrade to status='partial' at the end.
+    Sentry.addBreadcrumb({
+      category: 'scan',
+      message: 'plaid_sync_started',
+      level: 'info',
+      data: { userId, scanId: scan.id },
+    })
+    let hadSyncErrors = false
+    let accountsTouched = 0
+    let accountsFailed = 0
+    try {
+      const syncResult = await syncPlaidForUser(userId)
+      accountsTouched = syncResult.accountsTouched
+      accountsFailed = syncResult.accountErrors.length
+      if (syncResult.accountErrors.length > 0) hadSyncErrors = true
+    } catch (err) {
+      console.error('[scanRunner] Plaid sync threw; continuing with stale data', err)
+      hadSyncErrors = true
+    }
+    Sentry.addBreadcrumb({
+      category: 'scan',
+      message: 'plaid_sync_completed',
+      level: hadSyncErrors ? 'warning' : 'info',
+      data: {
+        userId,
+        scanId: scan.id,
+        accountsSucceeded: Math.max(0, accountsTouched - accountsFailed),
+        accountsFailed,
+        hadSyncErrors,
+      },
+    })
 
-  // Step 4-6 — signal + stability writes in a single transaction for
-  // atomicity across the resolve sweep.
-  const now = new Date()
-  const monitoredGapIds = await buildMonitoredGapIds(userId, now)
-  // Union with detected so ad-hoc new gapIds still get a stability row.
-  const stabilityGapIds = new Set<string>([...monitoredGapIds, ...detectedIdSet])
+    // Step 3 — detect currently flagged gaps from post-sync data.
+    Sentry.addBreadcrumb({
+      category: 'scan',
+      message: 'gap_detection_started',
+      level: 'info',
+      data: { userId, scanId: scan.id },
+    })
+    const detected: DetectedGap[] = await detectGaps(userId, prisma)
+    const detectedById = new Map(detected.map(g => [g.gapId, g]))
+    const detectedIdSet = new Set(detectedById.keys())
+    Sentry.addBreadcrumb({
+      category: 'scan',
+      message: 'gap_detection_completed',
+      level: 'info',
+      data: {
+        userId,
+        scanId: scan.id,
+        detectedGapsCount: detected.length,
+      },
+    })
 
-  const { signalsNew, signalsUpdated, signalsResolved } = await prisma.$transaction(
-    async tx => {
-      let newCount = 0
-      let updatedCount = 0
+    // Step 4-6 — signal + stability writes in a single transaction for
+    // atomicity across the resolve sweep.
+    const now = new Date()
+    const monitoredGapIds = await buildMonitoredGapIds(userId, now)
+    // Union with detected so ad-hoc new gapIds still get a stability row.
+    const stabilityGapIds = new Set<string>([...monitoredGapIds, ...detectedIdSet])
 
-      for (const gap of detected) {
-        const result = await upsertSignal(tx, userId, gap, scan.id, now)
-        if (result.wasNew) newCount++
-        else if (result.wasUpdated) updatedCount++
-      }
+    Sentry.addBreadcrumb({
+      category: 'scan',
+      message: 'signal_persistence_started',
+      level: 'info',
+      data: {
+        userId,
+        scanId: scan.id,
+        monitoredGapCount: monitoredGapIds.length,
+        stabilityGapCount: stabilityGapIds.size,
+      },
+    })
+    const scanIdForTx = scan.id
+    const { signalsNew, signalsUpdated, signalsResolved } = await prisma.$transaction(
+      async tx => {
+        let newCount = 0
+        let updatedCount = 0
+        const snapshotRows: Prisma.SignalSnapshotCreateManyInput[] = []
 
-      const resolvedCount = await resolveMissingSignals(tx, userId, detectedIdSet, now)
+        for (const gap of detected) {
+          const result = await upsertSignal(tx, userId, gap, scanIdForTx, now)
+          if (result.wasNew) newCount++
+          else if (result.wasUpdated) updatedCount++
+          // Record a snapshot for every detected gap (new, updated, or
+          // unchanged) so drift trajectories can be reconstructed exactly.
+          // Resolved signals get no snapshot — their lifecycle is captured
+          // by the Signal.state transition handled below.
+          snapshotRows.push({
+            userId,
+            gapId: gap.gapId,
+            scanId: scanIdForTx,
+            domain: gap.domain,
+            annualValue: gap.annualValue,
+            lifetimeValue: gap.lifetimeValue,
+            severity: computeSeverity(gap.annualValue, gap.domain),
+            state: result.state,
+            payload: gap.payload as Prisma.InputJsonValue,
+          })
+        }
 
-      for (const gapId of stabilityGapIds) {
-        const gap = detectedById.get(gapId)
-        const isFlagged = gap != null
-        const currentValue = gap?.annualValue ?? 0
-        await updateStabilityState(tx, userId, gapId, currentValue, isFlagged, now)
-      }
+        if (snapshotRows.length > 0) {
+          await tx.signalSnapshot.createMany({ data: snapshotRows })
+        }
 
-      return {
-        signalsNew: newCount,
-        signalsUpdated: updatedCount,
-        signalsResolved: resolvedCount,
-      }
-    },
-  )
+        const resolvedCount = await resolveMissingSignals(tx, userId, detectedIdSet, now)
 
-  const completedAt = new Date()
-  const status: Extract<ScanStatus, 'completed' | 'partial'> = hadSyncErrors
-    ? 'partial'
-    : 'completed'
+        Sentry.addBreadcrumb({
+          category: 'scan',
+          message: 'signal_persistence_completed',
+          level: 'info',
+          data: {
+            userId,
+            scanId: scanIdForTx,
+            signalsNew: newCount,
+            signalsUpdated: updatedCount,
+            signalsResolved: resolvedCount,
+          },
+        })
 
-  // signalsChecked = every gapId evaluated this scan (monitored union detected).
-  const signalsChecked = stabilityGapIds.size
-  const signalsFlagged = detected.length
+        for (const gapId of stabilityGapIds) {
+          const gap = detectedById.get(gapId)
+          const isFlagged = gap != null
+          const currentValue = gap?.annualValue ?? 0
+          await updateStabilityState(tx, userId, gapId, currentValue, isFlagged, now)
+        }
 
-  await prisma.scan.update({
-    where: { id: scan.id },
-    data: {
+        Sentry.addBreadcrumb({
+          category: 'scan',
+          message: 'stability_tracking_completed',
+          level: 'info',
+          data: {
+            userId,
+            scanId: scanIdForTx,
+            stabilityRowsEvaluated: stabilityGapIds.size,
+          },
+        })
+
+        return {
+          signalsNew: newCount,
+          signalsUpdated: updatedCount,
+          signalsResolved: resolvedCount,
+        }
+      },
+    )
+
+    const completedAt = new Date()
+    const status: Extract<ScanStatus, 'completed' | 'partial'> = hadSyncErrors
+      ? 'partial'
+      : 'completed'
+
+    // signalsChecked = every gapId evaluated this scan (monitored union detected).
+    const signalsChecked = stabilityGapIds.size
+    const signalsFlagged = detected.length
+
+    await prisma.scan.update({
+      where: { id: scan.id },
+      data: {
+        status,
+        completedAt,
+        signalsChecked,
+        signalsFlagged,
+        signalsResolved,
+      },
+    })
+
+    Sentry.addBreadcrumb({
+      category: 'scan',
+      message: 'scan_completed',
+      level: 'info',
+      data: {
+        userId,
+        scanId: scan.id,
+        status,
+        durationMs: completedAt.getTime() - startedAt.getTime(),
+      },
+    })
+
+    return {
+      scanId: scan.id,
       status,
-      completedAt,
       signalsChecked,
-      signalsFlagged,
+      signalsNew,
+      signalsUpdated,
       signalsResolved,
-    },
-  })
-
-  return {
-    scanId: scan.id,
-    status,
-    signalsChecked,
-    signalsNew,
-    signalsUpdated,
-    signalsResolved,
-    durationMs: completedAt.getTime() - startedAt.getTime(),
+      durationMs: completedAt.getTime() - startedAt.getTime(),
+    }
+  } catch (err) {
+    Sentry.captureException(err, {
+      tags: {
+        component: 'scan_runner',
+        userId,
+        trigger,
+      },
+      extra: {
+        scanId: scan?.id ?? null,
+      },
+    })
+    if (scan) {
+      try {
+        await prisma.scan.update({
+          where: { id: scan.id },
+          data: {
+            status: 'failed',
+            completedAt: new Date(),
+            errorMessage: serializeError(err),
+          },
+        })
+      } catch (updateErr) {
+        console.error('[scanRunner] Failed to mark scan as failed', updateErr)
+      }
+    }
+    throw err
   }
 }

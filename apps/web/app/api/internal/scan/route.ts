@@ -9,6 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { runScanForUser } from '@/lib/vigilance/scanRunner'
 import type { ScanTrigger } from '@/lib/types/vigilance'
 
@@ -29,6 +30,8 @@ function timingSafeEqual(a: string, b: string): boolean {
 }
 
 export async function POST(request: NextRequest) {
+  Sentry.setTag('route', 'internal_scan')
+
   const expected = process.env.INTERNAL_SCAN_SECRET
   const provided = request.headers.get('x-internal-secret')
 
@@ -63,6 +66,13 @@ export async function POST(request: NextRequest) {
     const result = await runScanForUser(userId, trigger as ScanTrigger)
     return NextResponse.json(result)
   } catch (err) {
+    Sentry.captureException(err, {
+      tags: {
+        component: 'internal_scan_route',
+        userId,
+        trigger,
+      },
+    })
     console.error('[internal/scan] runScanForUser failed:', err)
     const message = err instanceof Error ? err.message : 'Scan failed'
     return NextResponse.json({ error: message }, { status: 500 })

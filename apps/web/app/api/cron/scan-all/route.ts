@@ -8,6 +8,7 @@
  */
 
 import { NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { prisma } from '@/lib/prisma'
 import {
   getUsersDueForScan,
@@ -30,6 +31,8 @@ function timingSafeEqual(a: string, b: string): boolean {
 }
 
 export async function GET(request: Request) {
+  Sentry.setTag('cron', 'scan-all')
+
   const secret = process.env.CRON_SECRET
   const authHeader = request.headers.get('authorization')
   const expectedHeader = secret ? `Bearer ${secret}` : null
@@ -43,17 +46,41 @@ export async function GET(request: Request) {
   }
 
   const start = Date.now()
-  const userIds = await getUsersDueForScan(prisma, { maxAgeHours: 5 })
-  const result = await runScheduledScans(userIds, {
-    concurrency: 5,
-    perUserTimeoutMs: 30_000,
-  })
+  try {
+    const userIds = await getUsersDueForScan(prisma, { maxAgeHours: 5 })
+    const result = await runScheduledScans(userIds, {
+      concurrency: 5,
+      perUserTimeoutMs: 30_000,
+    })
 
-  return NextResponse.json({
-    usersScanned: userIds.length,
-    usersSucceeded: result.succeeded,
-    usersFailed: result.failed,
-    usersSkipped: 0,
-    durationMs: Date.now() - start,
-  })
+    const durationMs = Date.now() - start
+    Sentry.addBreadcrumb({
+      category: 'cron',
+      message: 'scan_all_summary',
+      level: result.failed > 0 ? 'warning' : 'info',
+      data: {
+        usersScanned: userIds.length,
+        usersSucceeded: result.succeeded,
+        usersFailed: result.failed,
+        durationMs,
+      },
+    })
+
+    return NextResponse.json({
+      usersScanned: userIds.length,
+      usersSucceeded: result.succeeded,
+      usersFailed: result.failed,
+      usersSkipped: 0,
+      durationMs,
+    })
+  } catch (err) {
+    Sentry.captureException(err, {
+      tags: { component: 'cron_scan_all' },
+    })
+    console.error('[cron/scan-all] handler failed:', err)
+    return NextResponse.json(
+      { error: 'Scan batch failed' },
+      { status: 500 },
+    )
+  }
 }
