@@ -45,17 +45,14 @@ const REALISTIC: SignalThreshold[] = [
     gapId: "subscription_load",
     domain: "idle_cash",
     metricLabel: "Subscription load",
-    currentValue: 247,
-    currentValueFormatted: "$247/mo",
+    currentValue: 412,
+    currentValueFormatted: "$412/mo",
     thresholdValue: 380,
     thresholdLabel: "threshold $380/mo",
     benchmarkValue: null,
     benchmarkLabel: null,
     axisMin: 0,
     axisMax: 600,
-    // inBreach is true here because an audit-delta crossing fired even though
-    // the absolute value is below the threshold line. The component trusts
-    // this flag for coloring; positions always come from the values.
     inBreach: true,
   },
   {
