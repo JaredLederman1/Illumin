@@ -24,8 +24,7 @@ import {
   useMockStabilityStates,
   MOCK_STABILITY_GAP_IDS,
 } from '@/lib/vigilance/mockStabilityStates'
-import WatchLogFeed from '@/components/watch/WatchLogFeed'
-import { useMockWatchLog } from '@/lib/vigilance/mockWatchLog'
+import SentinelWidget from '@/components/dashboard/widgets/SentinelWidget'
 
 function fmtChange(n: number): string {
   const abs = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Math.abs(n))
@@ -37,7 +36,6 @@ function DashboardDesktop() {
   const hero = useDashboardHeroState()
   const { data: nwHistory } = useNetWorthHistoryQuery()
   const stability = useMockStabilityStates('mixed')
-  const watchLog = useMockWatchLog('active_morning')
 
   const hasData = netWorth !== null && (netWorth.totalAssets > 0 || netWorth.totalLiabilities > 0)
 
@@ -134,11 +132,7 @@ function DashboardDesktop() {
         />
       </div>
 
-      <WatchLogFeed
-        data={watchLog.data}
-        isLoading={watchLog.isLoading}
-        onLoadMore={watchLog.loadMore}
-      />
+      <SentinelWidget />
 
       {showLiabilityOnlyPlaceholder && (
         <motion.div
@@ -170,7 +164,6 @@ function DashboardMobile() {
   const hero = useDashboardHeroState()
   const { data: nwHistory } = useNetWorthHistoryQuery()
   const stability = useMockStabilityStates('mixed')
-  const watchLog = useMockWatchLog('active_morning')
 
   const accountMap = useMemo(() =>
     Object.fromEntries(accounts.map(a => [a.id, a])),
@@ -318,22 +311,16 @@ function DashboardMobile() {
       </div>
     </motion.div>,
 
-    // 3. Watch log feed: the overnight vigilance digest. Placed directly
-    //    below the metric cards so it is the first thing after the headline
-    //    numbers.
+    // 3. Sentinel widget: concise vigilance summary with a link into the
+    //    full Sentinel surface. Placed directly below the metric cards so it
+    //    is the first thing after the headline numbers.
     <motion.div
-      key="watch-log"
+      key="sentinel"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: 'easeOut', delay: 0.06 }}
     >
-      <MobileCard>
-        <WatchLogFeed
-          data={watchLog.data}
-          isLoading={watchLog.isLoading}
-          onLoadMore={watchLog.loadMore}
-        />
-      </MobileCard>
+      <SentinelWidget />
     </motion.div>,
 
     // 4. Net worth chart (conditional). Liability-only renders the placeholder
