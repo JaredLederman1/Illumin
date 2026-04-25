@@ -893,6 +893,7 @@ export default function DebtPaydownPage() {
                 ticks={decadeTicks}
                 tick={<DecadeTick />}
                 height={44}
+                padding={{ left: 12, right: 12 }}
                 label={{
                   value: 'Months from today',
                   position: 'insideBottom',

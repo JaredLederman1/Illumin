@@ -23,13 +23,14 @@ export default function BarChart({ data }: BarChartProps) {
       transition={{ duration: 0.4, ease: 'easeOut', delay: 0.15 }}
     >
       <ResponsiveContainer width="100%" height={200}>
-        <RechartsBarChart data={data} barGap={4} barCategoryGap="30%" margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+        <RechartsBarChart data={data} barGap={4} barCategoryGap="30%" margin={{ top: 8, right: 16, left: 8, bottom: 24 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(247,230,193,0.08)" vertical={false} />
           <XAxis
             dataKey="month"
             tick={{ fill: '#847B68', fontSize: 10, fontFamily: 'var(--font-mono)' }}
             axisLine={false}
             tickLine={false}
+            padding={{ left: 12, right: 12 }}
           />
           <YAxis
             tickFormatter={formatK}

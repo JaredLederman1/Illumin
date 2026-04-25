@@ -80,7 +80,7 @@ export default function NetWorthChart({
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+      <AreaChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 24 }}>
         <defs>
           <linearGradient id="nwGradient" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="var(--color-positive)" stopOpacity={0.15} />

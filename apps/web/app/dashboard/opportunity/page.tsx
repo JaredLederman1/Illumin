@@ -247,7 +247,7 @@ function OpportunityDesktop() {
             width={chartWidth}
             height={260}
             data={projectionSeries}
-            margin={{ top: 8, right: 24, bottom: 8, left: 8 }}
+            margin={{ top: 8, right: 24, bottom: 24, left: 8 }}
           >
             <CartesianGrid
               horizontal
@@ -263,6 +263,7 @@ function OpportunityDesktop() {
               tick={{ fill: '#6B7A8D', fontSize: 10, fontFamily: 'var(--font-mono)' }}
               axisLine={false}
               tickLine={false}
+              padding={{ left: 12, right: 12 }}
             />
             <YAxis
               tickFormatter={formatYAxis}
@@ -490,7 +491,7 @@ function OpportunityMobile() {
               width={chartWidth}
               height={220}
               data={projectionSeries}
-              margin={{ top: 8, right: 24, bottom: 8, left: 8 }}
+              margin={{ top: 8, right: 24, bottom: 24, left: 8 }}
             >
               <CartesianGrid
                 horizontal
@@ -506,6 +507,7 @@ function OpportunityMobile() {
                 tick={{ fill: colors.textMuted, fontSize: 10, fontFamily: fonts.mono }}
                 axisLine={false}
                 tickLine={false}
+                padding={{ left: 12, right: 12 }}
               />
               <YAxis
                 tickFormatter={formatYAxis}

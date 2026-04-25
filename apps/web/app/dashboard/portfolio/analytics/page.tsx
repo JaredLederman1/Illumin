@@ -446,7 +446,7 @@ function SectorVsBenchmark({
         <SectionHelp text="Compares your sector allocation to the S&P 500. If your bar is taller, you are overweight that sector. Large overweights mean your portfolio is making a concentrated bet on that sector outperforming." />
       </div>
       <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={data} margin={{ top: 8, right: 24, bottom: 40, left: 8 }}>
+        <BarChart data={data} margin={{ top: 8, right: 24, bottom: 48, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-grid-line)" />
           <XAxis
             dataKey="sector"
@@ -454,6 +454,7 @@ function SectorVsBenchmark({
             angle={-25}
             textAnchor="end"
             interval={0}
+            padding={{ left: 12, right: 12 }}
           />
           <YAxis
             tickFormatter={(v) => `${v}%`}

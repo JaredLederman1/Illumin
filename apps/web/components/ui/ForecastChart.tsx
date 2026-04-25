@@ -28,7 +28,7 @@ export default function ForecastChart({ data, emergencyFundMonths, height = 220 
   return (
     <div>
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+        <LineChart data={chartData} margin={{ top: 8, right: 16, left: 8, bottom: 24 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(247,230,193,0.08)" />
           <XAxis
             dataKey="month"
