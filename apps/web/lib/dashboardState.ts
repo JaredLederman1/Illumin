@@ -76,6 +76,19 @@ export interface StateHolding {
   balance: number
 }
 
+export type StateFilingStatus =
+  | 'SINGLE'
+  | 'MARRIED_FILING_JOINTLY'
+  | 'MARRIED_FILING_SEPARATELY'
+  | 'HEAD_OF_HOUSEHOLD'
+  | 'QUALIFYING_SURVIVING_SPOUSE'
+
+export type StateVestingStatus =
+  | 'NOT_VESTED'
+  | 'PARTIALLY_VESTED'
+  | 'FULLY_VESTED'
+  | 'CLIFF_NOT_REACHED'
+
 export interface StateOnboardingProfile {
   age: number | null
   annualIncome: number | null
@@ -83,6 +96,13 @@ export interface StateOnboardingProfile {
   retirementAge: number | null
   emergencyFundMonthsTarget: number | null
   contractParsedData: Record<string, unknown> | null
+  careerLevel: string | null
+  careerTargetLevel: string | null
+  industry: string | null
+  filingStatus: StateFilingStatus | null
+  dependents: number | null
+  employer401kMatchPct: number | null
+  vestingStatus: StateVestingStatus | null
 }
 
 export interface StateTransactionsSummary {

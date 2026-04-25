@@ -1118,6 +1118,6 @@ function TransactionsMobile() {
 }
 
 export default function TransactionsPage() {
-  const isMobile = useIsMobile()
+  const isMobile = useIsMobile() ?? true
   return isMobile ? <TransactionsMobile /> : <TransactionsDesktop />
 }

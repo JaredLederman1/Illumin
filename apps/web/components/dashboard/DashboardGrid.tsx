@@ -4,6 +4,7 @@ import type { DashboardState, PriorityMetrics } from '@/lib/dashboardState'
 import PriorityRow from './PriorityRow'
 import ContextRow from './ContextRow'
 import ReferenceRow from './ReferenceRow'
+import SharpenForecastWidget from './SharpenForecastWidget'
 import { PRIORITY_ROW, type WidgetId } from './widgetIds'
 
 interface Props {
@@ -38,6 +39,7 @@ export default function DashboardGrid({ state, priorityMetrics }: Props) {
       }}
     >
       <PriorityRow state={state} metrics={priorityMetrics} />
+      <SharpenForecastWidget />
       <ContextRow exclude={contextExclude} metrics={priorityMetrics} />
       <ReferenceRow exclude={referenceExclude} metrics={priorityMetrics} />
     </div>

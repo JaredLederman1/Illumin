@@ -25,6 +25,27 @@ import { OnboardingDevRestart } from '@/components/onboarding/OnboardingDevResta
 
 type Phase = 'welcome' | 'steps'
 
+// API error codes (from app/api/user/onboarding/route.ts) mapped to
+// user-facing copy. Kept local to the render site so the API contract stays
+// stable for other consumers.
+const ERROR_COPY: Record<string, string> = {
+  onboarding_save_failed: "We couldn't save your progress. Try again in a moment.",
+  asset_account_required:
+    'Link a checking, savings, or investment account to continue.',
+}
+
+function describeError(raw: string | null): string | null {
+  if (!raw) return null
+  if (ERROR_COPY[raw]) return ERROR_COPY[raw]
+  // Heuristic: error codes are lowercase snake_case with no spaces. If the
+  // string looks like one but has no mapping, fall back to a generic message
+  // so a raw key never reaches the screen.
+  if (/^[a-z][a-z0-9_]*$/.test(raw)) {
+    return 'Something went wrong. Try again.'
+  }
+  return raw
+}
+
 // Step-index to field-payload mapping. Each step only sends its own fields so
 // a partial save does not clobber later steps on refresh/resume.
 function payloadForStep(step: number, data: OnboardingData): Record<string, unknown> {
@@ -61,6 +82,11 @@ function payloadForStep(step: number, data: OnboardingData): Record<string, unkn
 }
 
 export default function OnboardingPage() {
+  // useIsMobile returns null on SSR and the first client paint before
+  // measurement. Treat null as mobile here: the mobile sticky LiveProjection
+  // and mobile padding render fine on desktop, while desktop sidecar layout
+  // breaks on mobile. After hydration, the value flips to true/false based
+  // on the real viewport.
   const isMobile = useIsMobile()
   const authToken = useAuthToken()
   const saveOnboarding = useSaveOnboardingMutation()
@@ -123,7 +149,6 @@ export default function OnboardingPage() {
           contractUploadedAt:         profile.contractUploadedAt ?? null,
           targetRetirementIncome:     profile.targetRetirementIncome ?? null,
           emergencyFundMonthsTarget:  profile.emergencyFundMonthsTarget ?? prev.emergencyFundMonthsTarget,
-          majorGoals:                 Array.isArray(profile.majorGoals) ? profile.majorGoals : [],
           riskTolerance:              profile.riskTolerance ?? prev.riskTolerance,
         }))
 
@@ -369,7 +394,7 @@ export default function OnboardingPage() {
             Only renders once the user has entered a salary, so the strip
             doesn't sit empty across the entire pre-salary portion of the
             flow. */}
-        {isMobile && salaryEverEntered && (
+        {isMobile !== false && salaryEverEntered && (
           <div
             style={{
               position: 'sticky',
@@ -400,7 +425,7 @@ export default function OnboardingPage() {
             justifyContent: 'center',
             alignItems: 'center',
             paddingTop: 0,
-            paddingBottom: isMobile ? '32px' : '48px',
+            paddingBottom: isMobile !== false ? '32px' : '48px',
             minHeight: 0,
           }}
         >
@@ -410,10 +435,10 @@ export default function OnboardingPage() {
               maxWidth: '1040px',
               display: 'grid',
               gridTemplateColumns:
-                isMobile || !salaryEverEntered
+                isMobile !== false || !salaryEverEntered
                   ? '1fr'
                   : 'minmax(0, 1fr) minmax(300px, max-content)',
-              gap: isMobile ? '24px' : '56px',
+              gap: isMobile !== false ? '24px' : '56px',
               alignItems: 'center',
               justifyContent: 'center',
             }}
@@ -515,14 +540,14 @@ export default function OnboardingPage() {
                         color: 'var(--color-negative)',
                       }}
                     >
-                      {error}
+                      {describeError(error)}
                     </p>
                   )}
                 </motion.div>
               </AnimatePresence>
             </div>
 
-            {!isMobile && salaryEverEntered && (
+            {isMobile === false && salaryEverEntered && (
               <div style={{ alignSelf: 'center', justifySelf: 'start' }}>
                 <LiveProjection
                   data={data}

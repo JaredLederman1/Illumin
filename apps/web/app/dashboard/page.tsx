@@ -28,6 +28,7 @@ import SentinelWidget from '@/components/dashboard/widgets/SentinelWidget'
 import NetWorthWidget from '@/components/dashboard/widgets/NetWorthWidget'
 import RecoveryWidget from '@/components/dashboard/widgets/RecoveryWidget'
 import AccountBalancesWidget from '@/components/dashboard/widgets/AccountBalancesWidget'
+import SharpenForecastWidget from '@/components/dashboard/SharpenForecastWidget'
 import WidgetSkeleton from '@/components/dashboard/widgets/WidgetSkeleton'
 import {
   GRID_CELL_CLASS,
@@ -406,6 +407,21 @@ function DashboardMobile() {
       </motion.div>,
     ] : []),
 
+    // Sharpen forecast: prompts the user to fill in extended profile fields
+    // (career, household, compensation) so Illumin's Engine can be more
+    // precise. Self-hides when all 7 fields are filled, so it costs zero
+    // dashboard space when complete. Position mirrors desktop, slotted
+    // between the primary metrics cluster (sentinel + nw-chart) and the
+    // spending/cashflow cluster (donut + bar).
+    <motion.div
+      key="sharpen-forecast"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: 'easeOut', delay: 0.10 }}
+    >
+      <SharpenForecastWidget />
+    </motion.div>,
+
     // 4. Spending by category
     <motion.div
       key="donut"
@@ -480,6 +496,6 @@ function DashboardMobile() {
 
 // ── Device-aware default export ───────────────────────────────────────────────
 export default function DashboardPage() {
-  const isMobile = useIsMobile()
+  const isMobile = useIsMobile() ?? true
   return isMobile ? <DashboardMobile /> : <DashboardDesktop />
 }

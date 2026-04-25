@@ -1,7 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
-import { Prisma } from '@prisma/client'
+import { Prisma, FilingStatus, VestingStatus } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+
+const FILING_STATUS_VALUES = new Set<FilingStatus>([
+  FilingStatus.SINGLE,
+  FilingStatus.MARRIED_FILING_JOINTLY,
+  FilingStatus.MARRIED_FILING_SEPARATELY,
+  FilingStatus.HEAD_OF_HOUSEHOLD,
+  FilingStatus.QUALIFYING_SURVIVING_SPOUSE,
+])
+
+const VESTING_STATUS_VALUES = new Set<VestingStatus>([
+  VestingStatus.NOT_VESTED,
+  VestingStatus.PARTIALLY_VESTED,
+  VestingStatus.FULLY_VESTED,
+  VestingStatus.CLIFF_NOT_REACHED,
+])
 
 async function getUser(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
@@ -109,13 +124,6 @@ function buildWritableFields(body: Body) {
     fields.emergencyFundMonthsTarget = emergencyFundMonthsTarget ?? null
   }
 
-  if ('majorGoals' in body) {
-    const raw = body.majorGoals
-    fields.majorGoals = Array.isArray(raw)
-      ? raw.filter((x): x is string => typeof x === 'string' && x.trim() !== '')
-      : []
-  }
-
   const riskTolerance = num(body.riskTolerance)
   if ('riskTolerance' in body) {
     fields.riskTolerance =
@@ -143,6 +151,46 @@ function buildWritableFields(body: Body) {
   // from a completed upload.
   if (body.contractStepSkipped === true) {
     fields.contractStepSkippedAt = new Date()
+  }
+
+  // Extended profile fields. Editable only on /dashboard/profile, never
+  // touched by the onboarding flow. Each follows the same partial-save
+  // convention: a key present in the body writes (string trimmed to null
+  // when empty); a key absent leaves the existing value untouched.
+  if ('careerLevel' in body) {
+    fields.careerLevel = str(body.careerLevel) ?? null
+  }
+  if ('careerTargetLevel' in body) {
+    fields.careerTargetLevel = str(body.careerTargetLevel) ?? null
+  }
+  if ('industry' in body) {
+    fields.industry = str(body.industry) ?? null
+  }
+
+  if ('filingStatus' in body) {
+    const raw = body.filingStatus
+    fields.filingStatus =
+      typeof raw === 'string' && FILING_STATUS_VALUES.has(raw as FilingStatus)
+        ? (raw as FilingStatus)
+        : null
+  }
+  if ('dependents' in body) {
+    const raw = num(body.dependents)
+    fields.dependents =
+      typeof raw === 'number' && raw >= 0 && raw <= 20 ? Math.round(raw) : null
+  }
+
+  if ('employer401kMatchPct' in body) {
+    const raw = num(body.employer401kMatchPct)
+    fields.employer401kMatchPct =
+      typeof raw === 'number' && raw >= 0 && raw <= 100 ? raw : null
+  }
+  if ('vestingStatus' in body) {
+    const raw = body.vestingStatus
+    fields.vestingStatus =
+      typeof raw === 'string' && VESTING_STATUS_VALUES.has(raw as VestingStatus)
+        ? (raw as VestingStatus)
+        : null
   }
 
   return fields

@@ -13,7 +13,9 @@ interface Props {
   continueLabel?: string
   onAdvance: () => void
   onSkip?: () => void
-  isMobile: boolean
+  // null while useIsMobile has not yet measured the viewport; treated as
+  // mobile so SSR and the first client paint render the safer fallback.
+  isMobile: boolean | null
   // When true, the entire form (heading, input, context, Continue) is
   // horizontally centered on the page rather than left-aligned. Used for
   // the first two onboarding questions (age and location) so they feel
@@ -53,7 +55,7 @@ export function SubStepShell({
         maxWidth: '620px',
         display: 'flex',
         flexDirection: 'column',
-        gap: isMobile ? '24px' : '36px',
+        gap: isMobile !== false ? '24px' : '36px',
         // Internal content is always left-justified within the form box.
         // When `centered`, only the form box itself is horizontally
         // centered on the page (via margin: auto). Text and controls
@@ -116,7 +118,7 @@ export function SubStepShell({
           type="submit"
           disabled={!canAdvance || busy}
           style={{
-            ...continueBtn,
+            ...continueBtn(),
             opacity: !canAdvance || busy ? 0.5 : 1,
             cursor: !canAdvance || busy ? 'not-allowed' : 'pointer',
           }}
@@ -135,7 +137,7 @@ export function SubStepShell({
             onClick={onSkip}
             disabled={busy}
             style={{
-              ...secondaryBtn,
+              ...secondaryBtn(),
               opacity: busy ? 0.45 : 1,
               cursor: busy ? 'not-allowed' : 'pointer',
             }}

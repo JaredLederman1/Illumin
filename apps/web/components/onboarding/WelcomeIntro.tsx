@@ -9,61 +9,24 @@ interface Props {
 
 // Cinematic intro timings (seconds, from mount). The sequence:
 //   0.6s   counter + subtitle fade in, centered, full size
-//   3.0s   counter + subtitle start translating up and shrinking
-//   3.7s   headline "clarity changes everything." fades into center
-//   4.5s   headline fade-in complete, begin 1s hold on "clarity" (no cursor)
-//   5.5s   cursor fades in at the end of "clarity"
-//   5.7s   cursor begins deleting "clarity" right-to-left at 110ms/char
-//   6.47s  deletion complete, brief 250ms pause
-//   6.72s  "Illumin" types in left-to-right at 110ms/char
-//   7.49s  typing complete, cursor fades out
-//   7.69s  cursor gone, "Illumin" sits final
-//   8.0s   outlined "Begin" button fades in
-//   9.5s   Begin button becomes interactive
+//   4.0s   counter + subtitle start translating up and shrinking
+//   4.7s   headline "Illumin stands watch over everything." fades into center
+//   6.0s   outlined "Begin" button fades in
+//   7.0s   Begin button becomes interactive
 const LOGO_DELAY            = 0.2
 const COUNTER_START         = 0.6
 const CAPTION_START         = 1.0
-const COUNTER_COLLAPSE_AT   = 3.0
+const COUNTER_COLLAPSE_AT   = 4.0
 const COUNTER_MOVE_DUR      = 0.9
-const HEADLINE_START        = 3.7
-// Absolute time from mount at which the cursor begins to fade in. This
-// equals HEADLINE_START + headline fade duration (0.8s) + a full 1s hold on
-// "clarity" without the cursor present.
-const CURSOR_IN_AT_SEC      = 5.5
-const CURSOR_FADE_MS        = 200
-const DELETE_PER_CHAR_MS    = 110
-const TYPE_PER_CHAR_MS      = 110
-const PAUSE_BETWEEN_MS      = 250
-const BUTTON_START          = 8.0
-const BUTTON_READY          = 9.5
+const HEADLINE_START        = 4.7
+const BUTTON_START          = 6.0
+const BUTTON_READY          = 7.0
 const EXIT_DURATION         = 0.5
 
 const REDUCED_FADE = 1.2
 
-const HEADLINE_FIRST_WORD  = 'clarity'
-const HEADLINE_REPLACEMENT = 'Illumin'
-const HEADLINE_TAIL        = ' stands watch over everything.'
+const HEADLINE_TEXT = 'stands watch over everything.'
 
-// 'hold'       — "clarity" sits visible with no cursor at all.
-// 'cursor-in'  — cursor fades in at the end of "clarity".
-// 'deleting'   — cursor solid, deleting chars right-to-left.
-// 'pausing'    — empty word, cursor idle, brief pause.
-// 'typing'     — cursor solid, typing "Illumin" left-to-right.
-// 'cursor-out' — cursor fades out after the replacement finishes.
-// 'done'       — "Illumin" final, no cursor.
-type TypewriterPhase =
-  | 'hold'
-  | 'cursor-in'
-  | 'deleting'
-  | 'pausing'
-  | 'typing'
-  | 'cursor-out'
-  | 'done'
-
-// Phases 1 through 4 are intentionally uninterruptible. No click, scroll,
-// keyboard, or touch input advances or skips the sequence. The Begin button
-// itself is rendered with pointer-events: none and aria-disabled until
-// BUTTON_READY.
 export function WelcomeIntro({ onStart }: Props) {
   const [reducedMotion] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false
@@ -83,14 +46,6 @@ export function WelcomeIntro({ onStart }: Props) {
   // users get the collapsed state on mount.
   const [counterCollapsed, setCounterCollapsed] = useState<boolean>(reducedMotion)
 
-  // Typewriter state for the first-word swap. `word` identifies which word
-  // is currently displayed so styling (gold + serif on Illumin) can key off
-  // it. `typed` is the visible substring for that word. Reduced-motion
-  // users land straight on the final replacement word with no sequence.
-  const [word, setWord] = useState<'first' | 'replacement'>(reducedMotion ? 'replacement' : 'first')
-  const [typed, setTyped] = useState<string>(reducedMotion ? HEADLINE_REPLACEMENT : HEADLINE_FIRST_WORD)
-  const [phase, setPhase] = useState<TypewriterPhase>(reducedMotion ? 'done' : 'hold')
-
   useEffect(() => {
     const readyAt = reducedMotion ? REDUCED_FADE * 1000 : BUTTON_READY * 1000
     const t = window.setTimeout(() => setButtonReady(true), readyAt)
@@ -106,52 +61,6 @@ export function WelcomeIntro({ onStart }: Props) {
     return () => window.clearTimeout(t)
   }, [reducedMotion])
 
-  // Kick off the typewriter sequence. After the headline finishes fading in
-  // and "clarity" holds for a full second, transition to cursor-in. The
-  // phase-driven effect below handles every subsequent transition.
-  useEffect(() => {
-    if (reducedMotion) return
-    const t = window.setTimeout(() => setPhase('cursor-in'), CURSOR_IN_AT_SEC * 1000)
-    return () => window.clearTimeout(t)
-  }, [reducedMotion])
-
-  // Phase-driven typewriter. Each scheduled step advances either the typed
-  // substring or the phase itself. All timers are cleared on unmount. Phase
-  // transitions happen inside the timer callbacks so this effect never
-  // calls setState synchronously in its body.
-  useEffect(() => {
-    if (phase === 'cursor-in') {
-      const t = window.setTimeout(() => setPhase('deleting'), CURSOR_FADE_MS)
-      return () => window.clearTimeout(t)
-    }
-    if (phase === 'deleting') {
-      if (typed.length === 0) {
-        const t = window.setTimeout(() => {
-          setWord('replacement')
-          setPhase('typing')
-        }, PAUSE_BETWEEN_MS)
-        return () => window.clearTimeout(t)
-      }
-      const t = window.setTimeout(() => {
-        setTyped(prev => prev.slice(0, -1))
-      }, DELETE_PER_CHAR_MS)
-      return () => window.clearTimeout(t)
-    }
-    if (phase === 'typing') {
-      if (typed.length >= HEADLINE_REPLACEMENT.length) return
-      const t = window.setTimeout(() => {
-        const nextLen = typed.length + 1
-        setTyped(HEADLINE_REPLACEMENT.slice(0, nextLen))
-        if (nextLen >= HEADLINE_REPLACEMENT.length) setPhase('cursor-out')
-      }, TYPE_PER_CHAR_MS)
-      return () => window.clearTimeout(t)
-    }
-    if (phase === 'cursor-out') {
-      const t = window.setTimeout(() => setPhase('done'), CURSOR_FADE_MS)
-      return () => window.clearTimeout(t)
-    }
-  }, [phase, typed])
-
   // Focus the Begin button as soon as it becomes interactive so keyboard
   // users do not need to tab into an otherwise empty viewport.
   useEffect(() => {
@@ -163,15 +72,6 @@ export function WelcomeIntro({ onStart }: Props) {
     setExiting(true)
     window.setTimeout(onStart, EXIT_DURATION * 1000)
   }
-
-  const isReplacement = word === 'replacement'
-  // The cursor only exists during the active animation window: it fades in
-  // at the end of the 1s "clarity" hold, travels through delete/pause/type,
-  // then fades out before the final "Illumin" settles. No blinking in any
-  // phase — the cursor is either moving or absent. A CSS opacity transition
-  // smooths the cursor-in and cursor-out fades.
-  const cursorTargetOpacity =
-    phase === 'hold' || phase === 'cursor-out' || phase === 'done' ? 0 : 1
 
   return (
     <AnimatePresence>
@@ -320,10 +220,7 @@ export function WelcomeIntro({ onStart }: Props) {
             </motion.p>
           </motion.div>
 
-          {/* Headline, vertically centered. First word is replaced via a
-              character-by-character typewriter: "clarity" backspaces out,
-              then "Illumin" types in. The tail ("changes everything.") is
-              static throughout. */}
+          {/* Headline, vertically centered. */}
           <div
             style={{
               position: 'absolute',
@@ -358,40 +255,16 @@ export function WelcomeIntro({ onStart }: Props) {
               }}
             >
               <span
-                aria-live="polite"
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'baseline',
-                  verticalAlign: 'baseline',
+                  fontFamily: 'var(--font-display)',
+                  color: 'var(--color-gold)',
+                  fontWeight: 400,
                 }}
               >
-                <span
-                  style={{
-                    display: 'inline-block',
-                    whiteSpace: 'pre',
-                    fontFamily: 'var(--font-display)',
-                    color: isReplacement ? 'var(--color-gold)' : 'var(--color-text)',
-                    fontWeight: isReplacement ? 400 : 300,
-                    transition: 'color 150ms ease',
-                  }}
-                >
-                  {typed || '​'}
-                </span>
-                <span
-                  aria-hidden
-                  style={{
-                    display: 'inline-block',
-                    width: '2px',
-                    height: '0.9em',
-                    marginLeft: '2px',
-                    backgroundColor: 'var(--color-gold)',
-                    alignSelf: 'center',
-                    opacity: cursorTargetOpacity,
-                    transition: `opacity ${CURSOR_FADE_MS}ms ease`,
-                  }}
-                />
+                Illumin
               </span>
-              {HEADLINE_TAIL}
+              {' '}
+              {HEADLINE_TEXT}
             </motion.h1>
           </div>
 

@@ -698,6 +698,6 @@ function BenefitsMobile() {
 }
 
 export default function BenefitsPage() {
-  const isMobile = useIsMobile()
+  const isMobile = useIsMobile() ?? true
   return isMobile ? <BenefitsMobile /> : <BenefitsDesktop />
 }

@@ -10,12 +10,15 @@ import {
   useResetOnboardingMutation,
   useSaveOnboardingMutation,
   useUpdateNotificationPreferencesMutation,
+  type FilingStatusValue,
   type NotificationEmailMode,
   type OnboardingProfile,
+  type VestingStatusValue,
 } from '@/lib/queries'
 import { calcTotals } from '@/lib/benefitsAnalysis'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import MobileCard from '@/components/ui/MobileCard'
+import { secondaryBtn } from '@/components/ui/buttonTokens'
 import { colors, fonts, spacing } from '@/lib/theme'
 
 const SAVE_CONFIRMATION_TEXT = 'Updated. Dependent figures recalculated.'
@@ -28,6 +31,27 @@ const RISK_LABELS: Record<number, string> = {
   4: 'Aggressive',
   5: 'Very aggressive',
 }
+
+const FILING_STATUS_OPTIONS: { value: FilingStatusValue; label: string }[] = [
+  { value: 'SINGLE', label: 'Single' },
+  { value: 'MARRIED_FILING_JOINTLY', label: 'Married filing jointly' },
+  { value: 'MARRIED_FILING_SEPARATELY', label: 'Married filing separately' },
+  { value: 'HEAD_OF_HOUSEHOLD', label: 'Head of household' },
+  { value: 'QUALIFYING_SURVIVING_SPOUSE', label: 'Qualifying surviving spouse' },
+]
+
+const VESTING_STATUS_OPTIONS: { value: VestingStatusValue; label: string }[] = [
+  { value: 'NOT_VESTED', label: 'Not vested' },
+  { value: 'CLIFF_NOT_REACHED', label: 'Cliff period, not yet vested' },
+  { value: 'PARTIALLY_VESTED', label: 'Partially vested' },
+  { value: 'FULLY_VESTED', label: 'Fully vested' },
+]
+
+const FILING_STATUS_LABEL: Record<FilingStatusValue, string> =
+  Object.fromEntries(FILING_STATUS_OPTIONS.map(o => [o.value, o.label])) as Record<FilingStatusValue, string>
+
+const VESTING_STATUS_LABEL: Record<VestingStatusValue, string> =
+  Object.fromEntries(VESTING_STATUS_OPTIONS.map(o => [o.value, o.label])) as Record<VestingStatusValue, string>
 
 const IS_DEV = process.env.NODE_ENV !== 'production'
 
@@ -170,7 +194,14 @@ function NotificationsPanel({ variant }: { variant: 'desktop' | 'mobile' }) {
   )
 }
 
-type Section = 'financial' | 'location' | 'employment' | 'goals'
+type Section =
+  | 'financial'
+  | 'location'
+  | 'employment'
+  | 'career'
+  | 'household'
+  | 'compensation'
+  | 'goals'
 
 interface ProfileValues {
   age: number
@@ -185,6 +216,13 @@ interface ProfileValues {
   targetRetirementIncome: number
   emergencyFundMonthsTarget: number
   riskTolerance: number
+  careerLevel: string
+  careerTargetLevel: string
+  industry: string
+  filingStatus: FilingStatusValue | ''
+  dependents: number | ''
+  employer401kMatchPct: number | ''
+  vestingStatus: VestingStatusValue | ''
 }
 
 function toValues(p: OnboardingProfile | null): ProfileValues {
@@ -201,6 +239,13 @@ function toValues(p: OnboardingProfile | null): ProfileValues {
     targetRetirementIncome:    p?.targetRetirementIncome ?? 0,
     emergencyFundMonthsTarget: p?.emergencyFundMonthsTarget ?? 6,
     riskTolerance:             p?.riskTolerance ?? 3,
+    careerLevel:               p?.careerLevel ?? '',
+    careerTargetLevel:         p?.careerTargetLevel ?? '',
+    industry:                  p?.industry ?? '',
+    filingStatus:              p?.filingStatus ?? '',
+    dependents:                typeof p?.dependents === 'number' ? p.dependents : '',
+    employer401kMatchPct:      typeof p?.employer401kMatchPct === 'number' ? p.employer401kMatchPct : '',
+    vestingStatus:             p?.vestingStatus ?? '',
   }
 }
 
@@ -230,6 +275,23 @@ function payloadFor(section: Section, v: ProfileValues): Record<string, unknown>
           v.targetRetirementIncome > 0 ? Number(v.targetRetirementIncome) : null,
         emergencyFundMonthsTarget: Number(v.emergencyFundMonthsTarget),
         riskTolerance:             Number(v.riskTolerance),
+      }
+    case 'career':
+      return {
+        careerLevel:       v.careerLevel.trim(),
+        careerTargetLevel: v.careerTargetLevel.trim(),
+        industry:          v.industry.trim(),
+      }
+    case 'household':
+      return {
+        filingStatus: v.filingStatus === '' ? null : v.filingStatus,
+        dependents:   v.dependents === '' ? null : Number(v.dependents),
+      }
+    case 'compensation':
+      return {
+        employer401kMatchPct:
+          v.employer401kMatchPct === '' ? null : Number(v.employer401kMatchPct),
+        vestingStatus: v.vestingStatus === '' ? null : v.vestingStatus,
       }
   }
 }
@@ -394,19 +456,12 @@ function styles(isMobile: boolean) {
     minHeight: isMobile ? spacing.tapTarget : undefined,
     width: isMobile ? '100%' : undefined,
   }
-  const secondaryBtn: CSSProperties = {
-    padding: isMobile ? '12px 18px' : '10px 18px',
-    backgroundColor: 'transparent',
-    border: '1px solid var(--color-border)',
-    borderRadius: '2px',
-    color: 'var(--color-text-muted)',
-    fontFamily: 'var(--font-mono)',
-    fontSize: 13,
-    letterSpacing: '0.08em',
-    cursor: 'pointer',
-    minHeight: isMobile ? spacing.tapTarget : undefined,
-    width: isMobile ? '100%' : undefined,
-  }
+  const secondaryBtnStyle: CSSProperties = secondaryBtn({
+    font: 'mono',
+    emphasis: 'subtle',
+    isMobile,
+    bordered: true,
+  })
   const editBtn: CSSProperties = {
     fontFamily: 'var(--font-mono)',
     fontSize: isMobile ? 11 : 12,
@@ -438,7 +493,7 @@ function styles(isMobile: boolean) {
     flexDirection: isMobile ? 'column' : 'row',
     gap: 10,
   }
-  return { card, sectionLabel, fieldLabel, fieldValue, input, primaryBtn, secondaryBtn, editBtn, readGrid, editGrid, buttonRow }
+  return { card, sectionLabel, fieldLabel, fieldValue, input, primaryBtn, secondaryBtn: secondaryBtnStyle, editBtn, readGrid, editGrid, buttonRow }
 }
 
 function ProfileContent({ isMobile }: { isMobile: boolean }) {
@@ -492,21 +547,44 @@ function ProfileContent({ isMobile }: { isMobile: boolean }) {
     title: string,
     body: ReactNode,
     editBody: ReactNode,
+    subtitle?: string,
+    anchorId?: string,
   ) => {
     const isEditing = editing === section
     const anotherOpen = editing !== null && !isEditing
     const wrapperStyle: CSSProperties = isMobile ? {} : s.card
     const Wrapper = isMobile
-      ? ({ children }: { children: ReactNode }) => <MobileCard>{children}</MobileCard>
-      : ({ children }: { children: ReactNode }) => <div style={wrapperStyle}>{children}</div>
+      ? ({ children }: { children: ReactNode }) => (
+          <div id={anchorId} style={{ scrollMarginTop: 80 }}>
+            <MobileCard>{children}</MobileCard>
+          </div>
+        )
+      : ({ children }: { children: ReactNode }) => (
+          <div id={anchorId} style={{ ...wrapperStyle, scrollMarginTop: 80 }}>
+            {children}
+          </div>
+        )
 
     return (
       <Wrapper>
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginBottom: 16, gap: 12,
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+          marginBottom: subtitle ? 12 : 16, gap: 12,
         }}>
-          <p style={s.sectionLabel}>{title}</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <p style={s.sectionLabel}>{title}</p>
+            {subtitle && (
+              <p style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: isMobile ? 11 : 12,
+                color: 'var(--color-text-muted)',
+                lineHeight: 1.45,
+                margin: 0,
+              }}>
+                {subtitle}
+              </p>
+            )}
+          </div>
           {!isEditing && !anotherOpen && (
             <button
               onClick={() => startEdit(section)}
@@ -773,6 +851,151 @@ function ProfileContent({ isMobile }: { isMobile: boolean }) {
             ),
           )}
 
+          {/* ── Career ──────────────────────────────────────────────────── */}
+          {renderSection(
+            'career',
+            'Career',
+            <div style={s.readGrid}>
+              {cell('Current level', profile.careerLevel       || 'Not set')}
+              {cell('Target level',  profile.careerTargetLevel || 'Not set')}
+              {cell('Industry',      profile.industry          || 'Not set')}
+            </div>,
+            ev && (
+              <div style={s.editGrid}>
+                <div>
+                  <label style={s.fieldLabel}>Current level</label>
+                  <input type="text" value={ev.careerLevel}
+                    placeholder="e.g. Senior, Staff, VP"
+                    onChange={e => setEditValues(v => v ? { ...v, careerLevel: e.target.value } : v)}
+                    style={s.input} />
+                </div>
+                <div>
+                  <label style={s.fieldLabel}>Target level</label>
+                  <input type="text" value={ev.careerTargetLevel}
+                    placeholder="e.g. Staff, Director"
+                    onChange={e => setEditValues(v => v ? { ...v, careerTargetLevel: e.target.value } : v)}
+                    style={s.input} />
+                </div>
+                <div>
+                  <label style={s.fieldLabel}>Industry</label>
+                  <input type="text" value={ev.industry}
+                    placeholder="e.g. Software, Finance"
+                    onChange={e => setEditValues(v => v ? { ...v, industry: e.target.value } : v)}
+                    style={s.input} />
+                </div>
+              </div>
+            ),
+            "Helps Illumin's Engine tailor your trajectory.",
+            'career',
+          )}
+
+          {/* ── Household ───────────────────────────────────────────────── */}
+          {renderSection(
+            'household',
+            'Household',
+            <div style={s.readGrid}>
+              {cell(
+                'Filing status',
+                profile.filingStatus ? FILING_STATUS_LABEL[profile.filingStatus] : 'Not set',
+              )}
+              {cell(
+                'Dependents',
+                typeof profile.dependents === 'number' ? `${profile.dependents}` : 'Not set',
+              )}
+            </div>,
+            ev && (
+              <div style={s.editGrid}>
+                <div>
+                  <label style={s.fieldLabel}>Filing status</label>
+                  <select
+                    value={ev.filingStatus}
+                    onChange={e => setEditValues(v =>
+                      v ? { ...v, filingStatus: e.target.value as FilingStatusValue | '' } : v
+                    )}
+                    style={s.input}
+                  >
+                    <option value="">Not set</option>
+                    {FILING_STATUS_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={s.fieldLabel}>Dependents</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={20}
+                    value={ev.dependents === '' ? '' : ev.dependents}
+                    onChange={e => setEditValues(v => {
+                      if (!v) return v
+                      const raw = e.target.value
+                      return { ...v, dependents: raw === '' ? '' : Number(raw) }
+                    })}
+                    style={s.input}
+                  />
+                </div>
+              </div>
+            ),
+            'Used for tax-aware opportunity cost.',
+            'household',
+          )}
+
+          {/* ── Compensation ────────────────────────────────────────────── */}
+          {renderSection(
+            'compensation',
+            'Compensation',
+            <div style={s.readGrid}>
+              {cell(
+                '401(k) employer match',
+                typeof profile.employer401kMatchPct === 'number'
+                  ? `${profile.employer401kMatchPct}%`
+                  : 'Not set',
+              )}
+              {cell(
+                'Vesting status',
+                profile.vestingStatus ? VESTING_STATUS_LABEL[profile.vestingStatus] : 'Not set',
+              )}
+            </div>,
+            ev && (
+              <div style={s.editGrid}>
+                <div>
+                  <label style={s.fieldLabel}>401(k) employer match (%)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.5}
+                    value={ev.employer401kMatchPct === '' ? '' : ev.employer401kMatchPct}
+                    onChange={e => setEditValues(v => {
+                      if (!v) return v
+                      const raw = e.target.value
+                      return { ...v, employer401kMatchPct: raw === '' ? '' : Number(raw) }
+                    })}
+                    style={s.input}
+                  />
+                </div>
+                <div>
+                  <label style={s.fieldLabel}>Vesting status</label>
+                  <select
+                    value={ev.vestingStatus}
+                    onChange={e => setEditValues(v =>
+                      v ? { ...v, vestingStatus: e.target.value as VestingStatusValue | '' } : v
+                    )}
+                    style={s.input}
+                  >
+                    <option value="">Not set</option>
+                    {VESTING_STATUS_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ),
+            'Sharpens your real opportunity cost.',
+            'compensation',
+          )}
+
           {/* ── Goals & risk ────────────────────────────────────────────── */}
           {renderSection(
             'goals',
@@ -880,6 +1103,6 @@ function ProfileContent({ isMobile }: { isMobile: boolean }) {
 }
 
 export default function ProfilePage() {
-  const isMobile = useIsMobile()
+  const isMobile = useIsMobile() ?? true
   return <ProfileContent isMobile={isMobile} />
 }

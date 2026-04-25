@@ -569,6 +569,6 @@ function OpportunityMobile() {
 }
 
 export default function OpportunityPage() {
-  const isMobile = useIsMobile()
+  const isMobile = useIsMobile() ?? true
   return isMobile ? <OpportunityMobile /> : <OpportunityDesktop />
 }

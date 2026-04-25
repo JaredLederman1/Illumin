@@ -758,6 +758,6 @@ function AccountsDesktop() {
 }
 
 export default function AccountsPage() {
-  const isMobile = useIsMobile()
+  const isMobile = useIsMobile() ?? true
   return isMobile ? <AccountsMobile /> : <AccountsDesktop />
 }

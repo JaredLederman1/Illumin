@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import styles from '@/app/landing.module.css'
+import { continueBtn } from '@/components/ui/buttonTokens'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -51,21 +52,6 @@ const muted: React.CSSProperties = {
   textTransform: 'uppercase',
 }
 
-const continueBtn: React.CSSProperties = {
-  display: 'block',
-  margin: '48px auto 0',
-  padding: '13px 36px',
-  backgroundColor: 'var(--color-gold)',
-  border: 'none',
-  borderRadius: '2px',
-  color: 'var(--color-surface)',
-  fontSize: '12px',
-  fontFamily: 'var(--font-mono)',
-  letterSpacing: '0.12em',
-  textTransform: 'uppercase',
-  fontWeight: 500,
-  cursor: 'pointer',
-}
 
 const bigNumStyle: React.CSSProperties = {
   fontFamily: 'var(--font-serif)',
@@ -394,7 +380,7 @@ export default function OppCostCalculator() {
             </div>
           )}
 
-          <button type="submit" style={continueBtn}>
+          <button type="submit" style={continueBtn({ layout: 'block', font: 'mono' })}>
             {typeof step === 'number' && step < 3 ? 'Continue' : 'See my number'}
           </button>
         </form>

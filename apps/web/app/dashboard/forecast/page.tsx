@@ -289,6 +289,6 @@ function ForecastMobile() {
 }
 
 export default function ForecastPage() {
-  const isMobile = useIsMobile()
+  const isMobile = useIsMobile() ?? true
   return isMobile ? <ForecastMobile /> : <ForecastDesktop />
 }

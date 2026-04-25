@@ -22,14 +22,13 @@ export interface OnboardingData {
   // Step 4
   targetRetirementIncome: number | null
   emergencyFundMonthsTarget: number
-  majorGoals: string[]
   riskTolerance: number
 }
 
 export const DEFAULTS: OnboardingData = {
   age: '',
   annualIncome: 0,
-  savingsRate: 20,
+  savingsRate: 5,
   retirementAge: 65,
   locationCity: '',
   locationState: '',
@@ -40,7 +39,6 @@ export const DEFAULTS: OnboardingData = {
   contractUploadedAt: null,
   targetRetirementIncome: null,
   emergencyFundMonthsTarget: 6,
-  majorGoals: [],
   riskTolerance: 3,
 }
 
@@ -50,10 +48,9 @@ export const STEP_LABELS = [
   'Contract',
   'Goals',
   'Accounts',
-  'Overview',
 ] as const
 
-export const TOTAL_STEPS = 6
+export const TOTAL_STEPS = STEP_LABELS.length
 
 // Sub-step counts per top-level step. The orchestrator sums these to drive
 // the hairline progress bar and to map (step, subIndex) to a global index.
@@ -111,7 +108,7 @@ export function requiredNestEgg(targetAnnualIncome: number): number {
 
 // Value of one year of contributions at the given rate, compounded to
 // retirement. Represents "what delaying your start by one year costs you" at
-// that rate. Used by Step6Reveal's headline figure.
+// that rate.
 export function oneYearDelayCost(
   age: number,
   salary: number,
@@ -223,66 +220,11 @@ export const muted: CSSProperties = {
   fontWeight: 500,
 }
 
-// Primary Continue button. Gold fill, 44px min touch-target, Geist sans. Used
-// for forward advance on every sub-step.
-export const continueBtn: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: '10px',
-  minHeight: '44px',
-  padding: '12px 34px',
-  backgroundColor: 'var(--color-gold)',
-  border: 'none',
-  borderRadius: '2px',
-  color: 'var(--color-surface)',
-  fontSize: '13px',
-  fontFamily: 'var(--font-sans)',
-  letterSpacing: '0.14em',
-  textTransform: 'uppercase',
-  fontWeight: 600,
-  cursor: 'pointer',
-}
-
-// Outlined gold variant used by WelcomeIntro's Begin button and by the reveal
-// secondary CTA. Understated on purpose.
-export const outlineBtn: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: '10px',
-  minHeight: '44px',
-  padding: '12px 34px',
-  backgroundColor: 'transparent',
-  border: '1px solid var(--color-gold)',
-  borderRadius: '2px',
-  color: 'var(--color-gold)',
-  fontSize: '13px',
-  fontFamily: 'var(--font-sans)',
-  letterSpacing: '0.14em',
-  textTransform: 'uppercase',
-  fontWeight: 600,
-  cursor: 'pointer',
-}
-
-// "Skip for now" muted text, still meets 44px tap target.
-export const secondaryBtn: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  minHeight: '44px',
-  padding: '10px 20px',
-  background: 'transparent',
-  border: 'none',
-  borderRadius: '2px',
-  color: 'var(--color-text-muted)',
-  fontSize: '12px',
-  fontFamily: 'var(--font-sans)',
-  letterSpacing: '0.12em',
-  textTransform: 'uppercase',
-  fontWeight: 500,
-  cursor: 'pointer',
-}
+// Re-exported from the app-wide button token factory. Onboarding consumers
+// keep importing `continueBtn` and `secondaryBtn` from this module, but they
+// must now call them as functions: `style={continueBtn()}` rather than
+// `style={continueBtn}`. Defaults reproduce the previous static tokens.
+export { continueBtn, secondaryBtn, outlineBtn } from '@/components/ui/buttonTokens'
 
 // Large input used on every question sub-step. 56px tall on desktop; still
 // reads at 44px on mobile. Mono keeps numbers stable-width. Generous padding.

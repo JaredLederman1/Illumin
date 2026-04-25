@@ -181,18 +181,39 @@ model OnboardingProfile {
   employerStartDate         DateTime? @map("employer_start_date")
   targetRetirementIncome    Float?    @map("target_retirement_income")
   emergencyFundMonthsTarget Int?      @default(6) @map("emergency_fund_months_target")
-  majorGoals                String[]  @default([]) @map("major_goals")
   riskTolerance             Int?      @map("risk_tolerance")
   contractParsedData        Json?     @map("contract_parsed_data")
   contractUploadedAt        DateTime? @map("contract_uploaded_at")
   contractStepSkippedAt     DateTime? @map("contract_step_skipped_at")
   introSeenAt               DateTime? @map("intro_seen_at")
   completedAt               DateTime? @map("completed_at")
+  careerLevel               String?        @map("career_level")
+  careerTargetLevel         String?        @map("career_target_level")
+  industry                  String?
+  filingStatus              FilingStatus?  @map("filing_status")
+  dependents                Int?
+  employer401kMatchPct      Float?         @map("employer_401k_match_pct")
+  vestingStatus             VestingStatus? @map("vesting_status")
   createdAt                 DateTime  @default(now()) @map("created_at")
   updatedAt                 DateTime  @updatedAt @map("updated_at")
   user                      User      @relation(fields: [userId], references: [id])
 
   @@map("onboarding_profiles")
+}
+
+enum FilingStatus {
+  SINGLE
+  MARRIED_FILING_JOINTLY
+  MARRIED_FILING_SEPARATELY
+  HEAD_OF_HOUSEHOLD
+  QUALIFYING_SURVIVING_SPOUSE
+}
+
+enum VestingStatus {
+  NOT_VESTED
+  PARTIALLY_VESTED
+  FULLY_VESTED
+  CLIFF_NOT_REACHED
 }
 
 model CategoryRule {

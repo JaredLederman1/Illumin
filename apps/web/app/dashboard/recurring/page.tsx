@@ -684,6 +684,6 @@ function RecurringMobile() {
 }
 
 export default function RecurringPage() {
-  const isMobile = useIsMobile()
+  const isMobile = useIsMobile() ?? true
   return isMobile ? <RecurringMobile /> : <RecurringDesktop />
 }

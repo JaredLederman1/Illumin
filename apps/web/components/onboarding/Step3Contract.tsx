@@ -3,7 +3,8 @@
 import { useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import type { OnboardingData } from './shared'
-import { questionHeading, contextCopy, continueBtn, secondaryBtn } from './shared'
+import { continueBtn } from './shared'
+import { SubStepShell } from './SubStepShell'
 import { useSaveOnboardingMutation, useUploadBenefitsMutation } from '@/lib/queries'
 
 interface Props {
@@ -12,7 +13,7 @@ interface Props {
   onAdvance: () => void
   onSkip?: () => void
   busy?: boolean
-  isMobile: boolean
+  isMobile: boolean | null
 }
 
 // Wires into /api/user/benefits/extract. Kept at its current position in the
@@ -63,29 +64,15 @@ export function Step3Contract({ data, onChange, onAdvance, onSkip, busy, isMobil
   }
 
   return (
-    <div
-      style={{
-        width: '100%',
-        maxWidth: '620px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: isMobile ? '24px' : '36px',
-      }}
+    <SubStepShell
+      question="Do you have an offer letter or benefits summary?"
+      context="Upload it and Illumin screens your 401k match, equity grants, and every benefit line you would otherwise miss. Everything stays private."
+      canAdvance={state === 'done'}
+      busy={busy}
+      onAdvance={onAdvance}
+      onSkip={onSkip ? handleSkip : undefined}
+      isMobile={isMobile}
     >
-      <motion.h1
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-        style={questionHeading}
-      >
-        Do you have an offer letter or benefits summary?
-      </motion.h1>
-
-      <p style={contextCopy}>
-        Upload it and Illumin screens your 401k match, equity grants, and every
-        benefit line you would otherwise miss. Everything stays private.
-      </p>
-
       <input
         ref={inputRef}
         type="file"
@@ -170,12 +157,12 @@ export function Step3Contract({ data, onChange, onAdvance, onSkip, busy, isMobil
               onClick={() => inputRef.current?.click()}
               disabled={state === 'uploading'}
               style={{
-                ...continueBtn,
+                ...continueBtn(),
                 opacity: state === 'uploading' ? 0.65 : 1,
                 cursor: state === 'uploading' ? 'not-allowed' : 'pointer',
               }}
             >
-              {state === 'uploading' ? 'Analyzing…' : 'Choose a file'}
+              {state === 'uploading' ? 'Analyzing...' : 'Choose a file'}
             </button>
             {error && (
               <p
@@ -192,36 +179,6 @@ export function Step3Contract({ data, onChange, onAdvance, onSkip, busy, isMobil
           </>
         )}
       </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
-        {state === 'done' && (
-          <button
-            type="button"
-            onClick={onAdvance}
-            style={continueBtn}
-          >
-            Continue
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12" />
-              <polyline points="12 5 19 12 12 19" />
-            </svg>
-          </button>
-        )}
-        {onSkip && (
-          <button
-            type="button"
-            onClick={handleSkip}
-            disabled={busy}
-            style={{
-              ...secondaryBtn,
-              opacity: busy ? 0.45 : 1,
-              cursor: busy ? 'not-allowed' : 'pointer',
-            }}
-          >
-            Skip for now
-          </button>
-        )}
-      </div>
-    </div>
+    </SubStepShell>
   )
 }

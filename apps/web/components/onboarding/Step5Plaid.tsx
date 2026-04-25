@@ -1,16 +1,23 @@
 'use client'
 
+// Bespoke layout. Step 5 multi-screen flow + Plaid Link integration cannot use SubStepShell.
+
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import {
+  animate,
+  AnimatePresence,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useTransform,
+} from 'framer-motion'
 import { usePlaidLink } from 'react-plaid-link'
 import {
   questionHeading,
   contextCopy,
   continueBtn,
   fmt,
-  opportunityCostOneYear,
   projectWealth,
-  requiredNestEgg,
 } from './shared'
 import { usePlaidLinkTokenQuery, usePlaidExchangeMutation } from '@/lib/queries'
 
@@ -45,7 +52,7 @@ interface Props {
   savingsRate: number
   retirementAge: number
   targetRetirementIncome: number | null
-  isMobile: boolean
+  isMobile: boolean | null
 }
 
 const STAGE = {
@@ -64,17 +71,26 @@ const REVEAL_DELAYS: Record<number, number> = {
   [STAGE.BUTTON]: 4200,
 }
 
+// Side-by-side reveal timing. The card fades in first; once it's visible the
+// three numbers count up in a stagger so the eye lands on Current, then the
+// gold Gap, then Optimized. Times are absolute from screen 1 mount.
+const CARD_FADE_MS          = 400
+const CURRENT_DELAY_MS      = CARD_FADE_MS + 0
+const CURRENT_DURATION_MS   = 800
+const GAP_DELAY_MS          = CARD_FADE_MS + 400
+const GAP_DURATION_MS       = 1000
+const OPTIMIZED_DELAY_MS    = CARD_FADE_MS + 800
+const OPTIMIZED_DURATION_MS = 1000
+
 export function Step5Plaid({
   linkedAccounts,
   onLinked,
   onCompleteAssetLinked,
-  onSkipForNow,
   busy = false,
   age,
   annualIncome,
   savingsRate,
   retirementAge,
-  targetRetirementIncome,
   isMobile,
 }: Props) {
   const { data: linkToken, error: linkTokenError } = usePlaidLinkTokenQuery()
@@ -89,18 +105,31 @@ export function Step5Plaid({
   const [stage, setStage] = useState(0)
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
+  // Math for the side-by-side gap reveal. Reuses projectWealth from shared.ts;
+  // no new projection math is introduced here. If the user's saved rate is
+  // missing, falsy, or zero, fall back to 5 (the new default) for the
+  // current-path calculation. Optimized is always 10 points above current,
+  // floored at 15, so guidance always represents a meaningful step up.
   const ageNum = typeof age === 'number' ? age : 0
-  const oppCost = opportunityCostOneYear(ageNum, annualIncome, savingsRate, retirementAge)
+  const yearsToRetire = retirementAge - ageNum
+  const projectionImpossible = ageNum <= 0 || retirementAge <= ageNum
 
-  // When oppCost is 0 (user at or above target rate), check whether their
-  // projected wealth exceeds their target nest egg. If so, surface that
-  // surplus as "margin of safety" instead. Otherwise fall through to the
-  // neutral paragraph fallback.
-  const projection = projectWealth(ageNum, annualIncome, savingsRate, retirementAge)
-  const targetNestEgg = targetRetirementIncome
-    ? requiredNestEgg(targetRetirementIncome)
-    : 0
-  const marginOfSafety = targetNestEgg > 0 ? Math.max(0, projection - targetNestEgg) : 0
+  const effectiveCurrentRate =
+    typeof savingsRate === 'number' && savingsRate > 0 ? savingsRate : 5
+  const optimizedRate = Math.max(effectiveCurrentRate + 10, 15)
+
+  const currentPathValue = projectionImpossible
+    ? 0
+    : projectWealth(ageNum, annualIncome, effectiveCurrentRate, retirementAge)
+  const optimizedPathValue = projectionImpossible
+    ? 0
+    : projectWealth(ageNum, annualIncome, optimizedRate, retirementAge)
+  const gapValue = Math.max(0, optimizedPathValue - currentPathValue)
+
+  // Treat the unmeasured first paint (isMobile === null) as mobile so the
+  // stacked layout is the safer default before hydration measures the
+  // viewport.
+  const stackOnMobile = isMobile === true || isMobile === null
 
   const handlePlaidSuccess = useCallback(
     async (publicToken: string, metadata: PlaidOnSuccessMetadata) => {
@@ -178,10 +207,10 @@ export function Step5Plaid({
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
             style={{
               width: '100%',
-              maxWidth: '620px',
+              maxWidth: '740px',
               display: 'flex',
               flexDirection: 'column',
-              gap: isMobile ? '28px' : '40px',
+              gap: stackOnMobile ? '24px' : '32px',
             }}
           >
             <motion.h1
@@ -190,113 +219,96 @@ export function Step5Plaid({
               transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
               style={questionHeading}
             >
-              Turn estimate into verified fact.
+              This is what's at stake.
             </motion.h1>
 
-            {oppCost > 0 ? (
-              <motion.div
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '14px',
-                  padding: '22px 24px',
-                  backgroundColor: 'var(--color-surface)',
-                  border: '1px solid var(--color-gold-border)',
-                  borderRadius: '2px',
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: 'var(--font-sans)',
-                    fontSize: '11px',
-                    color: 'var(--color-text-muted)',
-                    letterSpacing: '0.14em',
-                    textTransform: 'uppercase',
-                    fontWeight: 500,
-                  }}
-                >
-                  The cost of doing nothing, per year
-                </span>
-                <span
-                  style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 'clamp(40px, 6vw, 56px)',
-                    fontWeight: 400,
-                    color: 'var(--color-negative)',
-                    lineHeight: 1,
-                    letterSpacing: '-0.01em',
-                  }}
-                >
-                  {fmt(oppCost)}
-                </span>
+            <motion.p
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
+              style={contextCopy}
+            >
+              Your numbers right now project two very different futures.
+              Linking your accounts lets Illumin's Engine close the gap
+              between them.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: CARD_FADE_MS / 1000, ease: [0.22, 1, 0.36, 1] }}
+              style={{
+                padding: stackOnMobile ? '24px 18px' : '36px 28px',
+                backgroundColor: 'var(--color-surface)',
+                border: '1px solid var(--color-gold-border)',
+                borderRadius: '2px',
+              }}
+            >
+              {projectionImpossible ? (
                 <p
                   style={{
                     ...contextCopy,
-                    color: 'var(--color-text)',
-                    fontSize: '15px',
+                    textAlign: 'center',
                     margin: 0,
                   }}
                 >
-                  Every year you don't act, Illumin flags this gap between where your money is and where it could be.
+                  Adjust your retirement age to see this projection.
                 </p>
-              </motion.div>
-            ) : marginOfSafety > 0 ? (
-              <motion.div
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+              ) : (
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: stackOnMobile ? 'column' : 'row',
+                    alignItems: 'stretch',
+                    gap: stackOnMobile ? '28px' : '0',
+                  }}
+                >
+                  <ProjectionPanel
+                    label="Current Path"
+                    value={currentPathValue}
+                    caption="Your trajectory at today's savings rate."
+                    tone="muted"
+                    size="default"
+                    delayMs={CURRENT_DELAY_MS}
+                    durationMs={CURRENT_DURATION_MS}
+                  />
+                  {!stackOnMobile && <PanelDivider />}
+                  <ProjectionPanel
+                    label="Gap"
+                    value={gapValue}
+                    caption="What waiting costs you."
+                    tone="gold"
+                    size="hero"
+                    delayMs={GAP_DELAY_MS}
+                    durationMs={GAP_DURATION_MS}
+                  />
+                  {!stackOnMobile && <PanelDivider />}
+                  <ProjectionPanel
+                    label="Optimized Path"
+                    value={optimizedPathValue}
+                    caption="What guided saving could deliver."
+                    tone="muted"
+                    size="default"
+                    delayMs={OPTIMIZED_DELAY_MS}
+                    durationMs={OPTIMIZED_DURATION_MS}
+                  />
+                </div>
+              )}
+            </motion.div>
+
+            {!projectionImpossible && (
+              <p
                 style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '14px',
-                  padding: '22px 24px',
-                  backgroundColor: 'var(--color-surface)',
-                  border: '1px solid var(--color-gold-border)',
-                  borderRadius: '2px',
+                  margin: 0,
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: '12px',
+                  color: 'var(--color-text-muted)',
+                  letterSpacing: '0.02em',
+                  lineHeight: 1.55,
+                  textAlign: 'center',
                 }}
               >
-                <span
-                  style={{
-                    fontFamily: 'var(--font-sans)',
-                    fontSize: '11px',
-                    color: 'var(--color-text-muted)',
-                    letterSpacing: '0.14em',
-                    textTransform: 'uppercase',
-                    fontWeight: 500,
-                  }}
-                >
-                  Your margin of safety
-                </span>
-                <span
-                  style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 'clamp(40px, 6vw, 56px)',
-                    fontWeight: 400,
-                    color: 'var(--color-gold)',
-                    lineHeight: 1,
-                    letterSpacing: '-0.01em',
-                  }}
-                >
-                  {fmt(marginOfSafety)}
-                </span>
-                <p
-                  style={{
-                    ...contextCopy,
-                    color: 'var(--color-text)',
-                    fontSize: '15px',
-                    margin: 0,
-                  }}
-                >
-                  You're projected to exceed your target by this much. That surplus is optionality: earlier retirement, bigger legacy, or resilience against a bad market decade.
-                </p>
-              </motion.div>
-            ) : (
-              <p style={contextCopy}>
-                Link a checking, savings, or investment account so Illumin can monitor
-                real balances instead of estimates.
+                Assumes 7% real return over {yearsToRetire} years to retirement age {retirementAge}.
               </p>
             )}
 
@@ -420,7 +432,7 @@ export function Step5Plaid({
                 }}
                 disabled={!plaidReady || exchanging || busy}
                 style={{
-                  ...continueBtn,
+                  ...continueBtn(),
                   opacity: !plaidReady || exchanging || busy ? 0.65 : 1,
                   cursor: !plaidReady || exchanging || busy ? 'not-allowed' : 'pointer',
                 }}
@@ -455,7 +467,7 @@ export function Step5Plaid({
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'flex-start',
-            paddingTop: isMobile ? '18vh' : '22vh',
+            paddingTop: isMobile !== false ? '18vh' : '22vh',
             paddingLeft: '24px',
             paddingRight: '24px',
             zIndex: 80,
@@ -545,7 +557,7 @@ export function Step5Plaid({
                   }}
                   disabled={!plaidReady || exchanging || busy}
                   style={{
-                    ...continueBtn,
+                    ...continueBtn(),
                     marginTop: '22px',
                     opacity: !plaidReady || exchanging || busy ? 0.65 : 1,
                     cursor: !plaidReady || exchanging || busy ? 'not-allowed' : 'pointer',
@@ -621,4 +633,132 @@ function CheckmarkRow({ children }: { children: React.ReactNode }) {
       </p>
     </div>
   )
+}
+
+interface ProjectionPanelProps {
+  label: string
+  value: number
+  caption: string
+  tone: 'muted' | 'gold'
+  size: 'default' | 'hero'
+  delayMs: number
+  durationMs: number
+}
+
+function ProjectionPanel({
+  label,
+  value,
+  caption,
+  tone,
+  size,
+  delayMs,
+  durationMs,
+}: ProjectionPanelProps) {
+  const digitColor = tone === 'gold' ? 'var(--color-gold)' : 'var(--color-text-muted)'
+  const digitFontSize =
+    size === 'hero'
+      ? 'clamp(40px, 6vw, 56px)'
+      : 'clamp(26px, 3.4vw, 34px)'
+  const digitFontWeight = size === 'hero' ? 500 : 400
+
+  return (
+    <div
+      style={{
+        flex: 1,
+        minWidth: 0,
+        padding: '0 12px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '12px',
+        textAlign: 'center',
+      }}
+    >
+      <span
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: '10.5px',
+          color: 'var(--color-text-muted)',
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+          fontWeight: 500,
+        }}
+      >
+        {label}
+      </span>
+      <CountUpNumber
+        value={value}
+        delayMs={delayMs}
+        durationMs={durationMs}
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: digitFontSize,
+          fontWeight: digitFontWeight,
+          color: digitColor,
+          lineHeight: 1,
+          letterSpacing: '-0.01em',
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      />
+      <span
+        style={{
+          fontFamily: 'var(--font-sans)',
+          fontSize: '12px',
+          color: 'var(--color-text-mid)',
+          lineHeight: 1.5,
+          maxWidth: '200px',
+        }}
+      >
+        {caption}
+      </span>
+    </div>
+  )
+}
+
+function PanelDivider() {
+  return (
+    <div
+      aria-hidden
+      style={{
+        width: '1px',
+        alignSelf: 'stretch',
+        backgroundColor: 'var(--color-border)',
+      }}
+    />
+  )
+}
+
+interface CountUpNumberProps {
+  value: number
+  delayMs: number
+  durationMs: number
+  style: React.CSSProperties
+}
+
+// Numeric tween from 0 to `value`, formatted via `fmt` on each frame. Honors
+// prefers-reduced-motion by snapping straight to the final value with no
+// animation. Re-runs whenever the target value changes so the panel still
+// reflows after the user adjusts inputs upstream. Uses framer-motion's
+// motion-value plumbing so the count-up is driven by the animation runtime
+// rather than React setState calls inside an effect.
+function CountUpNumber({ value, delayMs, durationMs, style }: CountUpNumberProps) {
+  const reducedMotion = useReducedMotion()
+  const count = useMotionValue(reducedMotion ? value : 0)
+  const formatted = useTransform(count, latest => fmt(Math.round(latest)))
+
+  useEffect(() => {
+    if (reducedMotion) {
+      count.set(value)
+      return
+    }
+    count.set(0)
+    const controls = animate(count, value, {
+      duration: durationMs / 1000,
+      delay: delayMs / 1000,
+      ease: 'easeOut',
+    })
+    return () => controls.stop()
+  }, [value, delayMs, durationMs, reducedMotion, count])
+
+  return <motion.span style={style}>{formatted}</motion.span>
 }

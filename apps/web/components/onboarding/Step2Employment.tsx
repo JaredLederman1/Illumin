@@ -13,7 +13,7 @@ interface Props {
   onSubAdvance: () => void
   onSkip?: () => void
   busy?: boolean
-  isMobile: boolean
+  isMobile: boolean | null
 }
 
 const FIELDS = ['title', 'employer', 'startDate'] as const

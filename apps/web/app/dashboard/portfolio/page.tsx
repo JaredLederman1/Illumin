@@ -1440,6 +1440,6 @@ function PortfolioMobile() {
 // ── Device-aware entry point ──────────────────────────────────────────────────
 
 export default function PortfolioPage() {
-  const isMobile = useIsMobile()
+  const isMobile = useIsMobile() ?? true
   return isMobile ? <PortfolioMobile /> : <PortfolioDesktop />
 }

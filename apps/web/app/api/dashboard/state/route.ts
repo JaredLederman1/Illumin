@@ -237,6 +237,13 @@ export async function GET() {
             retirementAge: onboarding.retirementAge,
             emergencyFundMonthsTarget: onboarding.emergencyFundMonthsTarget ?? null,
             contractParsedData: (onboarding.contractParsedData ?? null) as Record<string, unknown> | null,
+            careerLevel: onboarding.careerLevel ?? null,
+            careerTargetLevel: onboarding.careerTargetLevel ?? null,
+            industry: onboarding.industry ?? null,
+            filingStatus: onboarding.filingStatus ?? null,
+            dependents: onboarding.dependents ?? null,
+            employer401kMatchPct: onboarding.employer401kMatchPct ?? null,
+            vestingStatus: onboarding.vestingStatus ?? null,
           }
         : null,
       transactionsSummary,
@@ -287,6 +294,7 @@ export async function GET() {
       rationale: detected.rationale,
       heroMetrics,
       priorityMetrics,
+      onboardingProfile: input.onboardingProfile,
       computedAt: new Date().toISOString(),
     })
   } catch (error) {

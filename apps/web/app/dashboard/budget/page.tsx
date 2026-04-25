@@ -1790,6 +1790,6 @@ function BudgetMobile() {
 // Default export
 
 export default function BudgetPage() {
-  const isMobile = useIsMobile()
+  const isMobile = useIsMobile() ?? true
   return isMobile ? <BudgetMobile /> : <BudgetDesktop />
 }

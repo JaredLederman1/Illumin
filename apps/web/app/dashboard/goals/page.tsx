@@ -383,6 +383,6 @@ function GoalsMobile() {
 }
 
 export default function GoalsPage() {
-  const isMobile = useIsMobile()
+  const isMobile = useIsMobile() ?? true
   return isMobile ? <GoalsMobile /> : <GoalsDesktop />
 }

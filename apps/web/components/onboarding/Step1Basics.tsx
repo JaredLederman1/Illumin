@@ -12,7 +12,7 @@ interface Props {
   onChange: (patch: Partial<OnboardingData>) => void
   subIndex: number
   onSubAdvance: () => void
-  isMobile: boolean
+  isMobile: boolean | null
 }
 
 // Orchestrator-driven sub-steps. The parent owns the global sub-index and
@@ -109,20 +109,18 @@ export function Step1Basics({ data, onChange, subIndex, onSubAdvance, isMobile }
             aria-invalid={ageOutOfRange || undefined}
             style={largeNumericInput}
           />
-          {ageOutOfRange && (
-            <p
-              style={{
-                margin: 0,
-                fontFamily: 'var(--font-sans)',
-                fontSize: '12px',
-                color: 'var(--color-text-muted)',
-                letterSpacing: '0.02em',
-                lineHeight: 1.5,
-              }}
-            >
-              Age must be between {AGE_MIN} and {AGE_MAX}.
-            </p>
-          )}
+          <p
+            style={{
+              margin: 0,
+              fontFamily: 'var(--font-sans)',
+              fontSize: '12px',
+              color: ageOutOfRange ? 'var(--color-negative)' : 'var(--color-text-muted)',
+              letterSpacing: '0.02em',
+              lineHeight: 1.5,
+            }}
+          >
+            Age must be between {AGE_MIN} and {AGE_MAX}.
+          </p>
         </div>
       )
       break

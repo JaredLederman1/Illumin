@@ -164,6 +164,19 @@ export interface ForecastData {
   projectedMonths: { month: string; balance: number; projected: boolean }[]
 }
 
+export type FilingStatusValue =
+  | 'SINGLE'
+  | 'MARRIED_FILING_JOINTLY'
+  | 'MARRIED_FILING_SEPARATELY'
+  | 'HEAD_OF_HOUSEHOLD'
+  | 'QUALIFYING_SURVIVING_SPOUSE'
+
+export type VestingStatusValue =
+  | 'NOT_VESTED'
+  | 'PARTIALLY_VESTED'
+  | 'FULLY_VESTED'
+  | 'CLIFF_NOT_REACHED'
+
 export interface OnboardingProfile {
   age: number
   annualIncome: number
@@ -180,6 +193,13 @@ export interface OnboardingProfile {
   contractUploadedAt: string | null
   contractStepSkippedAt: string | null
   completedAt?: string | null
+  careerLevel: string | null
+  careerTargetLevel: string | null
+  industry: string | null
+  filingStatus: FilingStatusValue | null
+  dependents: number | null
+  employer401kMatchPct: number | null
+  vestingStatus: VestingStatusValue | null
 }
 
 export interface BenefitsData {
@@ -507,6 +527,21 @@ export interface DashboardStateResponse {
   rationale?: unknown
   heroMetrics?: Record<string, unknown>
   priorityMetrics?: Record<string, unknown>
+  onboardingProfile?: {
+    age: number | null
+    annualIncome: number | null
+    savingsRate: number | null
+    retirementAge: number | null
+    emergencyFundMonthsTarget: number | null
+    contractParsedData: Record<string, unknown> | null
+    careerLevel: string | null
+    careerTargetLevel: string | null
+    industry: string | null
+    filingStatus: FilingStatusValue | null
+    dependents: number | null
+    employer401kMatchPct: number | null
+    vestingStatus: VestingStatusValue | null
+  } | null
   computedAt?: string
 }
 
@@ -651,12 +686,13 @@ export function useSaveOnboardingMutation() {
     // contractParsedData, etc.) must be invalidated here so the profile edit
     // propagates to every dependent feature.
     onSuccess: () => {
-      inv.onboarding()
+      void inv.onboarding()
       void inv.score()
       void inv.dashboardState()
       void inv.opportunity()
       void inv.goals()
       void inv.recovery()
+      void inv.budget()
     },
   })
 }

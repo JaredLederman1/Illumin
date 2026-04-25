@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 
 interface Props {
   value: number  // 0..1
-  isMobile: boolean
+  isMobile: boolean | null
 }
 
 /**
@@ -18,7 +18,7 @@ export function ProgressBar({ value, isMobile }: Props) {
     <div
       style={{
         width: '100%',
-        padding: isMobile ? '0 20px' : '0 40px',
+        padding: isMobile !== false ? '0 20px' : '0 40px',
       }}
     >
       <div

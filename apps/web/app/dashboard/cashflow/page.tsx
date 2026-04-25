@@ -550,6 +550,6 @@ function CashFlowMobile() {
 }
 
 export default function CashFlowPage() {
-  const isMobile = useIsMobile()
+  const isMobile = useIsMobile() ?? true
   return isMobile ? <CashFlowMobile /> : <CashFlowDesktop />
 }
