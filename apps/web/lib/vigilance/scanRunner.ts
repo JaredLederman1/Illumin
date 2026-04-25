@@ -26,6 +26,11 @@ import {
   resolveMissingSignals,
   computeSeverity,
 } from '@/lib/vigilance/signalLifecycle'
+import {
+  emitNotificationsForScan,
+  type SignalTransition,
+} from '@/lib/vigilance/notifications'
+import { sendNotificationEmail } from '@/lib/email/notifications'
 import { updateStabilityState } from '@/lib/vigilance/stabilityTracker'
 import { crossCheckBenefits, type ExtractedBenefits } from '@/lib/benefitsAnalysis'
 import type { ScanStatus, ScanTrigger } from '@/lib/types/vigilance'
@@ -192,16 +197,29 @@ export async function runScanForUser(
       },
     })
     const scanIdForTx = scan.id
-    const { signalsNew, signalsUpdated, signalsResolved } = await prisma.$transaction(
-      async tx => {
+    const { signalsNew, signalsUpdated, signalsResolved, notificationsEmitted, emittedNotifications } =
+      await prisma.$transaction(async tx => {
         let newCount = 0
         let updatedCount = 0
         const snapshotRows: Prisma.SignalSnapshotCreateManyInput[] = []
+        const created: SignalTransition[] = []
+        const updated: SignalTransition[] = []
 
         for (const gap of detected) {
           const result = await upsertSignal(tx, userId, gap, scanIdForTx, now)
           if (result.wasNew) newCount++
           else if (result.wasUpdated) updatedCount++
+          const transition: SignalTransition = {
+            signalId: result.signalId,
+            gapId: gap.gapId,
+            domain: gap.domain,
+            newState: result.state,
+            previousState: result.previousState,
+            previousAnnualValue: result.previousAnnualValue,
+            newAnnualValue: result.newAnnualValue,
+          }
+          if (result.wasNew) created.push(transition)
+          else if (result.wasUpdated) updated.push(transition)
           // Record a snapshot for every detected gap (new, updated, or
           // unchanged) so drift trajectories can be reconstructed exactly.
           // Resolved signals get no snapshot; their lifecycle is captured
@@ -224,6 +242,17 @@ export async function runScanForUser(
         }
 
         const resolvedCount = await resolveMissingSignals(tx, userId, detectedIdSet, now)
+
+        // Emit notifications inside the transaction so signal writes and
+        // their notifications either both commit or both roll back. The
+        // emitter applies its own clean-slate guard and may return zero
+        // emissions even when there are transitions.
+        const emissions = await emitNotificationsForScan(tx, {
+          userId,
+          scanId: scanIdForTx,
+          signalsCreated: created,
+          signalsUpdated: updated,
+        })
 
         Sentry.addBreadcrumb({
           category: 'scan',
@@ -260,9 +289,84 @@ export async function runScanForUser(
           signalsNew: newCount,
           signalsUpdated: updatedCount,
           signalsResolved: resolvedCount,
+          notificationsEmitted: emissions.length,
+          emittedNotifications: emissions,
         }
       },
     )
+
+    // Instant-mode email dispatch. Runs AFTER the transaction commits so
+    // email send latency never holds a pg connection and a Resend failure
+    // cannot roll back the scan's Signal/Notification writes. Any throw here
+    // is captured and swallowed so the scan still completes cleanly.
+    if (emittedNotifications.length > 0) {
+      try {
+        const prefs = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { notificationEmailMode: true },
+        })
+        if (prefs?.notificationEmailMode === 'instant') {
+          const ids = emittedNotifications.map(e => e.signalId) // used only for diagnostics
+          Sentry.addBreadcrumb({
+            category: 'scan',
+            message: 'instant_email_dispatching',
+            level: 'info',
+            data: { userId, scanId: scanIdForTx, count: emittedNotifications.length, signalIds: ids.slice(0, 10) },
+          })
+          const persisted = await prisma.notification.findMany({
+            where: {
+              userId,
+              signalId: { in: emittedNotifications.map(e => e.signalId) },
+              dismissedAt: null,
+            },
+            select: {
+              id: true,
+              kind: true,
+              domain: true,
+              title: true,
+              dollarImpact: true,
+              createdAt: true,
+            },
+            orderBy: { createdAt: 'desc' },
+          })
+          if (persisted.length > 0) {
+            const result = await sendNotificationEmail({
+              userId,
+              notifications: persisted.map(p => ({
+                id: p.id,
+                kind: p.kind as 'new' | 'reopened' | 'worsened',
+                domain: p.domain,
+                title: p.title,
+                dollarImpact: p.dollarImpact,
+                createdAt: p.createdAt,
+              })),
+            })
+            Sentry.addBreadcrumb({
+              category: 'scan',
+              message: 'instant_email_result',
+              level: result.sent ? 'info' : 'warning',
+              data: { userId, sent: result.sent, reason: result.reason },
+            })
+          }
+        }
+      } catch (emailErr) {
+        Sentry.captureException(emailErr, {
+          tags: { component: 'scan_runner_instant_email', userId },
+        })
+        console.error('[scanRunner] instant email dispatch failed', emailErr)
+      }
+    }
+
+    Sentry.addBreadcrumb({
+      category: 'scan',
+      message: 'notifications_emitted',
+      level: 'info',
+      data: {
+        userId,
+        scanId: scan.id,
+        notificationsEmitted,
+      },
+    })
 
     const completedAt = new Date()
     const status: Extract<ScanStatus, 'completed' | 'partial'> = hadSyncErrors

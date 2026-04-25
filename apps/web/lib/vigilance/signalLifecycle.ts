@@ -16,6 +16,9 @@ export interface UpsertSignalResult {
   wasNew: boolean
   wasUpdated: boolean
   state: SignalState
+  previousState: SignalState | null
+  previousAnnualValue: number | null
+  newAnnualValue: number
 }
 
 type PrismaExecutor = PrismaClient | Prisma.TransactionClient
@@ -77,10 +80,19 @@ export async function upsertSignal(
         lastUpdatedInScanId: scanId,
       },
     })
-    return { signalId: created.id, wasNew: true, wasUpdated: false, state: 'new' }
+    return {
+      signalId: created.id,
+      wasNew: true,
+      wasUpdated: false,
+      state: 'new',
+      previousState: null,
+      previousAnnualValue: null,
+      newAnnualValue: gap.annualValue,
+    }
   }
 
   const prevState = existing.state as SignalState
+  const prevAnnualValue = existing.annualValue
   const isDormant = prevState === 'resolved' || prevState === 'stale'
 
   if (isDormant) {
@@ -98,7 +110,15 @@ export async function upsertSignal(
         lastUpdatedInScanId: scanId,
       },
     })
-    return { signalId: updated.id, wasNew: false, wasUpdated: true, state: 'new' }
+    return {
+      signalId: updated.id,
+      wasNew: false,
+      wasUpdated: true,
+      state: 'new',
+      previousState: prevState,
+      previousAnnualValue: prevAnnualValue,
+      newAnnualValue: gap.annualValue,
+    }
   }
 
   // Active / new / acknowledged / acted — refresh in place, preserve firstDetectedAt.
@@ -113,7 +133,15 @@ export async function upsertSignal(
       lastUpdatedInScanId: scanId,
     },
   })
-  return { signalId: updated.id, wasNew: false, wasUpdated: true, state: prevState }
+  return {
+    signalId: updated.id,
+    wasNew: false,
+    wasUpdated: true,
+    state: prevState,
+    previousState: prevState,
+    previousAnnualValue: prevAnnualValue,
+    newAnnualValue: gap.annualValue,
+  }
 }
 
 /**

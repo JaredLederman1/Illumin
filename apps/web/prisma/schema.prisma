@@ -7,26 +7,30 @@ datasource db {
 }
 
 model User {
-  id                  String               @id @default(cuid())
-  email               String               @unique
-  createdAt           DateTime             @default(now()) @map("created_at")
-  accounts            Account[]
-  snapshots           NetWorthSnapshot[]
-  onboardingProfile   OnboardingProfile?
-  employmentBenefits  EmploymentBenefits?
-  budget              Budget?
-  categoryRules       CategoryRule[]
-  merchantRenameRules MerchantRenameRule[]
-  financialActions    FinancialAction[]
-  checklistItems      ChecklistItem[]
-  recurringExclusions RecurringExclusion[]
-  budgetRollovers     BudgetRollover[]
-  analyticsHoldings   AnalyticsHolding[]
-  recoveryEvents      RecoveryEvent[]
-  scans               Scan[]
-  signals             Signal[]
-  signalStates        SignalState[]
-  signalSnapshots     SignalSnapshot[]
+  id                            String               @id @default(cuid())
+  email                         String               @unique
+  createdAt                     DateTime             @default(now()) @map("created_at")
+  notificationEmailMode         String               @default("digest_daily") @map("notification_email_mode")
+  notificationEmailLastSentAt   DateTime?            @map("notification_email_last_sent_at")
+  notificationUnsubscribeToken  String?              @unique @map("notification_unsubscribe_token")
+  accounts                      Account[]
+  snapshots                     NetWorthSnapshot[]
+  onboardingProfile             OnboardingProfile?
+  employmentBenefits            EmploymentBenefits?
+  budget                        Budget?
+  categoryRules                 CategoryRule[]
+  merchantRenameRules           MerchantRenameRule[]
+  financialActions              FinancialAction[]
+  checklistItems                ChecklistItem[]
+  recurringExclusions           RecurringExclusion[]
+  budgetRollovers               BudgetRollover[]
+  analyticsHoldings             AnalyticsHolding[]
+  recoveryEvents                RecoveryEvent[]
+  scans                         Scan[]
+  signals                       Signal[]
+  signalStates                  SignalState[]
+  signalSnapshots               SignalSnapshot[]
+  notifications                 Notification[]
 }
 
 model FinancialAction {
@@ -366,6 +370,7 @@ model Signal {
   firstDetectedInScanId String?   @map("first_detected_in_scan_id")
   lastUpdatedInScanId   String?   @map("last_updated_in_scan_id")
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notifications         Notification[]
 
   @@unique([userId, gapId])
   @@index([userId, state])
@@ -410,4 +415,25 @@ model SignalSnapshot {
   @@index([scanId])
   @@index([userId, capturedAt(sort: Desc)])
   @@map("signal_snapshots")
+}
+
+model Notification {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  signalId     String    @map("signal_id")
+  kind         String
+  domain       String
+  dollarImpact Float?    @map("dollar_impact")
+  title        String
+  body         String?
+  readAt       DateTime? @map("read_at")
+  dismissedAt  DateTime? @map("dismissed_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  signal       Signal    @relation(fields: [signalId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([signalId])
+  @@map("notifications")
 }
