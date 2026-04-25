@@ -89,7 +89,7 @@ export default function RecurringChargesWidget() {
       <WidgetCard
         variant="metric"
         eyebrow="Recurring charges"
-        columns={[{ caption: 'Unavailable', hero: '—' }]}
+        columns={[{ caption: 'Unavailable', hero: 'Not yet calculated' }]}
         secondary={
           <p style={secondaryLine}>
             We could not load recurring charges right now.

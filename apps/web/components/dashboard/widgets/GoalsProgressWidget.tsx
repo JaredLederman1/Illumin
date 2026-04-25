@@ -52,7 +52,7 @@ export default function GoalsProgressWidget() {
       {gated ? (
         <p style={emptyCopy}>Complete your profile to see this.</p>
       ) : goals == null ? (
-        <p style={emptyCopy}>Loading…</p>
+        <p style={emptyCopy}>Goals unavailable.</p>
       ) : goals.length === 0 ? (
         <p style={emptyCopy}>Finish onboarding to see goal tracking.</p>
       ) : (

@@ -43,7 +43,7 @@ export default function RecoveryWidget() {
       <WidgetCard
         variant="metric"
         eyebrow="Recovery counter"
-        columns={[{ caption: 'Needs profile', hero: '—' }]}
+        columns={[{ caption: 'Needs profile', hero: 'Not yet calculated' }]}
         secondary={<p style={secondaryLine}>Complete your profile to see this.</p>}
         cta={
           <Link href="/onboarding" style={ctaLink}>
@@ -54,7 +54,7 @@ export default function RecoveryWidget() {
     )
   }
 
-  const heroDisplay = open != null ? fmt(open) : '—'
+  const heroDisplay = open != null ? fmt(open) : 'Not yet calculated'
 
   return (
     <motion.div {...WIDGET_REVEAL}>
@@ -71,7 +71,7 @@ export default function RecoveryWidget() {
         secondary={
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <p style={secondaryLine}>
-              Recovered: {recovered != null ? fmt(recovered) : '—'}
+              Recovered: {recovered != null ? fmt(recovered) : 'not yet calculated'}
             </p>
             <p style={secondaryLine}>
               {openCount === 0
