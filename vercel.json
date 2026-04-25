@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/scan-all",
       "schedule": "30 11 * * *"
+    },
+    {
+      "path": "/api/cron/email-digest",
+      "schedule": "0 14 * * *"
     }
   ]
 }

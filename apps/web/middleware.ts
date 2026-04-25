@@ -18,6 +18,7 @@ const PUBLIC_PATHS = [
   '/api/plaid/webhook',
   '/logo',
   '/privacy',
+  '/unsubscribe',
 ]
 
 export async function middleware(request: NextRequest) {

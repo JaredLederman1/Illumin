@@ -6,8 +6,11 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useDashboard } from '@/lib/dashboardData'
 import {
+  useNotificationPreferencesQuery,
   useResetOnboardingMutation,
   useSaveOnboardingMutation,
+  useUpdateNotificationPreferencesMutation,
+  type NotificationEmailMode,
   type OnboardingProfile,
 } from '@/lib/queries'
 import { calcTotals } from '@/lib/benefitsAnalysis'
@@ -27,6 +30,145 @@ const RISK_LABELS: Record<number, string> = {
 }
 
 const IS_DEV = process.env.NODE_ENV !== 'production'
+
+const NOTIFICATION_MODE_OPTIONS: { value: NotificationEmailMode; label: string; hint: string }[] = [
+  { value: 'off', label: 'Off', hint: 'No notification emails.' },
+  { value: 'instant', label: 'Instant', hint: 'Email each time a finding surfaces.' },
+  { value: 'digest_daily', label: 'Daily digest', hint: 'One email per day summarizing new findings.' },
+  { value: 'digest_weekly', label: 'Weekly digest', hint: 'One email per week on Sunday.' },
+]
+
+function NotificationsPanel({ variant }: { variant: 'desktop' | 'mobile' }) {
+  const prefs = useNotificationPreferencesQuery()
+  const updatePrefs = useUpdateNotificationPreferencesMutation()
+  const [error, setError] = useState<string | null>(null)
+  const isMobile = variant === 'mobile'
+  const currentMode: NotificationEmailMode = prefs.data?.mode ?? 'digest_daily'
+
+  const handleSelect = (mode: NotificationEmailMode) => {
+    if (mode === currentMode) return
+    setError(null)
+    updatePrefs.mutate(mode, {
+      onError: err => setError(err instanceof Error ? err.message : 'Update failed'),
+    })
+  }
+
+  const container: CSSProperties = {
+    backgroundColor: 'var(--color-surface)',
+    border: '1px solid var(--color-border)',
+    borderRadius: '2px',
+    padding: isMobile ? '20px' : '28px',
+  }
+
+  const sectionLabel: CSSProperties = {
+    fontFamily: 'var(--font-mono)',
+    fontSize: isMobile ? 10 : 12,
+    color: 'var(--color-text-muted)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.16em',
+    margin: 0,
+    marginBottom: 16,
+  }
+
+  const optionsStyle: CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+  }
+
+  const optionRow = (selected: boolean): CSSProperties => ({
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    padding: '12px 14px',
+    border: `1px solid ${selected ? 'var(--color-gold-border)' : 'var(--color-border)'}`,
+    borderRadius: '2px',
+    backgroundColor: selected ? 'var(--color-gold-subtle)' : 'transparent',
+    cursor: 'pointer',
+    transition: 'background-color 150ms ease, border-color 150ms ease',
+  })
+
+  const radioOuter = (selected: boolean): CSSProperties => ({
+    width: 14,
+    height: 14,
+    borderRadius: '50%',
+    border: `1px solid ${selected ? 'var(--color-gold)' : 'var(--color-border-strong)'}`,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  })
+
+  const radioDot = (selected: boolean): CSSProperties => ({
+    width: 6,
+    height: 6,
+    borderRadius: '50%',
+    backgroundColor: selected ? 'var(--color-gold)' : 'transparent',
+  })
+
+  return (
+    <div style={container}>
+      <p style={sectionLabel}>Notifications</p>
+      {prefs.isLoading ? (
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-text-muted)' }}>
+          Loading...
+        </p>
+      ) : (
+        <div style={optionsStyle} role="radiogroup" aria-label="Notification email mode">
+          {NOTIFICATION_MODE_OPTIONS.map(option => {
+            const selected = option.value === currentMode
+            return (
+              <div
+                key={option.value}
+                role="radio"
+                aria-checked={selected}
+                tabIndex={0}
+                onClick={() => handleSelect(option.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    handleSelect(option.value)
+                  }
+                }}
+                style={optionRow(selected)}
+              >
+                <span aria-hidden="true" style={radioOuter(selected)}>
+                  <span style={radioDot(selected)} />
+                </span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span style={{
+                    fontFamily: 'var(--font-serif)',
+                    fontSize: isMobile ? 15 : 16,
+                    color: 'var(--color-text)',
+                  }}>
+                    {option.label}
+                  </span>
+                  <span style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 12,
+                    color: 'var(--color-text-muted)',
+                  }}>
+                    {option.hint}
+                  </span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {error && (
+        <p style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 12,
+          color: 'var(--color-negative)',
+          marginTop: 12,
+        }}>
+          {error}
+        </p>
+      )}
+    </div>
+  )
+}
 
 type Section = 'financial' | 'location' | 'employment' | 'goals'
 
@@ -729,6 +871,8 @@ function ProfileContent({ isMobile }: { isMobile: boolean }) {
           </Link>
         </div>
       )}
+
+      <NotificationsPanel variant={isMobile ? 'mobile' : 'desktop'} />
 
       {IS_DEV && <RestartOnboardingPanel variant={isMobile ? 'mobile' : 'desktop'} />}
     </motion.div>
