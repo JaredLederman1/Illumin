@@ -29,7 +29,6 @@ const controlStyle = {
   color: '#F0F2F8',
   fontSize: '14px',
   fontFamily: 'var(--font-mono)',
-  outline: 'none',
 } as const
 
 const inputStyle = {
@@ -41,7 +40,6 @@ const inputStyle = {
   color: '#F0F2F8',
   fontSize: '16px',
   fontFamily: 'var(--font-mono)',
-  outline: 'none',
 } as const
 
 const labelStyle = {
@@ -874,7 +872,6 @@ function TransactionsMobile() {
           color: colors.text,
           fontFamily: fonts.mono,
           fontSize: '14px',
-          outline: 'none',
           boxSizing: 'border-box',
         }}
       />

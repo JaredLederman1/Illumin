@@ -37,7 +37,7 @@ const subheadStyle: CSSProperties = {
   color: 'var(--color-text-muted)',
   lineHeight: 1.55,
   margin: 0,
-  marginBottom: '12px',
+  marginBottom: 'var(--space-value-to-subtext)',
 }
 
 const rowStyle: CSSProperties = {

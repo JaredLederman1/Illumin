@@ -68,28 +68,8 @@ const shell: CSSProperties = {
   padding: '24px',
   display: 'flex',
   flexDirection: 'column',
-  gap: '16px',
+  gap: 'var(--space-section-below)',
   height: '100%',
-}
-
-const eyebrowStyle: CSSProperties = {
-  fontFamily: 'var(--font-mono)',
-  fontSize: '11px',
-  fontWeight: 500,
-  color: 'var(--color-text-muted)',
-  textTransform: 'uppercase',
-  letterSpacing: '0.08em',
-  margin: 0,
-}
-
-const captionStyle: CSSProperties = {
-  fontFamily: 'var(--font-mono)',
-  fontSize: '11px',
-  fontWeight: 500,
-  color: 'var(--color-text-muted)',
-  textTransform: 'uppercase',
-  letterSpacing: '0.06em',
-  margin: 0,
 }
 
 // Footnote-style caption that sits below the hero. One step smaller than
@@ -136,7 +116,7 @@ const ctaRow: CSSProperties = {
 }
 
 function Eyebrow({ text }: { text: string }) {
-  return <p style={eyebrowStyle}>{text}</p>
+  return <p className="ui-label">{text}</p>
 }
 
 function HeroColumn({ col }: { col: MetricColumn }) {
@@ -154,7 +134,14 @@ function HeroColumn({ col }: { col: MetricColumn }) {
 
   if (position === 'below') {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 'var(--space-value-to-subtext)',
+          minWidth: 0,
+        }}
+      >
         {hero}
         {col.caption && <p style={captionBelowStyle}>{col.caption}</p>}
       </div>
@@ -162,8 +149,15 @@ function HeroColumn({ col }: { col: MetricColumn }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
-      {col.caption && <p style={captionStyle}>{col.caption}</p>}
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 'var(--space-label-to-value)',
+        minWidth: 0,
+      }}
+    >
+      {col.caption && <p className="ui-label">{col.caption}</p>}
       {hero}
     </div>
   )
@@ -211,7 +205,7 @@ export default function WidgetCard(props: Props) {
   return (
     <div className="card-hoverable" style={shellStyle}>
       <Eyebrow text={eyebrow} />
-      <p style={captionStyle}>{props.caption}</p>
+      <p className="ui-label">{props.caption}</p>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         {props.children}
       </div>

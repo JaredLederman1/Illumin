@@ -63,7 +63,6 @@ const bigNumStyle: React.CSSProperties = {
   background: 'transparent',
   border: 'none',
   borderBottom: '1px solid var(--color-border)',
-  outline: 'none',
   padding: '0 0 10px',
   textAlign: 'center',
   display: 'block',
@@ -263,7 +262,6 @@ export default function OppCostCalculator() {
                     color: 'var(--color-text)',
                     background: 'transparent',
                     border: 'none',
-                    outline: 'none',
                     padding: '0 0 0 6px',
                     lineHeight: 1,
                   }}
@@ -662,7 +660,6 @@ export default function OppCostCalculator() {
                       color: 'var(--color-text)',
                       fontFamily: 'var(--font-mono)',
                       fontSize: '13px',
-                      outline: 'none',
                       marginBottom: '10px',
                       boxSizing: 'border-box' as const,
                     }}

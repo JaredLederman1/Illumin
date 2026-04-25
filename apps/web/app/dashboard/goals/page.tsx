@@ -190,7 +190,6 @@ function GoalCard({ goal, delay }: { goal: Goal; delay: number }) {
                 background: 'transparent',
                 border: 'none',
                 borderBottom: '1px solid var(--color-gold)',
-                outline: 'none',
                 padding: '0 0 2px 0',
                 width: '100%',
                 maxWidth: '80px',

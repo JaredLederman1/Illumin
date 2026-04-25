@@ -409,7 +409,6 @@ export default function TransactionRow({
                 color: 'var(--color-text)',
                 fontSize: '14px',
                 fontFamily: 'var(--font-mono)',
-                outline: 'none',
               }}
             />
           </div>
@@ -442,7 +441,6 @@ export default function TransactionRow({
                 color: 'var(--color-text)',
                 fontSize: '14px',
                 fontFamily: 'var(--font-mono)',
-                outline: 'none',
                 cursor: 'pointer',
               }}
             >
@@ -756,7 +754,6 @@ export default function TransactionRow({
                         borderRadius: '2px',
                         color: 'var(--color-text)',
                         padding: '5px 8px',
-                        outline: 'none',
                         width: '100%',
                       }}
                     />

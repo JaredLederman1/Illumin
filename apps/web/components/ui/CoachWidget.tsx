@@ -571,7 +571,7 @@ export default function CoachWidget() {
                   border: '1px solid var(--color-border)',
                   borderRadius: 10, padding: '8px 12px',
                   fontFamily: 'var(--font-mono)', fontSize: 13,
-                  color: 'var(--color-text)', lineHeight: 1.5, outline: 'none',
+                  color: 'var(--color-text)', lineHeight: 1.5,
                 }}
                 onFocus={e => { e.currentTarget.style.borderColor = 'var(--color-gold)' }}
                 onBlur={e  => { e.currentTarget.style.borderColor = 'var(--color-border)' }}

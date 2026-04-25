@@ -180,7 +180,6 @@ function InputField({
         fontFamily: type === 'number' ? 'var(--font-sans)' : 'var(--font-mono)',
         fontSize: '13px',
         padding: '6px 10px',
-        outline: 'none',
         transition: 'border-color 120ms ease',
         ...style,
       }}
@@ -207,7 +206,6 @@ function TypeSelect({ value, onChange }: { value: CategoryType; onChange: (v: Ca
         letterSpacing: '0.06em',
         textTransform: 'uppercase',
         padding: '5px 8px',
-        outline: 'none',
         cursor: 'pointer',
         transition: 'border-color 120ms ease',
         width: '90px',
@@ -639,7 +637,6 @@ function BudgetEditor({
                         fontFamily: 'var(--font-mono)',
                         fontSize: '13px',
                         padding: '6px 10px',
-                        outline: 'none',
                         cursor: 'pointer',
                         transition: 'border-color 120ms ease',
                       }}
@@ -1045,7 +1042,6 @@ function BudgetEditorMobile({
                         fontFamily: fonts.mono,
                         fontSize: 13,
                         padding: '0 10px',
-                        outline: 'none',
                         cursor: 'pointer',
                       }}
                       onFocus={e => { e.currentTarget.style.borderColor = colors.gold }}
