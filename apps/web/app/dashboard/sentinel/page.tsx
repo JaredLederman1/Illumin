@@ -1,14 +1,24 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties, type ReactElement } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type ReactElement,
+} from "react";
 import PerimeterSVG from "@/components/watch/PerimeterSVG";
 import ThresholdCompositeList from "@/components/watch/ThresholdCompositeList";
 import WatchLogFeed from "@/components/watch/WatchLogFeed";
 import SentinelHero from "@/components/watch/SentinelHero";
-import { useMockWatchStatus } from "@/lib/vigilance/mockWatchStatus";
+import {
+  useWatchLogQuery,
+  useWatchStatusQuery,
+} from "@/lib/queries";
+import type { WatchLogResponse } from "@/lib/types/vigilance";
 import { useMockPerimeterData } from "@/lib/vigilance/mockPerimeterData";
 import { useMockThresholds } from "@/lib/vigilance/mockThresholds";
-import { useMockWatchLog } from "@/lib/vigilance/mockWatchLog";
 
 const DESKTOP_BREAKPOINT = 960;
 const MOBILE_BREAKPOINT = 480;
@@ -64,13 +74,41 @@ function PerimeterSkeleton({ size }: { size: number }): ReactElement {
 }
 
 export default function SentinelPage(): ReactElement {
-  const watchMock = useMockWatchStatus("active");
-  const watchStatus = watchMock.data;
+  const {
+    data: watchStatusData,
+    isError: watchStatusError,
+  } = useWatchStatusQuery();
+  const watchStatus = watchStatusData ?? null;
   const perimeter = useMockPerimeterData("realistic");
   const { thresholds, isLoading: thresholdsLoading } = useMockThresholds("realistic");
-  const { data: watchLogData, isLoading: watchLogLoading, loadMore } = useMockWatchLog(
-    "active_morning",
-  );
+
+  const {
+    data: logData,
+    isLoading: logPageLoading,
+    isError: logError,
+    fetchNextPage,
+    hasNextPage,
+  } = useWatchLogQuery();
+
+  const logFirstPageLoaded = !!logData && logData.pages.length > 0;
+
+  const watchLogData = useMemo<WatchLogResponse | null>(() => {
+    if (!logFirstPageLoaded) return null;
+    const pages = logData!.pages;
+    const last = pages[pages.length - 1];
+    return {
+      entries: pages.flatMap((p) => p.entries),
+      hasMore: last.hasMore,
+      nextCursor: last.nextCursor,
+    };
+  }, [logFirstPageLoaded, logData]);
+
+  const watchLogLoading = logPageLoading && !logFirstPageLoaded;
+
+  const loadMore = useCallback(() => {
+    if (hasNextPage) void fetchNextPage();
+  }, [hasNextPage, fetchNextPage]);
+
   const perimeterSize = usePerimeterSize();
 
   const wrapperStyle: CSSProperties = {
@@ -137,6 +175,19 @@ export default function SentinelPage(): ReactElement {
       >
         {watchStatus ? (
           <SentinelHero watchStatus={watchStatus} />
+        ) : watchStatusError ? (
+          <div
+            role="alert"
+            style={{
+              paddingBottom: 24,
+              borderBottom: "0.5px solid var(--color-border)",
+              fontFamily: "var(--font-mono)",
+              fontSize: 13,
+              color: "var(--color-text-mid)",
+            }}
+          >
+            Watch status unavailable. Retrying.
+          </div>
         ) : (
           <div
             style={{
@@ -286,12 +337,29 @@ export default function SentinelPage(): ReactElement {
           )}
         </section>
 
-        <WatchLogFeed
-          data={watchLogData}
-          isLoading={watchLogLoading}
-          onLoadMore={loadMore}
-          meta="last 24h"
-        />
+        {logError && !logFirstPageLoaded ? (
+          <section
+            aria-label="Watch log"
+            role="alert"
+            style={{
+              borderTop: "0.5px solid var(--color-border)",
+              paddingTop: 16,
+              paddingBottom: 16,
+              fontFamily: "var(--font-mono)",
+              fontSize: 13,
+              color: "var(--color-text-mid)",
+            }}
+          >
+            Watch log unavailable. Retrying.
+          </section>
+        ) : (
+          <WatchLogFeed
+            data={watchLogData}
+            isLoading={watchLogLoading}
+            onLoadMore={loadMore}
+            meta="last 24h"
+          />
+        )}
       </main>
     </>
   );

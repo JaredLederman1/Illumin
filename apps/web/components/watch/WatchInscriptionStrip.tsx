@@ -2,11 +2,7 @@
 
 import type { CSSProperties } from "react";
 import type { WatchStatus } from "@/lib/types/vigilance";
-import {
-  formatRelativeScan,
-  useMockWatchStatus,
-  type MockScenario,
-} from "@/lib/vigilance/mockWatchStatus";
+import { useWatchStatusQuery } from "@/lib/queries";
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -15,7 +11,6 @@ type DotTone = "active" | "stale" | "failed" | "idle";
 interface Props {
   status?: WatchStatus | null;
   isError?: boolean;
-  scenario?: MockScenario;
 }
 
 type Resolved =
@@ -24,6 +19,17 @@ type Resolved =
   | { kind: "failed" }
   | { kind: "stale"; status: WatchStatus }
   | { kind: "active"; status: WatchStatus };
+
+function formatRelativeScan(iso: string): string {
+  const delta = Date.now() - new Date(iso).getTime();
+  if (delta < 2 * 60 * 1000) return "just now";
+  const minutes = Math.floor(delta / (60 * 1000));
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
 
 function resolveState(status: WatchStatus | null, isError: boolean): Resolved {
   if (isError) return { kind: "failed" };
@@ -50,12 +56,10 @@ const DOT_COLOR: Record<DotTone, string> = {
 export default function WatchInscriptionStrip({
   status,
   isError = false,
-  scenario,
 }: Props) {
-  const mock = useMockWatchStatus(scenario ?? "active");
-  const effectiveStatus =
-    status !== undefined ? status : scenario ? mock.data : mock.data;
-  const effectiveError = isError || (scenario ? mock.isError : false);
+  const query = useWatchStatusQuery();
+  const effectiveStatus = status !== undefined ? status : query.data ?? null;
+  const effectiveError = isError || query.isError;
 
   const resolved = resolveState(effectiveStatus ?? null, effectiveError);
 

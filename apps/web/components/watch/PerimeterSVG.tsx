@@ -47,6 +47,9 @@ const DOMAIN_HUMAN: Record<SignalDomain, string> = {
   match: "Employer match gap",
   tax_advantaged: "Tax-advantaged capacity",
   benefits: "Benefits capacity",
+  subscription: "Subscription load",
+  category_overspend: "Spending pressure",
+  recurring_change: "Recurring drift",
 };
 
 function severityColor(severity: SignalSeverity): string {

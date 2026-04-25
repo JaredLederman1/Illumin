@@ -1,10 +1,12 @@
 'use client'
 
-import { CSSProperties, ReactElement } from 'react'
+import { CSSProperties, ReactElement, ReactNode } from 'react'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 import PerimeterSVG from '@/components/watch/PerimeterSVG'
 import WidgetCard from './WidgetCard'
-import { useMockWatchStatus } from '@/lib/vigilance/mockWatchStatus'
+import WidgetSkeleton, { WIDGET_REVEAL } from './WidgetSkeleton'
+import { useWatchStatusQuery } from '@/lib/queries'
 import { useMockPerimeterData } from '@/lib/vigilance/mockPerimeterData'
 
 const PERIMETER_SIZE_DESKTOP = 160
@@ -68,12 +70,6 @@ const contextStyle: CSSProperties = {
   margin: 0,
 }
 
-const skeletonBlock: CSSProperties = {
-  backgroundColor: 'var(--color-surface-2)',
-  borderRadius: 2,
-  opacity: 0.55,
-}
-
 function ClippedPerimeter({
   size,
   cashAmount,
@@ -101,30 +97,17 @@ function ClippedPerimeter({
   )
 }
 
-export default function SentinelWidget(): ReactElement {
-  const { data, isLoading } = useMockWatchStatus('active')
-  const perimeter = useMockPerimeterData('realistic')
-
-  const isFresh = data !== null && data.signalsMonitored === 0
-
-  const integrity = data?.perimeterIntegrity ?? 0
-  const signalsMonitored = data?.signalsMonitored ?? 0
-  const signalsActive = data?.signalsActive ?? 0
-  const signalsNew = data?.signalsNew ?? 0
-
-  const contextLine = data
-    ? buildContextLine(signalsMonitored, signalsActive, signalsNew)
-    : ''
-
-  const ctaHref = isFresh ? '/onboarding' : '/dashboard/sentinel'
-  const ctaLabel = isFresh ? 'Complete setup' : 'Open sentinel'
-
-  const cta = (
-    <Link href={ctaHref} style={ctaLink}>
-      {ctaLabel} &rarr;
-    </Link>
-  )
-
+function SentinelShell({
+  children,
+  cta,
+  withPerimeter,
+  perimeter,
+}: {
+  children: ReactNode
+  cta: ReactNode
+  withPerimeter?: boolean
+  perimeter?: ReturnType<typeof useMockPerimeterData>
+}) {
   return (
     <>
       <style>{`
@@ -169,33 +152,8 @@ export default function SentinelWidget(): ReactElement {
       <div className="illumin-sentinel-widget-root">
         <WidgetCard variant="list" eyebrow="Sentinel" cta={cta}>
           <div className="illumin-sentinel-widget-inner">
-            <div className="illumin-sentinel-left">
-              {isLoading || !data ? (
-                <>
-                  <div style={{ ...skeletonBlock, width: 96, height: 44 }} />
-                  <div style={{ height: 4 }} />
-                  <div style={{ ...skeletonBlock, width: 56, height: 11 }} />
-                  <div style={{ height: 16 }} />
-                  <div style={{ ...skeletonBlock, width: '85%', height: 13 }} />
-                </>
-              ) : isFresh ? (
-                <p style={{ ...contextStyle, color: 'var(--color-text-mid)' }}>
-                  Setting up your watch...
-                </p>
-              ) : (
-                <>
-                  <p style={{ ...heroStyle, color: integrityColor(integrity) }}>
-                    {integrity}
-                  </p>
-                  <div style={{ height: 4 }} />
-                  <p style={subtextStyle}>out of 100</p>
-                  <div style={{ height: 16 }} />
-                  <p style={contextStyle}>{contextLine}</p>
-                </>
-              )}
-            </div>
-
-            {!isFresh && data && (
+            <div className="illumin-sentinel-left">{children}</div>
+            {withPerimeter && perimeter && (
               <div className="illumin-sentinel-right">
                 <div className="illumin-sentinel-perimeter-desktop">
                   <ClippedPerimeter
@@ -217,5 +175,79 @@ export default function SentinelWidget(): ReactElement {
         </WidgetCard>
       </div>
     </>
+  )
+}
+
+export default function SentinelWidget(): ReactElement {
+  const { data, isPending, isError } = useWatchStatusQuery()
+  const perimeter = useMockPerimeterData('realistic')
+
+  if (isPending) {
+    return <WidgetSkeleton variant="metric" />
+  }
+
+  const status = data ?? null
+
+  if (isError || !status) {
+    return (
+      <SentinelShell
+        cta={
+          <Link href="/dashboard/sentinel" style={ctaLink}>
+            Open sentinel &rarr;
+          </Link>
+        }
+      >
+        <p style={{ ...contextStyle, color: 'var(--color-text-mid)' }}>
+          Watch status unavailable.
+        </p>
+      </SentinelShell>
+    )
+  }
+
+  const isFresh = status.signalsMonitored === 0
+
+  if (isFresh) {
+    return (
+      <SentinelShell
+        cta={
+          <Link href="/onboarding" style={ctaLink}>
+            Complete setup &rarr;
+          </Link>
+        }
+      >
+        <p style={{ ...contextStyle, color: 'var(--color-text-mid)' }}>
+          Setting up your watch...
+        </p>
+      </SentinelShell>
+    )
+  }
+
+  const integrity = status.perimeterIntegrity
+  const contextLine = buildContextLine(
+    status.signalsMonitored,
+    status.signalsActive,
+    status.signalsNew,
+  )
+
+  return (
+    <motion.div {...WIDGET_REVEAL}>
+      <SentinelShell
+        cta={
+          <Link href="/dashboard/sentinel" style={ctaLink}>
+            Open sentinel &rarr;
+          </Link>
+        }
+        withPerimeter
+        perimeter={perimeter}
+      >
+        <p style={{ ...heroStyle, color: integrityColor(integrity) }}>
+          {integrity}
+        </p>
+        <div style={{ height: 4 }} />
+        <p style={subtextStyle}>out of 100</p>
+        <div style={{ height: 16 }} />
+        <p style={contextStyle}>{contextLine}</p>
+      </SentinelShell>
+    </motion.div>
   )
 }
