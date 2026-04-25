@@ -34,18 +34,28 @@ export default function NetWorthWidget() {
 
   if (!canChart) {
     return (
-      <WidgetCard
-        variant="metric"
-        eyebrow="Net worth"
-        columns={[{ caption: 'Building history', hero: '—' }]}
-        secondary={
-          <p style={emptyCopy}>
-            Chart renders once we have at least two data points from an asset account.
-          </p>
-        }
-      />
+      <motion.div {...WIDGET_REVEAL}>
+        <WidgetCard
+          variant="metric"
+          eyebrow="Net worth"
+          columns={[{ caption: 'Building history', hero: '—' }]}
+          secondary={
+            <p style={emptyCopy}>
+              Chart renders once we have at least two data points from an asset account.
+            </p>
+          }
+        />
+      </motion.div>
     )
   }
+
+  const hasMeaningfulDelta = Math.abs(nwHistory.change30d) >= 1
+  const heroValue = hasMeaningfulDelta ? fmt(nwHistory.change30d) : '—'
+  const heroColor = hasMeaningfulDelta
+    ? nwHistory.change30d >= 0
+      ? 'var(--color-positive)'
+      : 'var(--color-negative)'
+    : undefined
 
   return (
     <motion.div {...WIDGET_REVEAL}>
@@ -55,11 +65,8 @@ export default function NetWorthWidget() {
         columns={[
           {
             caption: '30d change',
-            hero: fmt(nwHistory.change30d),
-            heroColor:
-              nwHistory.change30d >= 0
-                ? 'var(--color-positive)'
-                : 'var(--color-negative)',
+            hero: heroValue,
+            heroColor,
           },
         ]}
         secondary={<NetWorthChart data={nwHistory.history} height={160} />}

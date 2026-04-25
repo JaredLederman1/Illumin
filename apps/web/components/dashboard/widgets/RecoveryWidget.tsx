@@ -40,17 +40,19 @@ export default function RecoveryWidget() {
 
   if (profile && !profile.completedAt) {
     return (
-      <WidgetCard
-        variant="metric"
-        eyebrow="Recovery counter"
-        columns={[{ caption: 'Needs profile', hero: 'Not yet calculated' }]}
-        secondary={<p style={secondaryLine}>Complete your profile to see this.</p>}
-        cta={
-          <Link href="/onboarding" style={ctaLink}>
-            Resume onboarding &rarr;
-          </Link>
-        }
-      />
+      <motion.div {...WIDGET_REVEAL}>
+        <WidgetCard
+          variant="metric"
+          eyebrow="Recovery counter"
+          columns={[{ caption: 'Needs profile', hero: 'Not yet calculated' }]}
+          secondary={<p style={secondaryLine}>Complete your profile to see this.</p>}
+          cta={
+            <Link href="/onboarding" style={ctaLink}>
+              Resume onboarding &rarr;
+            </Link>
+          }
+        />
+      </motion.div>
     )
   }
 

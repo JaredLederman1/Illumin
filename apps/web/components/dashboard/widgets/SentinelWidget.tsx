@@ -193,17 +193,19 @@ export default function SentinelWidget(): ReactElement {
 
   if (isError || !status) {
     return (
-      <SentinelShell
-        cta={
-          <Link href="/dashboard/sentinel" style={ctaLink}>
-            Open sentinel &rarr;
-          </Link>
-        }
-      >
-        <p style={{ ...contextStyle, color: 'var(--color-text-mid)' }}>
-          Watch status unavailable.
-        </p>
-      </SentinelShell>
+      <motion.div {...WIDGET_REVEAL}>
+        <SentinelShell
+          cta={
+            <Link href="/dashboard/sentinel" style={ctaLink}>
+              Open sentinel &rarr;
+            </Link>
+          }
+        >
+          <p style={{ ...contextStyle, color: 'var(--color-text-mid)' }}>
+            Watch status unavailable.
+          </p>
+        </SentinelShell>
+      </motion.div>
     )
   }
 
@@ -211,17 +213,19 @@ export default function SentinelWidget(): ReactElement {
 
   if (isFresh) {
     return (
-      <SentinelShell
-        cta={
-          <Link href="/onboarding" style={ctaLink}>
-            Complete setup &rarr;
-          </Link>
-        }
-      >
-        <p style={{ ...contextStyle, color: 'var(--color-text-mid)' }}>
-          Setting up your watch...
-        </p>
-      </SentinelShell>
+      <motion.div {...WIDGET_REVEAL}>
+        <SentinelShell
+          cta={
+            <Link href="/onboarding" style={ctaLink}>
+              Complete setup &rarr;
+            </Link>
+          }
+        >
+          <p style={{ ...contextStyle, color: 'var(--color-text-mid)' }}>
+            Setting up your watch...
+          </p>
+        </SentinelShell>
+      </motion.div>
     )
   }
 

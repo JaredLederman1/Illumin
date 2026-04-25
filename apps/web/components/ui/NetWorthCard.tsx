@@ -128,37 +128,39 @@ export default function NetWorthCard({ current, lastMonth, totalAssets, totalLia
       </div>
 
       {/* Divider */}
-      <div style={{ width: '1px', height: '80px', backgroundColor: 'var(--color-border)', flexShrink: 0 }} />
+      <div style={{ width: '1px', height: '64px', backgroundColor: 'var(--color-border)', flexShrink: 0 }} />
 
-      {/* Assets + Liabilities */}
-      <div style={{ display: 'flex', gap: '48px', alignItems: 'center' }}>
+      {/* Assets + Liabilities, demoted to secondary supporting context */}
+      <div style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
         <div>
-          <p style={{ ...label, marginBottom: '10px' }}>
+          <p style={{ ...label, marginBottom: '6px' }}>
             Total Assets
           </p>
           <p style={{
             fontFamily: 'var(--font-mono)',
-            fontSize: '28px',
+            fontSize: '16px',
             fontWeight: 400,
-            color: 'var(--color-text)',
-            lineHeight: 1,
+            color: 'var(--color-text-mid)',
+            lineHeight: 1.2,
+            margin: 0,
           }}>
             {formatCurrency(animatedAssets)}
           </p>
         </div>
 
-        <div style={{ width: '1px', height: '52px', backgroundColor: 'var(--color-border)' }} />
+        <div style={{ width: '1px', height: '36px', backgroundColor: 'var(--color-border)' }} />
 
         <div>
-          <p style={{ ...label, marginBottom: '10px' }}>
+          <p style={{ ...label, marginBottom: '6px' }}>
             Total Liabilities
           </p>
           <p style={{
             fontFamily: 'var(--font-mono)',
-            fontSize: '28px',
+            fontSize: '16px',
             fontWeight: 400,
-            color: 'var(--color-negative)',
-            lineHeight: 1,
+            color: 'var(--color-text-mid)',
+            lineHeight: 1.2,
+            margin: 0,
           }}>
             {formatCurrency(animatedLiabilities)}
           </p>

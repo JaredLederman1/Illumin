@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useTransactionsQuery, useAccountsQuery } from '@/lib/queries'
-import { detectRecurringMerchants } from '@/lib/data'
 import TransactionRow from '@/components/ui/TransactionRow'
 import WidgetCard from './WidgetCard'
 import WidgetSkeleton, { WIDGET_REVEAL } from './WidgetSkeleton'
@@ -33,10 +32,6 @@ export default function RecentTransactionsWidget() {
   const accountMap = useMemo(
     () => Object.fromEntries(accounts.map(a => [a.id, a])),
     [accounts],
-  )
-  const recurring = useMemo(
-    () => detectRecurringMerchants(transactions),
-    [transactions],
   )
 
   if (txPending || acctPending) return <WidgetSkeleton variant="list" />
@@ -75,7 +70,6 @@ export default function RecentTransactionsWidget() {
                 pending={tx.pending}
                 accountName={acct?.institutionName ?? null}
                 last4={acct?.last4 ?? null}
-                recurring={tx.merchantName ? recurring.has(tx.merchantName) : false}
               />
             )
           })}

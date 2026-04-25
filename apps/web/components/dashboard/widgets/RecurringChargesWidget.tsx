@@ -86,41 +86,45 @@ export default function RecurringChargesWidget() {
 
   if (isError || !summary) {
     return (
-      <WidgetCard
-        variant="metric"
-        eyebrow="Recurring charges"
-        columns={[{ caption: 'Unavailable', hero: 'Not yet calculated' }]}
-        secondary={
-          <p style={secondaryLine}>
-            We could not load recurring charges right now.
-          </p>
-        }
-        cta={
-          <Link href="/dashboard/recurring" style={ctaLink}>
-            View all &rarr;
-          </Link>
-        }
-      />
+      <motion.div {...WIDGET_REVEAL}>
+        <WidgetCard
+          variant="metric"
+          eyebrow="Recurring charges"
+          columns={[{ caption: 'Unavailable', hero: 'Not yet calculated' }]}
+          secondary={
+            <p style={secondaryLine}>
+              We could not load recurring charges right now.
+            </p>
+          }
+          cta={
+            <Link href="/dashboard/recurring" style={ctaLink}>
+              View all &rarr;
+            </Link>
+          }
+        />
+      </motion.div>
     )
   }
 
   if (summary.count === 0) {
     return (
-      <WidgetCard
-        variant="metric"
-        eyebrow="Recurring charges"
-        columns={[{ caption: 'No recurring charges detected', hero: fmt(0) }]}
-        secondary={
-          <p style={secondaryLine}>
-            Once a merchant bills you on a regular cadence, it will appear here.
-          </p>
-        }
-        cta={
-          <Link href="/dashboard/recurring" style={ctaLink}>
-            View all &rarr;
-          </Link>
-        }
-      />
+      <motion.div {...WIDGET_REVEAL}>
+        <WidgetCard
+          variant="metric"
+          eyebrow="Recurring charges"
+          columns={[{ caption: 'No recurring charges detected', hero: fmt(0) }]}
+          secondary={
+            <p style={secondaryLine}>
+              Once a merchant bills you on a regular cadence, it will appear here.
+            </p>
+          }
+          cta={
+            <Link href="/dashboard/recurring" style={ctaLink}>
+              View all &rarr;
+            </Link>
+          }
+        />
+      </motion.div>
     )
   }
 

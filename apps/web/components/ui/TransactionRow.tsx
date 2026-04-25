@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, type Variants } from 'framer-motion'
 
 import { CATEGORIES as ALL_CATEGORIES } from '@/lib/categories'
+import { formatMerchantName } from '@/lib/format'
 import { useUpdateTransactionTagsMutation } from '@/lib/queries'
 
 type DisputeOption = 'unrecognized' | 'incorrect_amount' | 'duplicate'
@@ -58,17 +59,6 @@ function formatCategory(cat: string) {
 function formatDate(d: Date | string) {
   const date = typeof d === 'string' ? new Date(d) : d
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-// Plaid often returns merchant names in all caps. Convert those to title case
-// so rows do not shout. Leave names that already contain lowercase letters
-// alone so properly cased brands (e.g. "iRobot") keep their styling.
-function formatMerchant(name: string | null | undefined): string {
-  if (!name) return 'Unknown merchant'
-  if (/[a-z]/.test(name)) return name
-  return name
-    .toLowerCase()
-    .replace(/\b([a-z])/g, (_, c: string) => c.toUpperCase())
 }
 
 export const rowVariants: Variants = {
@@ -550,18 +540,18 @@ export default function TransactionRow({
         gap: '16px',
       }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: 0 }}>
-          {/* Line 1: merchant name */}
+          {/* Line 1: merchant name (sentence case, sans regular) */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
             <span style={{
-              fontSize: '16px',
+              fontSize: '15px',
               color: 'var(--color-text)',
-              fontFamily: 'var(--font-mono)',
-              fontWeight: 500,
+              fontFamily: 'var(--font-sans)',
+              fontWeight: 400,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
             }}>
-              {formatMerchant(merchantName)}
+              {formatMerchantName(merchantName)}
             </span>
           </div>
 
@@ -766,11 +756,12 @@ export default function TransactionRow({
 
         <span style={{
           fontFamily: 'var(--font-mono)',
-          fontSize: '18px',
+          fontSize: '16px',
           fontWeight: 400,
           color: isIncome ? 'var(--color-text)' : 'var(--color-negative)',
           flexShrink: 0,
           alignSelf: 'center',
+          textAlign: 'right',
         }}>
           {formatCurrency(amount)}
         </span>

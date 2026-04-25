@@ -10,7 +10,6 @@ import DonutChart from '@/components/ui/DonutChart'
 import BarChart from '@/components/ui/BarChart'
 import TransactionRow from '@/components/ui/TransactionRow'
 import MobileCard from '@/components/ui/MobileCard'
-import MobileMetricCard from '@/components/ui/MobileMetricCard'
 import { colors, fonts, spacing, mobileLabelText } from '@/lib/theme'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import {
@@ -360,7 +359,7 @@ function DashboardMobile() {
             ariaContextLabel="Net worth stability"
           />
         </div>
-        {nwHistory && (
+        {nwHistory && Math.abs(nwHistory.change30d) >= 1 && (
           <p style={{ fontFamily: fonts.mono, fontSize: 12, color: nwHistory.change30d >= 0 ? colors.positive : colors.negative, letterSpacing: '0.04em' }}>
             {fmtChange(nwHistory.change30d)} (30d)
           </p>
@@ -368,27 +367,41 @@ function DashboardMobile() {
       </MobileCard>
     </motion.div>,
 
-    // 2. Assets + Liabilities metric cards
+    // 2. Assets + Liabilities, demoted to secondary supporting context.
+    //    Mirrors the desktop NetWorthCard hierarchy: net worth is the hero,
+    //    these read as quiet annotations beneath it.
     <motion.div
       key="metrics"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: 'easeOut', delay: 0.04 }}
-      style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 12 }}
+      style={{ display: 'flex', gap: 24 }}
     >
-      <div style={{ width: 'calc(50% - 6px)' }}>
-        <MobileMetricCard
-          label="Total Assets"
-          value={fmt(netWorth!.totalAssets)}
-          valueColor={colors.positive}
-        />
+      <div>
+        <p className="ui-label" style={{ marginBottom: 4 }}>Total Assets</p>
+        <p style={{
+          fontFamily: fonts.mono,
+          fontSize: 14,
+          fontWeight: 400,
+          color: colors.textMid,
+          lineHeight: 1.2,
+          margin: 0,
+        }}>
+          {fmt(netWorth!.totalAssets)}
+        </p>
       </div>
-      <div style={{ width: 'calc(50% - 6px)' }}>
-        <MobileMetricCard
-          label="Total Liabilities"
-          value={fmt(netWorth!.totalLiabilities)}
-          valueColor={colors.negative}
-        />
+      <div>
+        <p className="ui-label" style={{ marginBottom: 4 }}>Total Liabilities</p>
+        <p style={{
+          fontFamily: fonts.mono,
+          fontSize: 14,
+          fontWeight: 400,
+          color: colors.textMid,
+          lineHeight: 1.2,
+          margin: 0,
+        }}>
+          {fmt(netWorth!.totalLiabilities)}
+        </p>
       </div>
     </motion.div>,
 

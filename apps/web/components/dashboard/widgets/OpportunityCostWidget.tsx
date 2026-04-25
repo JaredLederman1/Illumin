@@ -49,33 +49,41 @@ export default function OpportunityCostWidget() {
 
   if (profile && !profile.completedAt) {
     return (
-      <WidgetCard
-        variant="metric"
-        eyebrow="Opportunity cost"
-        columns={[{ caption: 'Needs profile', hero: '—', captionPosition: 'below' }]}
-        secondary={<p style={contextCopy}>Complete your profile to see this.</p>}
-        cta={
-          <Link href="/onboarding" style={ctaLink}>
-            Resume onboarding &rarr;
-          </Link>
-        }
-      />
+      <motion.div {...WIDGET_REVEAL}>
+        <WidgetCard
+          variant="metric"
+          eyebrow="Opportunity cost"
+          columns={[{ caption: 'Needs profile', hero: '—', captionPosition: 'below' }]}
+          secondary={<p style={contextCopy}>Complete your profile to see this.</p>}
+          cta={
+            <Link href="/onboarding" style={ctaLink}>
+              Resume onboarding &rarr;
+            </Link>
+          }
+        />
+      </motion.div>
     )
   }
 
   if (!data || data.idleCash <= 0) {
     return (
-      <WidgetCard
-        variant="metric"
-        eyebrow="Opportunity cost"
-        columns={[{ caption: 'Idle above buffer', hero: fmtCurrency(0), captionPosition: 'below' }]}
-        secondary={
-          <p style={contextCopy}>
-            Your liquid cash is close to your 3-month buffer, so there is nothing obvious to redeploy right now.
-          </p>
-        }
-        cta={cta}
-      />
+      <motion.div {...WIDGET_REVEAL}>
+        <WidgetCard
+          variant="metric"
+          eyebrow="Opportunity cost"
+          columns={[{ caption: 'No idle cash above buffer', hero: '—', captionPosition: 'below' }]}
+          secondary={
+            <p style={contextCopy}>
+              Connect more accounts to surface opportunity costs above your 3-month buffer.
+            </p>
+          }
+          cta={
+            <Link href="/dashboard/accounts" style={ctaLink}>
+              Manage accounts &rarr;
+            </Link>
+          }
+        />
+      </motion.div>
     )
   }
 

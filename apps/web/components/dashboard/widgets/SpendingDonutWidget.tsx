@@ -106,17 +106,19 @@ export default function SpendingDonutWidget() {
 
   if (!spendingByCategory || spendingByCategory.length === 0) {
     return (
-      <WidgetCard
-        variant="metric"
-        eyebrow="Spending by category"
-        columns={[{ caption: 'Last 30 days', hero: fmtCurrency(0), captionPosition: 'below' }]}
-        secondary={<p style={emptyCopy}>No expense transactions in the last 30 days.</p>}
-        cta={
-          <Link href="/dashboard/cashflow" style={ctaLink}>
-            See breakdown &rarr;
-          </Link>
-        }
-      />
+      <motion.div {...WIDGET_REVEAL}>
+        <WidgetCard
+          variant="metric"
+          eyebrow="Spending by category"
+          columns={[{ caption: 'Last 30 days', hero: fmtCurrency(0), captionPosition: 'below' }]}
+          secondary={<p style={emptyCopy}>No expense transactions in the last 30 days.</p>}
+          cta={
+            <Link href="/dashboard/cashflow" style={ctaLink}>
+              See breakdown &rarr;
+            </Link>
+          }
+        />
+      </motion.div>
     )
   }
 
