@@ -13,7 +13,10 @@ export type SignalDomain =
   | "debt"
   | "match"
   | "benefits"
-  | "tax_advantaged";
+  | "tax_advantaged"
+  | "subscription"
+  | "category_overspend"
+  | "recurring_change";
 
 export type SignalState =
   | "new"

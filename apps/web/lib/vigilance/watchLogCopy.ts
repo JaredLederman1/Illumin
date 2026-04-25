@@ -68,6 +68,12 @@ function signalHeadline(signal: Signal): string {
       return `${taxAdvantagedKind(signal)} contribution room remaining this year`;
     case "benefits":
       return `Benefit gap surfaced: ${benefitLabel(signal)}`;
+    case "subscription":
+      return `New subscription detected · ${currency(value)}/yr`;
+    case "category_overspend":
+      return `Category overspend detected · ${currency(value)}/yr projected`;
+    case "recurring_change":
+      return `Recurring charge change detected · ${currency(value)}/yr`;
   }
 }
 

@@ -26,6 +26,9 @@ const DOMAIN_TO_RING: Record<SignalDomain, Exclude<PerimeterRing, "cash">> = {
   match: "long_term",
   tax_advantaged: "long_term",
   benefits: "aspirational",
+  subscription: "short_term",
+  category_overspend: "short_term",
+  recurring_change: "short_term",
 };
 
 export function getRingForDomain(domain: SignalDomain): Exclude<PerimeterRing, "cash"> {
