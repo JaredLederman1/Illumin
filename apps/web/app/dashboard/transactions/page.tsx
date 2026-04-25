@@ -5,11 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import TransactionRow from '@/components/ui/TransactionRow'
 import MobileCard from '@/components/ui/MobileCard'
 import Link from 'next/link'
-import { useDashboard } from '@/lib/dashboardData'
 import {
-  useRecurringExclusionsQuery,
-  useUpdateTransactionMutation,
+  useAccountsQuery,
   useAddManualTransactionMutation,
+  useRecurringExclusionsQuery,
+  useTransactionsQuery,
+  useUpdateTransactionMutation,
 } from '@/lib/queries'
 import { detectRecurringMerchants } from '@/lib/data'
 import { useIsMobile } from '@/hooks/useIsMobile'
@@ -260,7 +261,11 @@ function AddTransactionModal({
 }
 
 function TransactionsDesktop() {
-  const { loading, accounts, transactions } = useDashboard()
+  const accountsQ = useAccountsQuery()
+  const transactionsQ = useTransactionsQuery()
+  const accounts = accountsQ.data ?? []
+  const transactions = transactionsQ.data ?? []
+  const loading = accountsQ.isLoading || transactionsQ.isLoading
   const updateTx = useUpdateTransactionMutation()
   const addManualTx = useAddManualTransactionMutation()
   const { data: exclusionsRaw } = useRecurringExclusionsQuery()
@@ -654,7 +659,11 @@ function TransactionsDesktop() {
 }
 
 function TransactionsMobile() {
-  const { loading, accounts, transactions } = useDashboard()
+  const accountsQ = useAccountsQuery()
+  const transactionsQ = useTransactionsQuery()
+  const accounts = accountsQ.data ?? []
+  const transactions = transactionsQ.data ?? []
+  const loading = accountsQ.isLoading || transactionsQ.isLoading
   const updateTx = useUpdateTransactionMutation()
   const addManualTx = useAddManualTransactionMutation()
   const { data: exclusionsRaw } = useRecurringExclusionsQuery()

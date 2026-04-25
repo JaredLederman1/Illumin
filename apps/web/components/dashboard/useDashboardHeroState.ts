@@ -1,8 +1,16 @@
 'use client'
 
 import { useMemo } from 'react'
-import { useDashboard } from '@/lib/dashboardData'
-import { useDashboardStateQuery } from '@/lib/queries'
+import {
+  useAccountsQuery,
+  useBenefitsQuery,
+  useCashflowQuery,
+  useDashboardStateQuery,
+  useForecastQuery,
+  useNetWorthQuery,
+  useOnboardingProfileQuery,
+  useTransactionsQuery,
+} from '@/lib/queries'
 import type {
   DashboardState,
   HeroMetrics,
@@ -40,15 +48,14 @@ export interface DashboardHeroStateValue {
  * server omits any field (older deployments, unexpected errors, etc.).
  */
 export function useDashboardHeroState(): DashboardHeroStateValue {
-  const {
-    accounts,
-    transactions,
-    spendingByCategory,
-    netWorth,
-    profile,
-    benefits,
-    forecast,
-  } = useDashboard()
+  const accounts = useAccountsQuery().data ?? []
+  const transactions = useTransactionsQuery().data ?? []
+  const cashflow = useCashflowQuery().data
+  const spendingByCategory = cashflow?.spendingByCategory ?? []
+  const netWorth = useNetWorthQuery().data ?? null
+  const profile = useOnboardingProfileQuery().data ?? null
+  const benefits = useBenefitsQuery().data ?? null
+  const forecast = useForecastQuery().data ?? null
 
   const { data, isLoading, isError } = useDashboardStateQuery()
   const state = (data?.state as DashboardState | undefined) ?? null

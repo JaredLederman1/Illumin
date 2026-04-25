@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import ForecastChart from '@/components/ui/ForecastChart'
 import DataTooltip from '@/components/ui/DataTooltip'
-import { useDashboard } from '@/lib/dashboardData'
+import { useForecastQuery, useOnboardingProfileQuery } from '@/lib/queries'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import MobileCard from '@/components/ui/MobileCard'
 import MobileMetricCard from '@/components/ui/MobileMetricCard'
@@ -54,7 +54,11 @@ function ProfileGate() {
 }
 
 function ForecastDesktop() {
-  const { loading, forecast, profile } = useDashboard()
+  const forecastQ = useForecastQuery()
+  const profileQ = useOnboardingProfileQuery()
+  const forecast = forecastQ.data ?? null
+  const profile = profileQ.data ?? null
+  const loading = forecastQ.isLoading || profileQ.isLoading
 
   if (profile && !profile.completedAt) {
     return <ProfileGate />
@@ -179,7 +183,11 @@ function ForecastDesktop() {
 }
 
 function ForecastMobile() {
-  const { loading, forecast, profile } = useDashboard()
+  const forecastQ = useForecastQuery()
+  const profileQ = useOnboardingProfileQuery()
+  const forecast = forecastQ.data ?? null
+  const profile = profileQ.data ?? null
+  const loading = forecastQ.isLoading || profileQ.isLoading
 
   if (profile && !profile.completedAt) {
     return <ProfileGate />

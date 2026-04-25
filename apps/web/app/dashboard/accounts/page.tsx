@@ -5,8 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { usePlaidLink } from 'react-plaid-link'
 import AccountCard from '@/components/ui/AccountCard'
 import DataTooltip from '@/components/ui/DataTooltip'
-import { useDashboard } from '@/lib/dashboardData'
 import {
+  useAccountsQuery,
   useDeleteInstitutionMutation,
   usePlaidLinkTokenQuery,
   usePlaidExchangeMutation,
@@ -412,7 +412,9 @@ function SyncingOverlay({ done }: { done: boolean }) {
 }
 
 function AccountsContent() {
-  const { loading, accounts } = useDashboard()
+  const accountsQ = useAccountsQuery()
+  const accounts = accountsQ.data ?? []
+  const loading = accountsQ.isLoading
   const sync = usePlaidSyncMutation()
   const [syncing, setSyncing] = useState(false)
   const [syncDone, setSyncDone] = useState(false)
@@ -586,7 +588,9 @@ function AccountsContent() {
 }
 
 function AccountsMobileContent() {
-  const { loading, accounts } = useDashboard()
+  const accountsQ = useAccountsQuery()
+  const accounts = accountsQ.data ?? []
+  const loading = accountsQ.isLoading
   const sync = usePlaidSyncMutation()
   const [syncing, setSyncing] = useState(false)
   const [syncDone, setSyncDone] = useState(false)

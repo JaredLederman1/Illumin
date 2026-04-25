@@ -13,8 +13,13 @@ import MobileCard from '@/components/ui/MobileCard'
 import MobileMetricCard from '@/components/ui/MobileMetricCard'
 import { colors, fonts, spacing, mobileLabelText } from '@/lib/theme'
 import { useIsMobile } from '@/hooks/useIsMobile'
-import { useDashboard } from '@/lib/dashboardData'
-import { useNetWorthHistoryQuery } from '@/lib/queries'
+import {
+  useAccountsQuery,
+  useCashflowQuery,
+  useNetWorthHistoryQuery,
+  useNetWorthQuery,
+  useTransactionsQuery,
+} from '@/lib/queries'
 import { detectRecurringMerchants } from '@/lib/data'
 import HeroRow from '@/components/dashboard/HeroRow'
 import DashboardGrid from '@/components/dashboard/DashboardGrid'
@@ -44,7 +49,11 @@ function fmtChange(n: number): string {
 }
 
 function DashboardDesktop() {
-  const { loading, netWorth, accounts } = useDashboard()
+  const networthQ = useNetWorthQuery()
+  const accountsQ = useAccountsQuery()
+  const netWorth = networthQ.data ?? null
+  const accounts = accountsQ.data ?? []
+  const loading = networthQ.isLoading || accountsQ.isLoading
   const hero = useDashboardHeroState()
   const { data: nwHistory } = useNetWorthHistoryQuery()
   const stability = useMockStabilityStates('mixed')
@@ -227,7 +236,20 @@ const fmt = (n: number) =>
 
 // ── Mobile layout ─────────────────────────────────────────────────────────────
 function DashboardMobile() {
-  const { loading, netWorth, transactions, accounts, monthlyData, spendingByCategory } = useDashboard()
+  const networthQ = useNetWorthQuery()
+  const accountsQ = useAccountsQuery()
+  const transactionsQ = useTransactionsQuery()
+  const cashflowQ = useCashflowQuery()
+  const netWorth = networthQ.data ?? null
+  const accounts = accountsQ.data ?? []
+  const transactions = transactionsQ.data ?? []
+  const monthlyData = cashflowQ.data?.months ?? []
+  const spendingByCategory = cashflowQ.data?.spendingByCategory ?? []
+  const loading =
+    networthQ.isLoading ||
+    accountsQ.isLoading ||
+    transactionsQ.isLoading ||
+    cashflowQ.isLoading
   const hero = useDashboardHeroState()
   const { data: nwHistory } = useNetWorthHistoryQuery()
   const stability = useMockStabilityStates('mixed')

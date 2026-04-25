@@ -12,9 +12,15 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { useDashboard } from '@/lib/dashboardData'
-import { usePortfolioHistoryQuery } from '@/lib/queries'
+import {
+  queryKeys,
+  useAccountsQuery,
+  useForecastQuery,
+  usePortfolioHistoryQuery,
+  type Account,
+} from '@/lib/queries'
 import DataTooltip from '@/components/ui/DataTooltip'
 import {
   avalancheSchedule,
@@ -404,7 +410,12 @@ function DecadeTick(props: {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DebtPaydownPage() {
-  const { loading, accounts, setAccounts, forecast } = useDashboard()
+  const accountsQ = useAccountsQuery()
+  const forecastQ = useForecastQuery()
+  const accounts = accountsQ.data ?? []
+  const forecast = forecastQ.data ?? null
+  const loading = accountsQ.isLoading || forecastQ.isLoading
+  const qc = useQueryClient()
   const portfolio = usePortfolioYield()
   const [scheduleView, setScheduleView] = useState<'aggressive' | 'minimum'>('aggressive')
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set())
@@ -413,15 +424,15 @@ export default function DebtPaydownPage() {
   // dashboard-shared accounts array immediately.
   const handleAprSaved = useCallback(
     (accountId: string, nextApr: number, confirmedAt: string | null) => {
-      setAccounts(prev =>
-        prev.map(a =>
+      qc.setQueryData<Account[]>(queryKeys.accounts(), prev =>
+        (prev ?? []).map(a =>
           a.id === accountId
             ? ({ ...a, apr: nextApr, aprConfirmedAt: confirmedAt } as typeof a)
             : a,
         ),
       )
     },
-    [setAccounts],
+    [qc],
   )
 
   const aprEditor = useAprEditor(handleAprSaved)

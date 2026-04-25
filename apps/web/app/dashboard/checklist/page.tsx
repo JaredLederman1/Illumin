@@ -3,12 +3,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
-import { useDashboard } from '@/lib/dashboardData'
+import { useQueryClient } from '@tanstack/react-query'
 import {
+  queryKeys,
+  useBenefitsQuery,
   useChecklistQuery,
-  useToggleChecklistItemMutation,
   useClearCompletedChecklistMutation,
   useMarkBenefitActionMutation,
+  useToggleChecklistItemMutation,
+  type BenefitsData,
 } from '@/lib/queries'
 import { crossCheckBenefits } from '@/lib/benefitsAnalysis'
 import type { BenefitStatus } from '@/lib/benefitsAnalysis'
@@ -80,7 +83,10 @@ function Checkbox({ checked, color, onClick }: { checked: boolean; color: string
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ChecklistPage() {
-  const { loading, benefits, setBenefits } = useDashboard()
+  const benefitsQ = useBenefitsQuery()
+  const benefits = benefitsQ.data ?? null
+  const loading = benefitsQ.isLoading
+  const qc = useQueryClient()
 
   const { data: checklistData, isLoading: coachLoading } =
     useChecklistQuery<{ items?: CoachItem[] }>()
@@ -116,9 +122,11 @@ export default function ChecklistPage() {
   const toggleBenefitItem = useCallback((label: string, checked: boolean) => {
     const next = checked ? [...benefitsDone, label] : benefitsDone.filter(l => l !== label)
     setBenefitsDone(next)
-    if (benefits) setBenefits({ ...benefits, actionItemsDone: next })
+    if (benefits) {
+      qc.setQueryData<BenefitsData | null>(queryKeys.benefits(), { ...benefits, actionItemsDone: next })
+    }
     markBenefit.mutate({ label, done: checked })
-  }, [benefitsDone, benefits, setBenefits, markBenefit])
+  }, [benefitsDone, benefits, qc, markBenefit])
 
   // Benefits checklist items
   const crossCheck = benefits?.extracted

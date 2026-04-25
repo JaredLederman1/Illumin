@@ -4,9 +4,13 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useDashboard } from '@/lib/dashboardData'
+import { useQueryClient } from '@tanstack/react-query'
 import {
+  queryKeys,
+  useAuthEmail,
+  useBenefitsQuery,
   useNotificationPreferencesQuery,
+  useOnboardingProfileQuery,
   useResetOnboardingMutation,
   useSaveOnboardingMutation,
   useUpdateNotificationPreferencesMutation,
@@ -497,7 +501,13 @@ function styles(isMobile: boolean) {
 }
 
 function ProfileContent({ isMobile }: { isMobile: boolean }) {
-  const { loading, email, profile, setProfile, benefits } = useDashboard()
+  const profileQ = useOnboardingProfileQuery()
+  const benefitsQ = useBenefitsQuery()
+  const email = useAuthEmail()
+  const profile = profileQ.data ?? null
+  const benefits = benefitsQ.data ?? null
+  const loading = profileQ.isLoading
+  const qc = useQueryClient()
   const saveOnboarding = useSaveOnboardingMutation()
 
   const [editing,    setEditing]    = useState<Section | null>(null)
@@ -528,7 +538,7 @@ function ProfileContent({ isMobile }: { isMobile: boolean }) {
     const payload = payloadFor(editing, editValues)
     saveOnboarding.mutate(payload, {
       onSuccess: (data: { profile?: OnboardingProfile }) => {
-        if (data?.profile) setProfile(data.profile)
+        if (data?.profile) qc.setQueryData<OnboardingProfile | null>(queryKeys.onboarding(), data.profile)
         setEditing(null)
         setSavedAt(Date.now())
         if (confirmTimer.current) clearTimeout(confirmTimer.current)

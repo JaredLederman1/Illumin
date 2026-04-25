@@ -6,8 +6,11 @@ import Link from 'next/link'
 import BarChart from '@/components/ui/BarChart'
 import MerchantBar from '@/components/ui/MerchantBar'
 import MobileCard from '@/components/ui/MobileCard'
-import { useDashboard } from '@/lib/dashboardData'
-import { useMerchantsQuery, useCashflowTrendsQuery } from '@/lib/queries'
+import {
+  useCashflowQuery,
+  useCashflowTrendsQuery,
+  useMerchantsQuery,
+} from '@/lib/queries'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { colors, fonts, spacing, mobileLabelText } from '@/lib/theme'
 
@@ -68,7 +71,9 @@ const merchantItemVariants: Variants = {
 }
 
 function CashFlowDesktop() {
-  const { loading, monthlyData } = useDashboard()
+  const cashflowQ = useCashflowQuery()
+  const monthlyData = cashflowQ.data?.months ?? []
+  const loading = cashflowQ.isLoading
   const { data: merchantData } = useMerchantsQuery<MerchantData>()
   const { data: trendsData } = useCashflowTrendsQuery<TrendsData>()
 
@@ -365,7 +370,9 @@ function CashFlowDesktop() {
 }
 
 function CashFlowMobile() {
-  const { loading, monthlyData } = useDashboard()
+  const cashflowQ = useCashflowQuery()
+  const monthlyData = cashflowQ.data?.months ?? []
+  const loading = cashflowQ.isLoading
   const { data: merchantData } = useMerchantsQuery<MerchantData>()
   const { data: trendsData } = useCashflowTrendsQuery<TrendsData>()
 
